@@ -1,0 +1,11 @@
+# Ativar o mod_rewrite
+RewriteEngine On
+
+# Regras para URLs amigáveis de relatórios
+# Exemplo: /relatorios/associados/pdf -> /relatorios/associados.php?tipo=pdf
+RewriteRule ^([a-z-]+)/(pdf|excel)$ $1.php?tipo=$2 [NC,L]
+
+# Se o diretório ou arquivo não existir, redirecionar para o index
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

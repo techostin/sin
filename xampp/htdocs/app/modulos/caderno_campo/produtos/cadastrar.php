@@ -1,0 +1,1 @@
+<form action="<?php echo SITE_URL; ?>/caderno-campo/produto/novo" method="POST" class="row g-3">

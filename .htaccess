@@ -1,0 +1,38 @@
+Options +FollowSymLinks -MultiViews -Indexes
+RewriteEngine On
+
+# Define a base do diretório
+RewriteBase /app/
+
+# Regras para relatórios - permitir acesso direto a arquivos .php na pasta relatorios
+RewriteCond %{REQUEST_URI} ^/app/relatorios/([a-z-]+)\.php$
+RewriteRule ^ - [L]
+
+# Regras para URLs amigáveis de relatórios
+# Exemplo: /app/relatorios/associados/pdf -> /app/relatorios/associados.php?tipo=pdf
+RewriteRule ^relatorios/([a-z-]+)/(pdf|excel)$ relatorios/$1.php?tipo=$2 [NC,L,QSA]
+
+# Se a requisição não for para um arquivo que existe
+RewriteCond %{REQUEST_FILENAME} !-f
+# E não for para um diretório que existe
+RewriteCond %{REQUEST_FILENAME} !-d
+# E não for para um link simbólico que existe
+RewriteCond %{REQUEST_FILENAME} !-l
+
+# Redireciona todas as outras requisições para o index.php
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+
+# Protege contra listagem de diretórios
+Options -Indexes
+
+# Protege contra acesso a arquivos ocultos
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Permite acesso apenas a arquivos específicos
+<FilesMatch "\.(css|js|jpe?g|png|gif|ico|svg|woff|woff2|ttf|eot|map)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
