@@ -86,4 +86,56 @@ function criarModalEvento() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM carregado, inicializando modal de eventos...');
     criarModalEvento();
-}); 
+});
+
+/**
+ * Função para confirmar ou cancelar presença no evento
+ * @param {number} eventoId 
+ */
+function togglePresenca(eventoId) {
+    const url = window.SITE_URL + '/api/toggle_presenca.php';
+    const formData = new FormData();
+    formData.append('evento_id', eventoId);
+    
+    // Pegar o botão que disparou o evento (se houver)
+    const btn = event ? event.currentTarget : null;
+    if (btn) btn.disabled = true;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar mensagem de confirmação no modal
+            const msgContainer = document.getElementById('presenca-msg-container');
+            if (msgContainer) {
+                const alertClass = data.acao === 'adicionado' ? 'alert-success' : 'alert-warning';
+                msgContainer.innerHTML = `
+                    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                        <i class="bi ${data.acao === 'adicionado' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} me-2"></i>
+                        ${data.mensagem}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>`;
+            }
+            
+            // Recarregar os detalhes do evento para atualizar o botão e a contagem após um curto delay
+            // para que o usuário possa ver a mensagem
+            setTimeout(() => {
+                visualizarEvento(eventoId);
+            }, 1500);
+        } else {
+            alert('Erro: ' + (data.erro || 'Erro desconhecido ao atualizar presença.'));
+            if (btn) btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao alternar presença:', error);
+        alert('Erro ao processar sua solicitação. Tente novamente.');
+        if (btn) btn.disabled = false;
+    });
+}

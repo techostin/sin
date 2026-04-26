@@ -1,0 +1,109 @@
+/**
+ * SINPORG - Estilo Agricultura Familiar & Mobile-First
+ * 
+ * Focado em acessibilidade no campo, contraste elevado e alvos de toque grandes.
+ */
+
+:root {
+    --organic-green: #198754;
+    --organic-earth: #6d4c41;
+    --organic-sun: #ffc107;
+    --organic-sky: #e3f2fd;
+    --touch-target: 48px;
+}
+
+body {
+    background-color: #fcfdfc;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Alvos de toque maiores para Mobile */
+.btn {
+    min-height: var(--touch-target);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    border-radius: 8px;
+}
+
+.btn-sm {
+    min-height: 36px;
+}
+
+/* Cartões com aspecto orgânico */
+.card {
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    color: var(--organic-earth);
+}
+
+/* Inputs otimizados */
+.form-control, .form-select {
+    min-height: 44px;
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    padding: 0.5rem 1rem;
+}
+
+.form-control:focus {
+    border-color: var(--organic-green);
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.15);
+}
+
+/* Labels mais legíveis */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.4rem;
+    font-size: 0.9rem;
+}
+
+/* Badges modernos */
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+/* Wizard / Timeline Style */
+.step-circle {
+    box-shadow: 0 0 0 4px #fff, 0 0 0 6px #f0f0f0;
+}
+
+.step-item.active .step-circle {
+    box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--organic-green);
+}
+
+/* Utilitários de cor orgânica */
+.text-organic { color: var(--organic-green); }
+.bg-organic { background-color: var(--organic-green); }
+
+/* Ajustes para telas pequenas (smartphones) */
+@media (max-width: 576px) {
+    h1 { font-size: 1.75rem; }
+    .card-body { padding: 1rem; }
+    .btn { width: 100%; margin-bottom: 0.5rem; }
+    .btn-group { display: flex; flex-direction: column; width: 100%; }
+    .btn-group .btn { border-radius: 8px !important; margin-bottom: 4px; }
+}
+
+/* Glassmorphism sutil para Modais */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.95);
+}

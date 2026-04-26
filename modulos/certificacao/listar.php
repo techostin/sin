@@ -1,12 +1,12 @@
 <?php
 $page_title = "Certificações Participativas";
-require_once __DIR__ . '/../../../includes/header.php';
-require_once __DIR__ . '/../../../includes/menu.php';
+require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/menu.php';
 
 // Permitir acesso a todos os usuários autenticados
 if (!$user->isLoggedIn()) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
-    require_once __DIR__ . '/../../../includes/footer.php';
+    require_once __DIR__ . '/../../includes/footer.php';
     exit;
 }
 ?>
@@ -108,7 +108,7 @@ if (!$user->isLoggedIn()) {
 </div>
 
 <?php
-require_once __DIR__ . '/../../../includes/footer.php';
+require_once __DIR__ . '/../../includes/footer.php';
 ?>
 
 <!-- DataTables CSS e JS -->
@@ -225,6 +225,16 @@ require_once __DIR__ . '/../../../includes/footer.php';
                                class="btn btn-outline-primary btn-sm" 
                                title="Editar">
                                 <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="<?php echo SITE_URL; ?>/certificacao/${row.id}/renovar" 
+                               class="btn btn-outline-success btn-sm" 
+                               title="Renovar">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </a>
+                            <a href="<?php echo SITE_URL; ?>/certificacao/historico/${row.associado_id}" 
+                               class="btn btn-outline-secondary btn-sm" 
+                               title="Ver Histórico">
+                                <i class="bi bi-clock-history"></i>
                             </a>
                             <button type="button" 
                                     class="btn btn-outline-info btn-sm" 

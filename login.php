@@ -5,9 +5,14 @@ require_once 'classes/User.php';
 $user = new User();
 $error_message = '';
 
-// Se o usuário já estiver logado, redireciona para o dashboard
+// Se o usuário já estiver logado, redireciona para o dashboard apropriado
 if ($user->isLoggedIn()) {
-    header("Location: " . SITE_URL . "/");
+    // Usuários comuns vão para o dashboard do Caderno de Campo
+    if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
+        header("Location: " . SITE_URL . "/caderno-campo/dashboard");
+    } else {
+        header("Location: " . SITE_URL . "/");
+    }
     exit;
 }
 
@@ -24,8 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Definir flag para mostrar o modal de eventos
         $_SESSION['mostrar_modal_eventos'] = true;
         
-        // Usar o tipo salvo na sessão
-        if (isset($_SESSION['user_tipo']) && $_SESSION['user_tipo'] === 'usuario') {
+        // Redirecionar baseado no nível do usuário
+        // Usuários comuns (NIVEL_USUARIO) vão para o dashboard do Caderno de Campo
+        // Gestores e Admin vão para o dashboard principal
+        if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
             header("Location: " . SITE_URL . "/caderno-campo/dashboard");
             exit;
         } else {

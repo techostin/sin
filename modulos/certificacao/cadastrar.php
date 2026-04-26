@@ -1,13 +1,13 @@
 <?php
 $page_title = isset($_GET['id']) ? "Editar Certificação" : "Nova Certificação";
-require_once __DIR__ . '/../../../includes/header.php';
-require_once __DIR__ . '/../../../includes/menu.php';
-require_once __DIR__ . '/../../../classes/Database.php';
+require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/menu.php';
+require_once __DIR__ . '/../../classes/Database.php';
 
 // Verificar autenticação
 if (!$user->isLoggedIn()) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
-    require_once __DIR__ . '/../../../includes/footer.php';
+    require_once __DIR__ . '/../../includes/footer.php';
     exit;
 }
 
@@ -24,7 +24,7 @@ if ($isEdit) {
     
     if (!$certificacao) {
         echo "<div class='alert alert-danger'>Certificação não encontrada.</div>";
-        require_once __DIR__ . '/../../../includes/footer.php';
+        require_once __DIR__ . '/../../includes/footer.php';
         exit;
     }
 }
@@ -170,7 +170,7 @@ $associados = $stmtAssociados->fetchAll(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
 $(document).ready(function() {

@@ -8,8 +8,8 @@ require_once __DIR__ . '/../../classes/Associado.php';
 $message = '';
 $message_type = '';
 
-// Apenas Admin ou Gestor podem cadastrar
-if (!$user->hasPermission(NIVEL_GESTOR)) {
+// Permitir Admin, Gestor e Usuários comuns cadastrarem fornecedores
+if (!$user->hasPermission(NIVEL_USUARIO)) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
     require_once __DIR__ . '/../../includes/footer.php';
     exit;

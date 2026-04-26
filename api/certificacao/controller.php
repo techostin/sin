@@ -143,18 +143,21 @@ function listCertificacoes($db) {
     $offset = ($page - 1) * $limit;
     
     // Contar total de registros
-    $countSql = "SELECT COUNT(*) as total FROM certificacao_participativa c WHERE 1=1";
-    foreach ($params as $param) {
-        $countSql .= " AND ?";
-    }
-    $stmtCount = $db->prepare("SELECT COUNT(*) as total FROM (" . str_replace("SELECT c.*, a.nome as associado_nome, a.sobrenome as associado_sobrenome", "SELECT c.id", $sql) . ") as subquery");
+    $stmtCount = $db->prepare("SELECT COUNT(*) as total FROM certificacao_participativa c WHERE 1=1 " . 
+        (isset($_GET['tipo_certificacao']) && !empty($_GET['tipo_certificacao']) ? " AND c.tipo_certificacao = ?" : "") .
+        (isset($_GET['status']) && !empty($_GET['status']) ? " AND c.status = ?" : "") .
+        (isset($_GET['associado_id']) && is_numeric($_GET['associado_id']) ? " AND c.associado_id = ?" : "") .
+        (isset($_GET['validade']) && $_GET['validade'] === 'vencidas' ? " AND c.data_validade < CURDATE()" : "") .
+        (isset($_GET['validade']) && $_GET['validade'] === 'proximas' ? " AND c.data_validade BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)" : "")
+    );
+    
+    // Filtrar os parâmetros para o count (apenas os filtros, sem limit/offset)
     $stmtCount->execute($params);
     $total = $stmtCount->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Buscar registros com paginação
-    $sql .= " LIMIT ? OFFSET ?";
-    $params[] = $limit;
-    $params[] = $offset;
+    // Importante: No MySQL, LIMIT e OFFSET não podem ser passados como strings entre aspas
+    $sql .= " LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
     
     $stmt = $db->prepare($sql);
     $stmt->execute($params);

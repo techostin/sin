@@ -9,119 +9,234 @@ if (!$user->isLoggedIn()) {
     exit;
 }
 
+$user_id = $_SESSION['user_id'];
+$user_nivel = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
+$user_table = $_SESSION['user_table'] ?? 'associados';
+
+// Verificar se é admin ou gestor (mostrar dados de todos)
+$is_admin_gestor = ($user_nivel == NIVEL_ADMIN || $user_nivel == NIVEL_GESTOR);
+
+// Determinar o associado_id correto para usuários comuns
+$associado_id = $user_id;
+if (!$is_admin_gestor && $user_table === 'usuarios') {
+    // Se for usuário da tabela usuarios, buscar o associado_id vinculado
+    try {
+        $db = Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT associado_id FROM usuarios WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($result && $result['associado_id']) {
+            $associado_id = $result['associado_id'];
+        }
+    } catch (PDOException $e) {
+        error_log("Erro ao buscar associado_id: " . $e->getMessage());
+    }
+}
+
 // Buscar estatísticas do banco de dados
 $stats = [];
 try {
     $db = Database::getInstance()->getConnection();
     
+    // Condição WHERE para filtrar por associado (apenas para usuários comuns)
+    $where_atividades = $is_admin_gestor ? "" : "WHERE associado_id = :associado_id";
+    $where_propriedades = $is_admin_gestor ? "" : "WHERE associado_id = :associado_id";
+    $where_lavouras = $is_admin_gestor ? "" : "WHERE l.associado_id = :associado_id";
+    $params = $is_admin_gestor ? [] : [':associado_id' => $associado_id];
+    
     // Total de atividades
-    $stmt = $db->query("SELECT COUNT(*) as total FROM atividades_diarias");
+    $sql = "SELECT COUNT(*) as total FROM atividades_diarias " . $where_atividades;
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $stats['total_atividades'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Atividades por status
-    $stmt = $db->query("SELECT status, COUNT(*) as total FROM atividades_diarias GROUP BY status");
+    $sql = "SELECT status, COUNT(*) as total FROM atividades_diarias " . $where_atividades . " GROUP BY status";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $stats['atividades_por_status'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Total de propriedades
-    $stmt = $db->query("SELECT COUNT(*) as total FROM propriedades");
+    $sql = "SELECT COUNT(*) as total FROM propriedades " . $where_propriedades;
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $stats['total_propriedades'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Total de lavouras
-    $stmt = $db->query("SELECT COUNT(*) as total FROM lavouras");
+    // Total de lavouras (filtrar por propriedades do usuário)
+    if ($is_admin_gestor) {
+        $stmt = $db->query("SELECT COUNT(*) as total FROM lavouras");
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM lavouras l 
+            JOIN propriedades p ON l.propriedade_id = p.id 
+            WHERE p.associado_id = :associado_id");
+        $stmt->execute([':associado_id' => $associado_id]);
+    }
     $stats['total_lavouras'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Total de insumos
-    $stmt = $db->query("SELECT COUNT(*) as total FROM insumos");
+    // Total de insumos (filtrar por associado)
+    if ($is_admin_gestor) {
+        $stmt = $db->query("SELECT COUNT(*) as total FROM insumos");
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM insumos WHERE associado_id = :associado_id");
+        $stmt->execute([':associado_id' => $associado_id]);
+    }
     $stats['total_insumos'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Total de produtos
-    $stmt = $db->query("SELECT COUNT(*) as total FROM produtos");
+    if ($is_admin_gestor) {
+        $stmt = $db->query("SELECT COUNT(*) as total FROM produtos");
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM produtos WHERE associado_id = :associado_id");
+        $stmt->execute([':associado_id' => $associado_id]);
+    }
     $stats['total_produtos'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Total de lotes
-    $stmt = $db->query("SELECT COUNT(*) as total FROM lotes_producao");
+    if ($is_admin_gestor) {
+        $stmt = $db->query("SELECT COUNT(*) as total FROM lotes_producao");
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM lotes_producao WHERE associado_id = :associado_id");
+        $stmt->execute([':associado_id' => $associado_id]);
+    }
     $stats['total_lotes'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Atividades por tipo
-    $stmt = $db->query("SELECT tipo_atividade, COUNT(*) as total FROM atividades_diarias GROUP BY tipo_atividade ORDER BY total DESC");
+    $sql = "SELECT tipo_atividade, COUNT(*) as total FROM atividades_diarias " . $where_atividades . " GROUP BY tipo_atividade ORDER BY total DESC";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $stats['atividades_por_tipo'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Atividades dos últimos 30 dias
-    $stmt = $db->query("SELECT COUNT(*) as total FROM atividades_diarias WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
+    $sql = "SELECT COUNT(*) as total FROM atividades_diarias " . 
+           ($is_admin_gestor ? "WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)" : 
+            "WHERE associado_id = :associado_id AND data_atividade >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
+    $stmt = $db->prepare($sql);
+    if (!$is_admin_gestor) {
+        $stmt->execute([':associado_id' => $associado_id]);
+    } else {
+        $stmt->execute();
+    }
     $stats['atividades_30_dias'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Atividades por mês (últimos 6 meses)
-    $stmt = $db->query("SELECT 
+    $sql = "SELECT 
         DATE_FORMAT(data_atividade, '%Y-%m') as mes,
         COUNT(*) as total 
-        FROM atividades_diarias 
-        WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-        GROUP BY DATE_FORMAT(data_atividade, '%Y-%m')
-        ORDER BY mes DESC");
+        FROM atividades_diarias " .
+        ($is_admin_gestor ? "WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)" : 
+         "WHERE associado_id = :associado_id AND data_atividade >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)") .
+        " GROUP BY DATE_FORMAT(data_atividade, '%Y-%m')
+        ORDER BY mes DESC";
+    $stmt = $db->prepare($sql);
+    if (!$is_admin_gestor) {
+        $stmt->execute([':associado_id' => $associado_id]);
+    } else {
+        $stmt->execute();
+    }
     $stats['atividades_por_mes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Top 5 propriedades com mais atividades
-    $stmt = $db->query("SELECT 
-        p.propriedade,
-        COUNT(ad.id) as total_atividades
-        FROM propriedades p
-        LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id
-        GROUP BY p.id, p.propriedade
-        ORDER BY total_atividades DESC
-        LIMIT 5");
+    if ($is_admin_gestor) {
+        $stmt = $db->query("SELECT 
+            p.propriedade,
+            COUNT(ad.id) as total_atividades
+            FROM propriedades p
+            LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id
+            GROUP BY p.id, p.propriedade
+            ORDER BY total_atividades DESC
+            LIMIT 5");
+    } else {
+        $stmt = $db->prepare("SELECT 
+            p.propriedade,
+            COUNT(ad.id) as total_atividades
+            FROM propriedades p
+            LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id
+            WHERE p.associado_id = :associado_id
+            GROUP BY p.id, p.propriedade
+            ORDER BY total_atividades DESC
+            LIMIT 5");
+        $stmt->execute([':associado_id' => $associado_id]);
+    }
     $stats['top_propriedades'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Top 5 lavouras com mais atividades
-    $stmt = $db->query("SELECT 
-        l.nome as lavoura,
-        l.tipo_cultura as cultura,
-        COUNT(ad.id) as total_atividades
-        FROM lavouras l
-        LEFT JOIN atividades_diarias ad ON l.id = ad.lavoura_id
-        GROUP BY l.id, l.nome, l.cultura
-        ORDER BY total_atividades DESC
-        LIMIT 5");
+    if ($is_admin_gestor) {
+        $stmt = $db->query("SELECT 
+            l.nome as lavoura,
+            l.tipo_cultura as cultura,
+            COUNT(ad.id) as total_atividades
+            FROM lavouras l
+            LEFT JOIN atividades_diarias ad ON l.id = ad.lavoura_id
+            GROUP BY l.id, l.nome, l.tipo_cultura
+            ORDER BY total_atividades DESC
+            LIMIT 5");
+    } else {
+        $stmt = $db->prepare("SELECT 
+            l.nome as lavoura,
+            l.tipo_cultura as cultura,
+            COUNT(ad.id) as total_atividades
+            FROM lavouras l
+            LEFT JOIN propriedades p ON l.propriedade_id = p.id
+            LEFT JOIN atividades_diarias ad ON l.id = ad.lavoura_id
+            WHERE p.associado_id = :associado_id
+            GROUP BY l.id, l.nome, l.tipo_cultura
+            ORDER BY total_atividades DESC
+            LIMIT 5");
+        $stmt->execute([':associado_id' => $associado_id]);
+    }
     $stats['top_lavouras'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Insumos mais utilizados
-    $stmt = $db->query("SELECT 
-        insumo_utilisado,
-        COUNT(*) as total_uso
-        FROM atividades_diarias 
-        WHERE insumo_utilisado IS NOT NULL AND insumo_utilisado != ''
-        GROUP BY insumo_utilisado
-        ORDER BY total_uso DESC
-        LIMIT 10");
+    if ($is_admin_gestor) {
+        $stmt = $db->query("SELECT 
+            insumo_utilisado,
+            COUNT(*) as total_uso
+            FROM atividades_diarias 
+            WHERE insumo_utilisado IS NOT NULL AND insumo_utilisado != ''
+            GROUP BY insumo_utilisado
+            ORDER BY total_uso DESC
+            LIMIT 10");
+    } else {
+        $stmt = $db->prepare("SELECT 
+            insumo_utilisado,
+            COUNT(*) as total_uso
+            FROM atividades_diarias 
+            WHERE associado_id = :associado_id AND insumo_utilisado IS NOT NULL AND insumo_utilisado != ''
+            GROUP BY insumo_utilisado
+            ORDER BY total_uso DESC
+            LIMIT 10");
+        $stmt->execute([':associado_id' => $associado_id]);
+    }
     $stats['insumos_mais_utilizados'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
+    error_log("Erro ao buscar estatísticas: " . $e->getMessage());
     $stats = [];
 }
+
 ?>
-
-<!-- CSS adicional para o dashboard -->
 <style>
-.stats-card {
-    transition: transform 0.2s;
-    border-left: 4px solid;
-}
-.stats-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-.stats-card.primary { border-left-color: #007bff; }
-.stats-card.success { border-left-color: #28a745; }
-.stats-card.info { border-left-color: #17a2b8; }
-.stats-card.warning { border-left-color: #ffc107; }
-.stats-card.danger { border-left-color: #dc3545; }
-.stats-card.secondary { border-left-color: #6c757d; }
-.stats-card.dark { border-left-color: #343a40; }
+    .stats-card {
+        transition: transform 0.2s;
+        border-left: 4px solid;
+    }
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stats-card.primary { border-left-color: #007bff; }
+    .stats-card.success { border-left-color: #28a745; }
+    .stats-card.info { border-left-color: #17a2b8; }
+    .stats-card.warning { border-left-color: #ffc107; }
+    .stats-card.danger { border-left-color: #dc3545; }
+    .stats-card.secondary { border-left-color: #6c757d; }
+    .stats-card.dark { border-left-color: #343a40; }
 
-.chart-container {
-    position: relative;
-    height: 300px;
-    margin: 20px 0;
-}
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin: 20px 0;
+    }
 
 .progress-ring {
     width: 120px;

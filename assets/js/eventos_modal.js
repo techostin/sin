@@ -26,14 +26,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </tr>
                                 </thead>
                                 <tbody id="tabelaEventos">
-                                    <!-- Preenchido via JavaScript -->
+                                    <tr><td colspan="5" class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <p class="mt-2 mb-0">Carregando eventos...</p>
+                                    </td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                        <a href="<?php echo SITE_URL; ?>/eventos" class="btn btn-primary">
+                        <a href="` + window.SITE_URL + `/eventos" class="btn btn-primary">
                             <i class="bi bi-calendar-week"></i> Ver Todos os Eventos
                         </a>
                     </div>
@@ -44,24 +47,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Adicionar o modal ao final do body
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
-        // Inicializar o modal
-        const eventosModal = new bootstrap.Modal(document.getElementById('eventosModal'));
-        
-        // Carregar os eventos via AJAX
+        // Carregar os eventos via AJAX primeiro
         carregarEventosModal();
-        
-        // Mostrar o modal
-        eventosModal.show();
     }
 });
 
 // Função para carregar os eventos no modal
 function carregarEventosModal() {
     // Usar a variável global SITE_URL que deve ser definida no header.php
-    fetch(window.SITE_URL + '/api/get_eventos_pendentes.php')
+    fetch(window.SITE_URL + '/api/get_eventos_pendentes_new.php')
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.eventos.length > 0) {
+            console.log('Resposta da API:', data);
+            
+            // Inicializar o modal
+            const eventosModal = new bootstrap.Modal(document.getElementById('eventosModal'));
+            
+            if (data.success && data.eventos && data.eventos.length > 0) {
                 const tbody = document.getElementById('tabelaEventos');
                 tbody.innerHTML = '';
                 
@@ -108,14 +110,17 @@ function carregarEventosModal() {
                     
                     tbody.appendChild(tr);
                 });
+                
+                // Mostrar o modal apenas se houver eventos
+                eventosModal.show();
             } else {
-                document.getElementById('tabelaEventos').innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center py-4">
-                            <i class="bi bi-calendar-x display-4 text-muted"></i>
-                            <p class="mt-2 mb-0">Nenhum evento pendente encontrado.</p>
-                        </td>
-                    </tr>`;
+                // Se não houver eventos, não mostrar o modal
+                console.log('Nenhum evento pendente encontrado. Modal não será exibido.');
+                // Remover o modal do DOM
+                const modalEl = document.getElementById('eventosModal');
+                if (modalEl) {
+                    modalEl.remove();
+                }
             }
         })
         .catch(error => {
@@ -127,6 +132,9 @@ function carregarEventosModal() {
                         <p class="mt-2 mb-0">Erro ao carregar eventos. Tente novamente mais tarde.</p>
                     </td>
                 </tr>`;
+            // Mostrar o modal mesmo com erro para informar o usuário
+            const eventosModal = new bootstrap.Modal(document.getElementById('eventosModal'));
+            eventosModal.show();
         });
 }
 

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../classes/Database.php';
+require_once __DIR__ . '/../../classes/User.php';
 
 // Log de debug
 error_log("Visualizar evento chamado - ID: " . ($_GET['id'] ?? 'não informado'));
@@ -80,6 +81,7 @@ try {
     $html = '
         <div class="row">
             <div class="col-12">
+                <div id="presenca-msg-container"></div>
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <h4 class="mb-0">' . htmlspecialchars($evento['nome']) . '</h4>
                     <span class="badge ' . $status_classe . '">' . htmlspecialchars($evento['status']) . '</span>
@@ -112,25 +114,29 @@ try {
                 </div>';
     }
     
-    // Buscar informações de presença se houver
-    try {
-        $stmt_presenca = $db->prepare("
-            SELECT COUNT(*) as total_presenca 
-            FROM evento_presenca 
-            WHERE evento_id = ? AND status_presenca IN ('Confirmado', 'Presente')
-        ");
-        $stmt_presenca->execute([$id]);
-        $presenca = $stmt_presenca->fetch(PDO::FETCH_ASSOC);
-        
-        if ($presenca['total_presenca'] > 0) {
-            $html .= '
-                <div class="mb-3">
-                    <h6><i class="bi bi-people-fill text-primary me-2"></i>Participação</h6>
-                    <p class="mb-0">' . $presenca['total_presenca'] . ' pessoa(s) confirmaram presença</p>
-                </div>';
+    // Buscar informações de presença da coluna confirmados na tabela eventos
+    $confirmados = json_decode($evento['confirmados'] ?? '[]', true);
+    if (!is_array($confirmados)) $confirmados = [];
+    $total_presenca = count($confirmados);
+    
+    if ($total_presenca > 0) {
+        $html .= '
+            <div class="mb-3">
+                <h6><i class="bi bi-people-fill text-primary me-2"></i>Participação</h6>
+                <p class="mb-0">' . $total_presenca . ' pessoa(s) confirmaram presença</p>
+            </div>';
+    }
+    
+    // Checar se o usuário atual logado marcou presença
+    $user_id = $_SESSION['user_id'];
+    $user_table = $_SESSION['user_table'] ?? 'associados';
+    $ja_confirmou = false;
+    
+    foreach ($confirmados as $conf) {
+        if ($conf['id'] == $user_id && $conf['table'] == $user_table) {
+            $ja_confirmou = true;
+            break;
         }
-    } catch (PDOException $e) {
-        // Ignorar erro se a tabela não existir
     }
     
     $html .= '
@@ -139,6 +145,21 @@ try {
         
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>';
+            
+    // Mostrar botão de confirmar presença para qualquer usuário logado se o evento for "Agendado"
+    if ($evento['status'] === 'Agendado') {
+        if ($ja_confirmou) {
+            $html .= '
+                <button type="button" class="btn btn-outline-danger" onclick="togglePresenca(' . $evento['id'] . ')">
+                    <i class="bi bi-x-circle-fill"></i> Cancelar Confirmação
+                </button>';
+        } else {
+            $html .= '
+                <button type="button" class="btn btn-success" onclick="togglePresenca(' . $evento['id'] . ')">
+                    <i class="bi bi-check-circle-fill"></i> Confirmar Presença
+                </button>';
+        }
+    }
     
     // Mostrar botão de editar apenas para usuários com permissão
     if (isset($_SESSION['user_tipo']) && $_SESSION['user_tipo'] !== 'usuario') {

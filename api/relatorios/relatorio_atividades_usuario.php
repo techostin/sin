@@ -42,24 +42,30 @@ if (!$usuario) {
     exit;
 }
 
-// Determinar o associado_id vinculado ao usuário (para filtrar atividades)
-$associado_id = null;
-if (($_SESSION['user_table'] ?? 'associados') === 'usuarios') {
-    // Usuário logado na tabela usuarios possui coluna associado_id
-    $associado_id = isset($usuario['associado_id']) ? (int)$usuario['associado_id'] : 0;
-} else {
-    // Usuário logado diretamente como associado
-    $associado_id = (int)$usuario['id'];
-}
+// Verificar nível de acesso
+$nivel = (int)($_SESSION['user_nivel'] ?? NIVEL_USUARIO);
+$is_gestor = ($nivel <= NIVEL_GESTOR); // NIVEL_ADMIN=1, NIVEL_GESTOR=2
 
-if ($associado_id <= 0) {
-    header('HTTP/1.1 400 Bad Request');
-    echo 'Erro: não foi possível identificar o associado vinculado a este usuário.';
-    exit;
+// Para usuário comum, determinar o associado vinculado
+$associado_id = null;
+if (!$is_gestor) {
+    if (($_SESSION['user_table'] ?? 'associados') === 'usuarios') {
+        $associado_id = isset($usuario['associado_id']) ? (int)$usuario['associado_id'] : 0;
+    } else {
+        $associado_id = (int)$usuario['id'];
+    }
+
+    if ($associado_id <= 0) {
+        header('HTTP/1.1 400 Bad Request');
+        echo 'Erro: não foi possível identificar o associado vinculado a este usuário.';
+        exit;
+    }
 }
 
 // Configurações do relatório
-$titulo = 'Relatório de Atividades do Usuário';
+$titulo = $is_gestor
+    ? 'Relatório de Atividades — Todos os Associados'
+    : 'Relatório de Atividades do Usuário';
 $data_geracao = date('d/m/Y H:i:s');
 $usuario_nome = $usuario['nome'] ?? 'Usuário';
 
@@ -67,7 +73,15 @@ try {
     // Conectar ao banco de dados
     $db = Database::getInstance()->getConnection();
     
-    // Buscar as atividades do associado vinculado ao usuário logado
+    // Montar WHERE condicional: apenas usuários comuns são filtrados
+    $whereClause = '';
+    $bindParams = [];
+    if (!$is_gestor) {
+        $whereClause = 'WHERE ad.associado_id = :associado_id';
+        $bindParams[':associado_id'] = $associado_id;
+    }
+
+    // Buscar atividades conforme o nível de acesso
     $stmt = $db->prepare("
         SELECT 
             ad.id, 
@@ -89,14 +103,15 @@ try {
             LEFT JOIN lavouras l ON ad.lavoura_id = l.id
             LEFT JOIN associados a ON ad.associado_id = a.id
             LEFT JOIN categorias_atividades ca ON ad.categoria_id = ca.id
-        WHERE 
-            ad.associado_id = :associado_id
+        $whereClause
         ORDER BY 
             ad.data_atividade DESC, 
             ad.hora_inicio DESC
     ");
     
-    $stmt->bindParam(':associado_id', $associado_id, PDO::PARAM_INT);
+    foreach ($bindParams as $key => $val) {
+        $stmt->bindValue($key, $val, PDO::PARAM_INT);
+    }
     $stmt->execute();
     $atividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -138,7 +153,7 @@ try {
         $sheet->getStyle('A2')->getAlignment()->setHorizontal('center');
         
         // Cabeçalhos da tabela
-        $cabecalhos = ['Data', 'Atividade', 'Propriedade', 'Lavoura', 'Início', 'Término', 'Duração', 'Status'];
+        $cabecalhos = ['Data', 'Atividade', 'Associado', 'Propriedade', 'Lavoura', 'Início', 'Término', 'Duração', 'Status'];
         $col = 0;
         foreach ($cabecalhos as $cabecalho) {
             $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . '4';
@@ -153,7 +168,7 @@ try {
             'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
             'borders' => ['allBorders' => ['borderStyle' => 'thin']]
         ];
-        $sheet->getStyle('A4:H4')->applyFromArray($headerStyle);
+        $sheet->getStyle('A4:I4')->applyFromArray($headerStyle);
         
         // Preencher dados
         $row = 5;
@@ -169,23 +184,24 @@ try {
             
             $sheet->setCellValue('A' . $row, $atividade['data_formatada']);
             $sheet->setCellValue('B' . $row, $atividade['atividade_nome']);
-            $sheet->setCellValue('C' . $row, $atividade['propriedade_nome'] ?? 'N/A');
-            $sheet->setCellValue('D' . $row, $atividade['lavoura_nome'] ?? 'N/A');
-            $sheet->setCellValue('E' . $row, !empty($atividade['hora_inicio']) ? substr($atividade['hora_inicio'], 0, 5) : 'N/A');
-            $sheet->setCellValue('F' . $row, !empty($atividade['hora_fim']) ? substr($atividade['hora_fim'], 0, 5) : 'N/A');
-            $sheet->setCellValue('G' . $row, $duracao);
-            $sheet->setCellValue('H' . $row, $atividade['status']);
+            $sheet->setCellValue('C' . $row, $atividade['associado_nome'] ?? 'N/A');
+            $sheet->setCellValue('D' . $row, $atividade['propriedade_nome'] ?? 'N/A');
+            $sheet->setCellValue('E' . $row, $atividade['lavoura_nome'] ?? 'N/A');
+            $sheet->setCellValue('F' . $row, !empty($atividade['hora_inicio']) ? substr($atividade['hora_inicio'], 0, 5) : 'N/A');
+            $sheet->setCellValue('G' . $row, !empty($atividade['hora_fim']) ? substr($atividade['hora_fim'], 0, 5) : 'N/A');
+            $sheet->setCellValue('H' . $row, $duracao);
+            $sheet->setCellValue('I' . $row, $atividade['status']);
             
             // Aplicar estilo às células de dados
             $dataStyle = [
                 'borders' => ['allBorders' => ['borderStyle' => 'thin']],
                 'alignment' => ['horizontal' => 'left', 'vertical' => 'center']
             ];
-            $sheet->getStyle('A' . $row . ':H' . $row)->applyFromArray($dataStyle);
+            $sheet->getStyle('A' . $row . ':I' . $row)->applyFromArray($dataStyle);
             
             // Centralizar colunas de horário e duração
-            $sheet->getStyle('E' . $row . ':G' . $row)->getAlignment()->setHorizontal('center');
-            $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('center');
+            $sheet->getStyle('F' . $row . ':H' . $row)->getAlignment()->setHorizontal('center');
+            $sheet->getStyle('I' . $row)->getAlignment()->setHorizontal('center');
             
             $row++;
         }
@@ -193,24 +209,24 @@ try {
         // Adicionar linha de totais
         $row++;
         $sheet->setCellValue('A' . $row, 'Total de Atividades:');
-        $sheet->mergeCells('A' . $row . ':G' . $row);
+        $sheet->mergeCells('A' . $row . ':H' . $row);
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
         $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal('right');
-        $sheet->setCellValue('H' . $row, $total_atividades);
-        $sheet->getStyle('H' . $row)->getFont()->setBold(true);
-        $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('center');
+        $sheet->setCellValue('I' . $row, $total_atividades);
+        $sheet->getStyle('I' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('I' . $row)->getAlignment()->setHorizontal('center');
         
         $row++;
         $sheet->setCellValue('A' . $row, 'Total de Horas:');
-        $sheet->mergeCells('A' . $row . ':G' . $row);
+        $sheet->mergeCells('A' . $row . ':H' . $row);
         $sheet->getStyle('A' . $row)->getFont()->setBold(true);
         $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal('right');
-        $sheet->setCellValue('H' . $row, number_format($total_horas, 1, ',', '.') . ' h');
-        $sheet->getStyle('H' . $row)->getFont()->setBold(true);
-        $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('center');
+        $sheet->setCellValue('I' . $row, number_format($total_horas, 1, ',', '.') . ' h');
+        $sheet->getStyle('I' . $row)->getFont()->setBold(true);
+        $sheet->getStyle('I' . $row)->getAlignment()->setHorizontal('center');
         
         // Ajustar largura das colunas
-        foreach (range('A', 'H') as $col) {
+        foreach (range('A', 'I') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         
@@ -295,13 +311,14 @@ try {
         <thead>
             <tr class="cabecalho-tabela">
                 <th width="7%">Data</th>
-                <th width="15%">Atividade</th>
-                <th width="32%">Propriedade</th>
-                <th width="18%">Lavoura</th>
+                <th width="14%">Atividade</th>
+                <th width="13%">Associado</th>
+                <th width="18%">Propriedade</th>
+                <th width="16%">Lavoura</th>
                 <th width="8%" class="texto-centro">Início</th>
                 <th width="8%" class="texto-centro">Término</th>
                 <th width="7%" class="texto-centro">Duração</th>
-                <th width="5%" class="texto-centro">Status</th>
+                <th width="9%" class="texto-centro">Status</th>
             </tr>
         </thead>
         <tbody>';
@@ -339,6 +356,7 @@ try {
             <tr>
                 <td class="borda-inferior">' . htmlspecialchars($atividade['data_formatada']) . '</td>
                 <td class="borda-inferior">' . htmlspecialchars($atividade['atividade_nome']) . '</td>
+                <td class="borda-inferior">' . htmlspecialchars($atividade['associado_nome'] ?? 'N/A') . '</td>
                 <td class="borda-inferior">' . htmlspecialchars($atividade['propriedade_nome'] ?? 'N/A') . '</td>
                 <td class="borda-inferior">' . htmlspecialchars($atividade['lavoura_nome'] ?? 'N/A') . '</td>
                 <td class="texto-centro borda-inferior">' . (!empty($atividade['hora_inicio']) ? substr($atividade['hora_inicio'], 0, 5) : 'N/A') . '</td>
@@ -348,14 +366,13 @@ try {
             </tr>';
     }
     
-    // Adicionar rodapé com totais
     $html .= '
             <tr class="rodape-tabela">
-                <td colspan="7" class="texto-direita"><strong>Total de Atividades:</strong></td>
+                <td colspan="8" class="texto-direita"><strong>Total de Atividades:</strong></td>
                 <td class="texto-centro"><strong>' . $total_atividades . '</strong></td>
             </tr>
             <tr class="rodape-tabela">
-                <td colspan="7" class="texto-direita"><strong>Total de Horas:</strong></td>
+                <td colspan="8" class="texto-direita"><strong>Total de Horas:</strong></td>
                 <td class="texto-centro"><strong>' . number_format($total_horas, 1, ',', '.') . ' h</strong></td>
             </tr>';
     
