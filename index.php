@@ -45,6 +45,12 @@ if (isset($_GET['url'])) {
         exit;
     }
 
+    // API de Plano de Manejo
+    if ($parts[0] === 'api' && $parts[1] === 'plano-manejo') {
+        require __DIR__ . '/api/plano_manejo.php';
+        exit;
+    }
+
     // Listagem de certificações
     if ($parts[0] === 'certificacoes' && !isset($parts[1])) {
         require __DIR__ . '/modulos/certificacao/listar.php';
@@ -65,6 +71,45 @@ if (isset($_GET['url'])) {
     if ($parts[0] === 'certificacao' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'editar') {
         $_GET['id'] = $parts[1];
         require __DIR__ . '/modulos/certificacao/editar.php';
+        exit;
+    }
+
+    // Renovar certificação
+    if ($parts[0] === 'certificacao' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'renovar') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/certificacao/renovar.php';
+        exit;
+    }
+
+    // Ver histórico de certificações por associado
+    if ($parts[0] === 'certificacao' && isset($parts[1]) && $parts[1] === 'historico' && isset($parts[2]) && is_numeric($parts[2])) {
+        $_GET['associado_id'] = $parts[2];
+        require __DIR__ . '/modulos/certificacao/historico.php';
+        exit;
+    }
+
+    // Planos de Manejo
+    if ($parts[0] === 'planos-manejo' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/plano_manejo/listar.php';
+        exit;
+    }
+    if ($parts[0] === 'plano-manejo' && isset($parts[1]) && $parts[1] === 'novo') {
+        require __DIR__ . '/modulos/plano_manejo/cadastrar.php';
+        exit;
+    }
+    if ($parts[0] === 'plano-manejo' && isset($parts[1]) && (is_numeric($parts[1]) || strlen($parts[1]) === 36) && isset($parts[2]) && $parts[2] === 'visualizar') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/plano_manejo/visualizar.php';
+        exit;
+    }
+    if ($parts[0] === 'plano-manejo' && isset($parts[1]) && (is_numeric($parts[1]) || strlen($parts[1]) === 36) && isset($parts[2]) && $parts[2] === 'editar') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/plano_manejo/editar.php';
+        exit;
+    }
+    if ($parts[0] === 'plano-manejo' && isset($parts[1]) && (is_numeric($parts[1]) || strlen($parts[1]) === 36) && isset($parts[2]) && $parts[2] === 'aprovar') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/plano_manejo/aprovar.php';
         exit;
     }
 
@@ -446,6 +491,11 @@ if (isset($_GET['url'])) {
         require __DIR__ . '/modulos/associados/editar.php';
         exit;
     }
+    // Compatibilidade com rota legada: /associado/editar?id=123
+    if ($parts[0] === 'associado' && isset($parts[1]) && $parts[1] === 'editar' && isset($_GET['id']) && is_numeric($_GET['id'])) {
+        require __DIR__ . '/modulos/associados/editar.php';
+        exit;
+    }
 
     // Rota para exclusão de associado
     if ($parts[0] === 'associado' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'excluir') {
@@ -657,6 +707,16 @@ $presencas = $evento->getPresencaEventos();
         </div>
     </div>
     <div class="col-md-4" style="width: 30%; margin-right: 2.5%;">
+        <div class="card text-white bg-dark mb-3">
+            <div class="card-header"><i class="bi bi-journal-richtext me-1"></i>Caderno de Campo</div>
+            <div class="card-body">
+                <h5 class="card-title">Painel do Caderno</h5>
+                <p class="card-text">Acesse o painel completo de atividades, lavouras e insumos.</p>
+                <a href="<?php echo SITE_URL; ?>/caderno-campo/dashboard" class="btn btn-light">Acessar</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4" style="width: 30%; margin-right: 2.5%;">
         <div class="card text-white bg-secondary mb-3">
             <div class="card-header">Dashboard Caderno de Campo</div>
             <div class="card-body">
@@ -680,7 +740,7 @@ $presencas = $evento->getPresencaEventos();
 </div>
 
 <div class="row mt-4">
-    <div class="col-md-7">
+    <div class="col-md-12">
         <div class="card mb-4">
             <div class="card-header">
                 <i class="bi bi-calendar-event-fill me-1"></i>
@@ -743,10 +803,14 @@ $presencas = $evento->getPresencaEventos();
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-md-5">
+<div class="row mt-2">
+    <div class="col-md-6">
         <?php require_once __DIR__ . '/includes/widget_eventos.php'; ?>
+    </div>
 
+    <div class="col-md-6">
         <div class="card mb-4">
             <div class="card-header">
                 <i class="bi bi-person-check-fill me-1"></i>

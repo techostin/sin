@@ -98,7 +98,7 @@ $mensagem = '<div class="alert alert-danger">' . $resultado . '</div>';
     echo $mensagem; ?>
 <div class="card">
     <div class="card-body">
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" action="<?php echo SITE_URL; ?>/associado/<?php echo $id; ?>/editar" enctype="multipart/form-data">
             <?php echo CSRFProtection::getTokenField(); ?>
             <div class="row">
                 <div class="col-md-8">

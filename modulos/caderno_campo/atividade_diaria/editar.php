@@ -227,19 +227,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="col-md-4">
                     <div class="mb-3">
                         <label for="data_atividade" class="form-label">Data da Atividade</label>
-                        <input type="date" class="form-control" id="data_atividade" name="data_atividade" value="<?php echo htmlspecialchars($atividade['data_atividade']); ?>" required>
+                        <input type="date" class="form-control" id="data_atividade" name="data_atividade" value="<?php echo !empty($atividade['data_atividade']) ? date('Y-m-d', strtotime($atividade['data_atividade'])) : ''; ?>" required>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="mb-3">
                         <label for="hora_inicio" class="form-label">Hora de Início</label>
-                        <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" value="<?php echo htmlspecialchars($atividade['hora_inicio']); ?>">
+                        <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" value="<?php echo !empty($atividade['hora_inicio']) ? date('H:i', strtotime($atividade['hora_inicio'])) : ''; ?>">
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="mb-3">
                         <label for="hora_fim" class="form-label">Hora de Fim</label>
-                        <input type="time" class="form-control" id="hora_fim" name="hora_fim" value="<?php echo htmlspecialchars($atividade['hora_fim']); ?>">
+                        <input type="time" class="form-control" id="hora_fim" name="hora_fim" value="<?php echo !empty($atividade['hora_fim']) ? date('H:i', strtotime($atividade['hora_fim'])) : ''; ?>">
                     </div>
                 </div>
             </div>
@@ -314,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="mb-3">
                 <label for="observacoes" class="form-label">Observações</label>
-                <textarea class="form-control" id="observacoes" name="observacoes" rows="3"><?php echo htmlspecialchars($atividade['observacoes'] ?? ''); ?></textarea>
+                <textarea class="form-control" id="observacoes" name="observacoes" rows="3"><?php echo htmlspecialchars($atividade['observações'] ?? $atividade['observacoes'] ?? ''); ?></textarea>
             </div>
             <?php if (!empty($atividade['imagem_diaria'])): ?>
                 <div class="mb-3">
