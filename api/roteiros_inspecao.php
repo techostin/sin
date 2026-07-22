@@ -14,6 +14,9 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../classes/Database.php';
 require_once __DIR__ . '/../classes/User.php';
+require_once __DIR__ . '/../classes/VisitaTecnica.php';
+require_once __DIR__ . '/../classes/RoteiroInspecao.php';
+require_once __DIR__ . '/../classes/VisitaReport.php';
 
 // Inicializar sessão se não estiver ativa
 if (session_status() === PHP_SESSION_NONE) {
@@ -30,7 +33,7 @@ if (!$user->isLoggedIn()) {
 
 $db = Database::getInstance()->getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? 'visitas'; // 'templates', 'visitas', 'nao_conformidades'
+$action = $_GET['action'] ?? 'visitas'; // 'templates', 'visitas', 'nao_conformidades', 'relatorio'
 
 // Roteador de métodos e ações
 switch ($method) {
@@ -54,28 +57,44 @@ switch ($method) {
  */
 function handleGet($db, $action) {
     if ($action === 'templates') {
-        listTemplates($db);
+        $manager = new RoteiroInspecao();
+        echo json_encode(['success' => true, 'data' => $manager->getAll()]);
     } elseif ($action === 'nao_conformidades') {
         listNaoConformidades($db);
+    } elseif ($action === 'relatorio') {
+        gerarRelatorioPdf();
     } else {
         listVisitas($db);
     }
 }
 
-function listTemplates($db) {
-    $sql = "SELECT * FROM roteiros_inspecao WHERE ativo = 1 ORDER BY nome";
-    $stmt = $db->query($sql);
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Decodificar JSON
-    foreach ($data as &$item) {
-        $item['checklist'] = json_decode($item['checklist'], true);
-        if (!empty($item['itens_criticos'])) {
-            $item['itens_criticos'] = json_decode($item['itens_criticos'], true);
-        }
+/**
+ * Gera o relatório PDF de uma visita específica
+ */
+function gerarRelatorioPdf() {
+    $id = $_GET['id'] ?? null;
+    if (!$id) {
+        http_response_code(400);
+        die("ID da visita não informado");
     }
-    
-    echo json_encode(['success' => true, 'data' => $data]);
+
+    try {
+        $report = new VisitaReport($id);
+        $pdf = $report->gerarRelatorioVisita();
+        
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="' . $pdf['filename'] . '"');
+        echo $pdf['content'];
+        exit;
+    } catch (Exception $e) {
+        http_response_code(500);
+        die("Erro ao gerar PDF: " . $e->getMessage());
+    }
+}
+
+function listTemplates($db) {
+    $manager = new RoteiroInspecao();
+    echo json_encode(['success' => true, 'data' => $manager->getAll()]);
 }
 
 function listVisitas($db) {
@@ -88,9 +107,33 @@ function listVisitas($db) {
             WHERE 1=1";
     
     $params = [];
-    if (isset($_GET['associado_id'])) {
-        $sql .= " AND v.associado_id = ?";
-        $params[] = $_GET['associado_id'];
+
+    // Controle de acesso por nível:
+    // Usuário comum (nivel 3) vê apenas suas próprias visitas
+    $userNivel = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
+    if ($userNivel >= NIVEL_USUARIO) {
+        $associadoId = $_SESSION['user_id'] ?? null;
+        $userTable   = $_SESSION['user_table'] ?? 'associados';
+        // Só filtra automaticamente se o login foi pela tabela de associados
+        if ($userTable === 'associados' && $associadoId) {
+            $sql .= " AND v.associado_id = ?";
+            $params[] = $associadoId;
+        }
+    }
+    
+    if (isset($_GET['id'])) {
+        $sql .= " AND v.id = ?";
+        $params[] = $_GET['id'];
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($data) {
+            $data['resultado'] = json_decode($data['resultado'], true);
+        }
+        
+        echo json_encode(['success' => true, 'data' => $data]);
+        return;
     }
     
     $sql .= " ORDER BY v.data_visita DESC";
@@ -99,16 +142,23 @@ function listVisitas($db) {
     $stmt->execute($params);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    echo json_encode(['success' => true, 'data' => $data]);
+    // Passa o nível do usuário para o frontend adaptar a UI
+    $userNivel = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
+    echo json_encode([
+        'success'    => true,
+        'data'       => $data,
+        'user_nivel' => (int)$userNivel
+    ]);
 }
 
 function listNaoConformidades($db) {
     $sql = "SELECT nc.*, v.data_visita, a.nome as associado_nome, a.sobrenome as associado_sobrenome,
-                   p.propriedade as propriedade_nome
+                   p.propriedade as propriedade_nome, r.nome as roteiro_nome
             FROM nao_conformidades nc
             JOIN visitas_tecnicas v ON nc.visita_tecnica_id = v.id
             JOIN associados a ON v.associado_id = a.id
             JOIN propriedades p ON v.propriedade_id = p.id
+            JOIN roteiros_inspecao r ON v.roteiro_id = r.id
             WHERE 1=1";
     
     $params = [];
@@ -130,40 +180,46 @@ function listNaoConformidades($db) {
  * POST - Criar novos registros
  */
 function handlePost($db, $action) {
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    if ($action === 'templates') {
-        createTemplate($db, $input);
-    } elseif ($action === 'nao_conformidades') {
-        http_response_code(501); // Implementar se necessário
+    if ($action === 'upload_evidencia') {
+        handleUploadEvidencia($db);
+        return;
+    } else if ($action === 'templates') {
+        $input = json_decode(file_get_contents('php://input'), true);
+        $manager = new RoteiroInspecao();
+        if ($manager->save($input)) {
+            echo json_encode(['success' => true]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Erro ao salvar template']);
+        }
     } else {
+        $input = json_decode(file_get_contents('php://input'), true);
         createVisita($db, $input);
     }
 }
 
-function createTemplate($db, $input) {
-    if (empty($input['nome']) || empty($input['checklist'])) {
+function handleUploadEvidencia($db) {
+    require_once __DIR__ . '/../classes/ImageUploader.php';
+    
+    if (!isset($_FILES['evidencia'])) {
         http_response_code(400);
-        echo json_encode(['error' => 'Nome e checklist são obrigatórios']);
+        echo json_encode(['success' => false, 'error' => 'Nenhum arquivo enviado']);
         return;
     }
-    
-    $sql = "INSERT INTO roteiros_inspecao (nome, codigo, tipo, descricao, objetivo, checklist, itens_criticos)
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
-    
+
     try {
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            $input['nome'], $input['codigo'] ?? null, $input['tipo'] ?? 'Visita Regular',
-            $input['descricao'] ?? null, $input['objetivo'] ?? null,
-            json_encode($input['checklist']), 
-            isset($input['itens_criticos']) ? json_encode($input['itens_criticos']) : null
-        ]);
-        
-        echo json_encode(['success' => true, 'id' => $db->lastInsertId()]);
-    } catch (PDOException $e) {
+        $uploader = new ImageUploader(__DIR__ . '/../uploads/visitas_tecnicas/');
+        $result = $uploader->uploadImage($_FILES['evidencia'], 'visita_evidencia');
+        if ($result['success']) {
+            $url = SITE_URL . '/uploads/visitas_tecnicas/' . $result['filename'];
+            echo json_encode(['success' => true, 'url' => $url, 'filename' => $result['filename']]);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $result['message']]);
+        }
+    } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['error' => 'Erro ao criar template', 'message' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 }
 
@@ -182,7 +238,7 @@ function createVisita($db, $input) {
         $stmt = $db->prepare($sql);
         $stmt->execute([
             $input['associado_id'], $input['propriedade_id'], $input['roteiro_id'],
-            $input['data_visita'], $input['tecnico_responsavel_id'] ?? null,
+            $input['data_visita'], $input['tecnico_responsavel_id'] ?? $_SESSION['user_id'],
             $input['acompanhantes'] ?? null, $input['status'] ?? 'Agendada'
         ]);
         
@@ -200,13 +256,13 @@ function handlePut($db, $action) {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if ($action === 'visitas') {
-        finalizarVisita($db, $input);
+        finalizarVisitaComClasse($input);
     } else {
         http_response_code(501);
     }
 }
 
-function finalizarVisita($db, $input) {
+function finalizarVisitaComClasse($input) {
     if (empty($input['visita_id'])) {
         http_response_code(400);
         echo json_encode(['error' => 'visita_id obrigatório']);
@@ -214,47 +270,21 @@ function finalizarVisita($db, $input) {
     }
 
     try {
-        $db->beginTransaction();
-
-        $sql = "UPDATE visitas_tecnicas SET 
-                resultado = ?, 
-                status = ?, 
-                observacoes = ?, 
-                evidencias_fotos = ?,
-                updated_at = NOW()
-                WHERE id = ?";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            json_encode($input['resultado']),
-            $input['status'] ?? 'Realizada',
-            $input['parecer_geral'] ?? null,
-            $input['evidencias_fotos'] ?? null,
-            $input['visita_id']
-        ]);
-
-        // Gerar Não Conformidades automaticamente
-        if (!empty($input['resultado'])) {
-            foreach ($input['resultado'] as $itemId => $res) {
-                if (isset($res['conforme']) && $res['conforme'] === false) {
-                    $sqlNC = "INSERT INTO nao_conformidades (visita_tecnica_id, item_checklist_id, descricao, status)
-                             VALUES (?, ?, ?, ?)";
-                    $stmtNC = $db->prepare($sqlNC);
-                    $stmtNC->execute([
-                        $input['visita_id'], 
-                        $itemId, 
-                        $res['observacao'] ?? 'Não conformidade identificada na inspeção.',
-                        'Aberta'
-                    ]);
-                }
-            }
-        }
-
-        $db->commit();
+        $manager = new VisitaTecnica();
+        $manager->saveResult(
+            $input['visita_id'],
+            $input['resultado'],
+            $input['observacoes'] ?? null,
+            [
+                'produtor' => $input['assinatura_produtor_url'] ?? null,
+                'tecnico' => $input['assinatura_tecnico_url'] ?? null
+            ],
+            $input['evidencias_fotos'] ?? []
+        );
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
-        $db->rollBack();
         http_response_code(500);
         echo json_encode(['error' => 'Erro ao finalizar visita', 'message' => $e->getMessage()]);
     }
 }
+

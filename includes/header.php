@@ -22,7 +22,35 @@ if (!$user->isLoggedIn()) {
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/style.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/agricultura-familiar.css">
     <link rel="manifest" href="<?php echo SITE_URL; ?>/manifest.json">
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spin {
+            display: inline-block;
+            animation: spin 1.5s linear infinite;
+        }
+    </style>
     <script src="<?php echo SITE_URL; ?>/assets/js/masks.js"></script>
+    <script src="<?php echo SITE_URL; ?>/assets/js/db_sync.js"></script>
+    <script>
+        // Expor o sync engine globalmente para páginas que precisam
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.syncEngine) {
+                window.syncEngine.checkPendingCount(function(count) {
+                    var els = ['sync-badge-count', 'sync-badge-count-top'];
+                    els.forEach(function(id) {
+                        var el = document.getElementById(id);
+                        if (el) {
+                            el.textContent = count;
+                            el.style.display = count > 0 ? 'inline' : 'none';
+                        }
+                    });
+                });
+            }
+        });
+    </script>
     <script>
         // Registrar Service Worker para PWA
         if ('serviceWorker' in navigator) {

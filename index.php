@@ -56,6 +56,10 @@ if (isset($_GET['url'])) {
         require __DIR__ . '/modulos/certificacao/listar.php';
         exit;
     }
+    if ($parts[0] === 'insumos-aprovados' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/certificacao/insumos.php';
+        exit;
+    }
     if ($parts[0] === 'certificacao' && isset($parts[1]) && $parts[1] === 'listar') {
         require __DIR__ . '/modulos/certificacao/listar.php';
         exit;
@@ -112,12 +116,23 @@ if (isset($_GET['url'])) {
         require __DIR__ . '/modulos/plano_manejo/aprovar.php';
         exit;
     }
+    if ($parts[0] === 'plano-manejo' && isset($parts[1]) && (is_numeric($parts[1]) || strlen($parts[1]) === 36) && isset($parts[2]) && $parts[2] === 'upload_croqui') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/plano_manejo/upload_croqui.php';
+        exit;
+    }
 
     // ===== ROTAS DO CADERNO DE CAMPO =====
 
     // Dashboard do Caderno de Campo
     if ($parts[0] === 'caderno-campo' && isset($parts[1]) && $parts[1] === 'dashboard') {
         require __DIR__ . '/modulos/caderno_campo/dashboard.php';
+        exit;
+    }
+
+    // Dashboard Simplificado do Agricultor
+    if ($parts[0] === 'caderno-campo' && isset($parts[1]) && $parts[1] === 'dashboard-agricultor') {
+        require __DIR__ . '/modulos/caderno_campo/dashboard_agricultor.php';
         exit;
     }
 
@@ -300,6 +315,21 @@ if (isset($_GET['url'])) {
         require __DIR__ . '/modulos/caderno_campo/lotes_producao/cadastrar.php';
         exit;
     }
+    // Ocorrências
+    if ($parts[0] === 'caderno-campo' && isset($parts[1]) && $parts[1] === 'ocorrencias') {
+        require __DIR__ . '/modulos/caderno_campo/ocorrencias/listar.php';
+        exit;
+    }
+    if ($parts[0] === 'caderno-campo' && isset($parts[1]) && $parts[1] === 'ocorrencia' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/caderno_campo/ocorrencias/cadastrar.php';
+        exit;
+    }
+    if ($parts[0] === 'caderno-campo' && isset($parts[1]) && $parts[1] === 'ocorrencia' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2];
+        require __DIR__ . '/modulos/caderno_campo/ocorrencias/editar.php';
+        exit;
+    }
+
     // Lotes de Produção (com suporte a UUID)
     if ($parts[0] === 'lote' && isset($parts[1]) && (is_numeric($parts[1]) || strlen($parts[1]) === 36)) {
         if (strlen($parts[1]) === 36) {
@@ -416,6 +446,18 @@ if (isset($_GET['url'])) {
         }
     }
 
+    // Sincronização Offline
+    if ($parts[0] === 'caderno-campo' && isset($parts[1]) && $parts[1] === 'sincronizacao') {
+        require __DIR__ . '/modulos/caderno_campo/sincronizacao.php';
+        exit;
+    }
+
+    // Validação de Insumos
+    if ($parts[0] === 'caderno-campo' && isset($parts[1]) && $parts[1] === 'insumos' && isset($parts[2]) && $parts[2] === 'validacao') {
+        require __DIR__ . '/modulos/caderno_campo/insumos/validacao.php';
+        exit;
+    }
+
     // Relatórios do Caderno de Campo
     if ($parts[0] === 'relatorios' && !isset($parts[1])) {
         require __DIR__ . '/modulos/caderno_campo/relatorios_tabs.php';
@@ -470,8 +512,57 @@ if (isset($_GET['url'])) {
         exit;
     }
 
+    // ===== ROTAS DE VISITAS TÉCNICAS E INSPEÇÕES =====
 
-    // ===== ROTAS DE GESTÃO =====
+    // Listagem de Visitas
+    if ($parts[0] === 'visitas-tecnicas' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/roteiros_inspecao/visitas/listar.php';
+        exit;
+    }
+    if ($parts[0] === 'visita-tecnica' && isset($parts[1]) && $parts[1] === 'agendar') {
+        require __DIR__ . '/modulos/roteiros_inspecao/visitas/agendar.php';
+        exit;
+    }
+
+    // Realizar Inspeção (ex: /app/visita-tecnica/123/realizar)
+    if ($parts[0] === 'visita-tecnica' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'realizar') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/roteiros_inspecao/visitas/realizar.php';
+        exit;
+    }
+
+    // Relatório da Visita (ex: /app/visita-tecnica/123/relatorio)
+    if ($parts[0] === 'visita-tecnica' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'relatorio') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/roteiros_inspecao/visitas/relatorio.php';
+        exit;
+    }
+
+    // Gestão de Roteiros (Templates)
+    if ($parts[0] === 'roteiros-inspecao' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/roteiros_inspecao/templates/listar.php';
+        exit;
+    }
+    if ($parts[0] === 'roteiro-inspecao' && isset($parts[1]) && $parts[1] === 'novo') {
+        require __DIR__ . '/modulos/roteiros_inspecao/templates/cadastrar.php';
+        exit;
+    }
+
+    // ===== ROTAS DE NÃO CONFORMIDADES =====
+    if ($parts[0] === 'nao-conformidades' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/roteiros_inspecao/nao_conformidades/listar.php';
+        exit;
+    }
+    if ($parts[0] === 'nao-conformidade' && isset($parts[1]) && $parts[1] === 'acompanhar') {
+        require __DIR__ . '/modulos/roteiros_inspecao/nao_conformidades/acompanhar.php';
+        exit;
+    }
+    if ($parts[0] === 'nao-conformidade' && isset($parts[1]) && is_numeric($parts[1])) {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/roteiros_inspecao/nao_conformidades/detalhe.php';
+        exit;
+    }
+
 
     // Associados
     if ($parts[0] === 'associados' && !isset($parts[1])) {
@@ -554,6 +645,15 @@ if (isset($_GET['url'])) {
     // Eventos
     if ($parts[0] === 'eventos' && !isset($parts[1])) {
         require __DIR__ . '/modulos/eventos/listar.php';
+        exit;
+    }
+    if ($parts[0] === 'eventos' && isset($parts[1]) && $parts[1] === 'presencas') {
+        require __DIR__ . '/modulos/eventos/presencas.php';
+        exit;
+    }
+    // Compatibilidade com variação singular da rota
+    if ($parts[0] === 'evento' && isset($parts[1]) && $parts[1] === 'presencas') {
+        require __DIR__ . '/modulos/eventos/presencas.php';
         exit;
     }
     if ($parts[0] === 'evento' && isset($parts[1]) && $parts[1] === 'novo') {
@@ -657,8 +757,8 @@ if (isset($_GET['url'])) {
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (isset($_SESSION['user_tipo']) && $_SESSION['user_tipo'] === 'usuario') {
-    header('Location: caderno-campo/dashboard');
+if (isset($_SESSION['user_tipo']) && strtolower((string) $_SESSION['user_tipo']) === 'usuario') {
+    header('Location: ' . SITE_URL . '/caderno-campo/dashboard-agricultor');
     exit;
 }
 

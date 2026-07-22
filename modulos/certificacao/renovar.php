@@ -75,13 +75,27 @@ if (!$cert) {
                     </div>
 
                     <div class="mb-3">
+                        <label for="arquivo_assinatura" class="form-label">
+                            <i class="bi bi-file-earmark-pdf"></i> Certificado Assinado (PDF)
+                        </label>
+                        <input type="file" class="form-control" id="arquivo_assinatura" name="arquivo_assinatura" 
+                               accept=".pdf,application/pdf" required>
+                        <small class="text-muted">
+                            Faça upload do certificado já assinado digitalmente em formato PDF.
+                            O certificado só ficará disponível para download após o upload do arquivo assinado.
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
                         <label for="observacoes" class="form-label">Observações da Renovação</label>
                         <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
                     </div>
 
                     <div class="d-flex justify-content-between">
                         <a href="<?php echo SITE_URL; ?>/certificacoes" class="btn btn-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-success">Confirmar Renovação</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-upload"></i> Upload e Confirmar Renovação
+                        </button>
                     </div>
                 </form>
             </div>
@@ -112,31 +126,53 @@ $(document).ready(function() {
     $('#formRenovacao').on('submit', function(e) {
         e.preventDefault();
         
-        const formData = {};
-        $(this).serializeArray().forEach(item => {
-            formData[item.name] = item.value;
-        });
+        // Validar se o arquivo foi selecionado
+        const arquivo = document.getElementById('arquivo_assinatura').files[0];
+        if (!arquivo) {
+            alert('Selecione o arquivo PDF do certificado assinado.');
+            return;
+        }
         
-        // Ativar o status para "Ativa" na renovação
-        formData['status'] = 'Ativa';
+        // Validar formato PDF
+        if (arquivo.type !== 'application/pdf' && !arquivo.name.toLowerCase().endsWith('.pdf')) {
+            alert('O arquivo deve ser um PDF.');
+            return;
+        }
+        
+        // Validar tamanho (máx 10MB)
+        if (arquivo.size > 10 * 1024 * 1024) {
+            alert('O arquivo deve ter no máximo 10MB.');
+            return;
+        }
+        
+        // Desabilitar botão e mostrar loading
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Enviando...');
+        
+        // Construir FormData com arquivo e dados do formulário
+        const formData = new FormData(this);
+        formData.set('action', 'upload_assinatura');
+        formData.set('status', 'Ativa');
         
         fetch('<?php echo SITE_URL; ?>/api/certificacao/controller.php', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
+            method: 'POST',
+            body: formData
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Certificação renovada com sucesso!');
+                alert('✅ Certificação renovada e certificado assinado com sucesso!');
                 window.location.href = '<?php echo SITE_URL; ?>/certificacoes';
             } else {
-                alert('Erro na renovação: ' + (data.error || 'Erro desconhecido'));
+                alert('Erro: ' + (data.error || 'Erro desconhecido'));
+                submitBtn.prop('disabled', false).html(originalText);
             }
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao processar renovação');
+            alert('Erro ao processar renovação. Verifique o console.');
+            submitBtn.prop('disabled', false).html(originalText);
         });
     });
 });

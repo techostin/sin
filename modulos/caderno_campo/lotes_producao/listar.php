@@ -53,7 +53,6 @@ if ($user->hasPermission(NIVEL_GESTOR)) {
                     <?php if (count($lotes) > 0): ?>
                         <?php foreach ($lotes as $lote): ?>
                             <tr class="text-center align-middle">
-                                /* Ocultando ID */ ?>
                                 <td style="display:none;"><?php echo isset($lote['id']) ? htmlspecialchars($lote['id']) : '-'; ?></td>
                                 <td>
                                     <div class="qrcode-container">
@@ -103,7 +102,7 @@ require_once __DIR__ . '/../../../includes/footer.php';
         border-radius: 4px;
         padding: 5px;
         background: white;
-        min-height: 80px;
+        min-height: 100px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -115,7 +114,7 @@ require_once __DIR__ . '/../../../includes/footer.php';
     }
     .qrcode-container {
         text-align: center;
-        padding: 5px;
+        padding: 2px;
     }
     .qrcode-number {
         font-family: monospace;
@@ -214,9 +213,9 @@ require_once __DIR__ . '/../../../includes/footer.php';
             <?php foreach ($lotes as $lote): ?>
                 <?php if (isset($lote['id']) && $lote['id']): ?>
                     new QRCode(document.getElementById('qrcode-<?php echo $lote['id']; ?>'), {
-                        text: window.location.origin + '<?php echo SITE_URL; ?>/lote/<?php echo $lote['uuid']; ?>',
-                        width: 80,
-                        height: 80,
+                        text: '<?php echo SITE_URL; ?>/lote/<?php echo $lote['uuid']; ?>',
+                        width: 100,
+                        height: 100,
                         colorDark: "#000000",
                         colorLight: "#FFFFFF",
                         correctLevel: QRCode.CorrectLevel.H

@@ -12,7 +12,7 @@ Options -Indexes
 
 # Permitir requisições de qualquer origem (CORS)
 Header set Access-Control-Allow-Origin "*"
-Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+Header set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 
 # Permitir requisições OPTIONS para CORS

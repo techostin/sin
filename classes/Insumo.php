@@ -20,6 +20,7 @@ class Insumo {
                         i.uuid,
                         i.nome, 
                         i.descricao, 
+                        i.data_validade,
                         i.estoq_anterior, 
                         i.quant_recebida, 
                         i.quantidade_estoque,
@@ -53,6 +54,7 @@ class Insumo {
                         i.uuid,
                         i.nome, 
                         i.descricao, 
+                        i.data_validade,
                         i.estoq_anterior, 
                         i.quant_recebida, 
                         i.quantidade_estoque,
@@ -113,7 +115,7 @@ class Insumo {
                 );
             }
 
-            $sql = "INSERT INTO insumos (uuid, associado_id, nome, descricao, fornecedor_id, estoq_anterior, quant_recebida, quantidade_estoque) VALUES (:uuid, :associado_id, :nome, :descricao, :fornecedor_id, :estoq_anterior, :quant_recebida, :quantidade_estoque)";
+            $sql = "INSERT INTO insumos (uuid, associado_id, nome, descricao, fornecedor_id, data_validade, estoq_anterior, quant_recebida, quantidade_estoque) VALUES (:uuid, :associado_id, :nome, :descricao, :fornecedor_id, :data_validade, :estoq_anterior, :quant_recebida, :quantidade_estoque)";
             $stmt = $this->db->prepare($sql);
 
             $stmt->bindParam(':uuid', $dados_sanitizados['uuid']);
@@ -121,6 +123,7 @@ class Insumo {
             $stmt->bindParam(':nome', $dados_sanitizados['nome']);
             $stmt->bindParam(':descricao', $dados_sanitizados['descricao']);
             $stmt->bindParam(':fornecedor_id', $dados_sanitizados['fornecedor_id']);
+            $stmt->bindValue(':data_validade', !empty($dados_sanitizados['data_validade']) ? $dados_sanitizados['data_validade'] : null);
             $stmt->bindParam(':estoq_anterior', $dados_sanitizados['estoq_anterior']);
             $stmt->bindParam(':quant_recebida', $dados_sanitizados['quant_recebida']);
             $stmt->bindParam(':quantidade_estoque', $dados_sanitizados['quantidade_estoque']);
@@ -163,6 +166,7 @@ class Insumo {
                         nome = :nome, 
                         descricao = :descricao, 
                         fornecedor_id = :fornecedor_id, 
+                        data_validade = :data_validade,
                         estoq_anterior = :estoq_anterior, 
                         quant_recebida = :quant_recebida, 
                         quantidade_estoque = :quantidade_estoque 
@@ -173,6 +177,7 @@ class Insumo {
             $stmt->bindParam(':nome', $dados_sanitizados['nome']);
             $stmt->bindParam(':descricao', $dados_sanitizados['descricao']);
             $stmt->bindParam(':fornecedor_id', $dados_sanitizados['fornecedor_id']);
+            $stmt->bindValue(':data_validade', !empty($dados_sanitizados['data_validade']) ? $dados_sanitizados['data_validade'] : null);
             $stmt->bindParam(':estoq_anterior', $dados_sanitizados['estoq_anterior']);
             $stmt->bindParam(':quant_recebida', $dados_sanitizados['quant_recebida']);
             $stmt->bindParam(':quantidade_estoque', $dados_sanitizados['quantidade_estoque']);

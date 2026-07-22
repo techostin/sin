@@ -11,11 +11,20 @@ if (!$user->hasPermission(NIVEL_USUARIO)) {
 }
 
 $evento = new Evento();
-$presencas = $evento->getPresencaEventos();
+$is_usuario_comum = isset($_SESSION['user_tipo']) && strtolower((string) $_SESSION['user_tipo']) === 'usuario';
+$presencas = $is_usuario_comum
+    ? $evento->getPresencasUsuarioAgendados($_SESSION['user_id'] ?? 0, $_SESSION['user_table'] ?? 'usuarios')
+    : $evento->getPresencaEventos();
 ?>
 
 <h1 class="mt-4">Presença em Eventos</h1>
-<p class="text-muted">Lista completa de confirmações de presença em eventos.</p>
+<p class="text-muted">
+    <?php if ($is_usuario_comum): ?>
+        Seus registros de presença (confirmação/ausência/justificativa) em eventos agendados.
+    <?php else: ?>
+        Lista completa de confirmações de presença em eventos.
+    <?php endif; ?>
+</p>
 
 <div class="row">
     <div class="col-md-12">
@@ -31,8 +40,13 @@ $presencas = $evento->getPresencaEventos();
                     <thead>
                         <tr>
                             <th>Evento</th>
-                            <th>Associado</th>
+                            <?php if (!$is_usuario_comum): ?>
+                                <th>Associado</th>
+                            <?php endif; ?>
                             <th>Status</th>
+                            <?php if ($is_usuario_comum): ?>
+                                <th>Justificativa</th>
+                            <?php endif; ?>
                             <th>Data Evento</th>
                         </tr>
                     </thead>
@@ -40,7 +54,9 @@ $presencas = $evento->getPresencaEventos();
                         <?php foreach ($presencas as $pres): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($pres['evento_nome']); ?></td>
-                                <td><?php echo htmlspecialchars($pres['associado_nome'] . ' ' . $pres['associado_sobrenome']); ?></td>
+                                <?php if (!$is_usuario_comum): ?>
+                                    <td><?php echo htmlspecialchars($pres['associado_nome'] . ' ' . $pres['associado_sobrenome']); ?></td>
+                                <?php endif; ?>
                                 <td>
                                     <span class="badge bg-<?php
                                     switch ($pres['status_presenca']) {
@@ -53,11 +69,17 @@ $presencas = $evento->getPresencaEventos();
                                         case 'Ausente':
                                             echo 'danger';
                                             break;
+                                        case 'Não Confirmado':
+                                            echo 'secondary';
+                                            break;
                                         default:
                                             echo 'secondary';
                                     }
                                     ?>"><?php echo htmlspecialchars($pres['status_presenca']); ?></span>
                                 </td>
+                                <?php if ($is_usuario_comum): ?>
+                                    <td><?php echo !empty($pres['justificativa']) ? htmlspecialchars($pres['justificativa']) : '<span class="text-muted">Sem justificativa</span>'; ?></td>
+                                <?php endif; ?>
                                 <td><?php echo date('d/m/Y', strtotime($pres['data_evento'])); ?></td>
                             </tr>
                         <?php endforeach; ?>

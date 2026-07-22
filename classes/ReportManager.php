@@ -459,38 +459,23 @@ class ReportManager {
             $params[':tipo'] = $filtros['tipo'];
         }
         
-        if (!empty($filtros['status'])) {
-            $where .= ' AND status = :status';
-            $params[':status'] = $filtros['status'];
-        }
-        
         if (!empty($filtros['data_inicio'])) {
-            $where .= ' AND data_vencimento >= :data_inicio';
+            $where .= ' AND data >= :data_inicio';
             $params[':data_inicio'] = $filtros['data_inicio'];
         }
         
         if (!empty($filtros['data_fim'])) {
-            $where .= ' AND data_vencimento <= :data_fim';
+            $where .= ' AND data <= :data_fim';
             $params[':data_fim'] = $filtros['data_fim'];
         }
         
-        $sql = "SELECT c.*, 
-                CASE 
-                    WHEN c.tipo = 'receita' THEN 'Receita' 
-                    WHEN c.tipo = 'despesa' THEN 'Despesa' 
-                    ELSE 'Outro' 
-                END as tipo_formatado,
-                CASE 
-                    WHEN c.status = 'pendente' THEN 'Pendente'
-                    WHEN c.status = 'pago' THEN 'Pago'
-                    WHEN c.status = 'atrasado' THEN 'Atrasado'
-                    ELSE c.status 
-                END as status_formatado,
-                u.nome as responsavel_nome
+        $sql = "SELECT c.id, c.nome as descricao, c.tipo as tipo_formatado, 
+                c.valor, c.data as data_vencimento,
+                '-' as status_formatado,
+                '-' as responsavel_nome
                 FROM contas c
-                LEFT JOIN usuarios u ON c.responsavel_id = u.id
                 WHERE $where 
-                ORDER BY c.data_vencimento DESC";
+                ORDER BY c.data DESC";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

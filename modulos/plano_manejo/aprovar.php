@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../includes/menu.php';
 require_once __DIR__ . '/../../classes/Database.php';
 
 // Verificar autenticação e permissão
-if (!$user->isLoggedIn() || !$user->hasPermission(NIVEL_ADMIN)) {
+if (!$user->isLoggedIn() || !$user->hasPermission(NIVEL_GESTOR)) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página. Apenas técnicos podem aprovar planos.</div>";
     require_once __DIR__ . '/../../includes/footer.php';
     exit;
@@ -85,7 +85,7 @@ $(document).ready(function() {
             aprovado_por: <?php echo $_SESSION['user_id'] ?? 0; ?>
         };
 
-        fetch('<?php echo SITE_URL; ?>/api/plano-manejo', {
+        fetch('<?php echo SITE_URL; ?>/api/plano_manejo.php', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)

@@ -10,6 +10,7 @@ if (!$user->isLoggedIn()) {
 }
 
 $user_id = $_SESSION['user_id'] ?? null;
+$user_table = $_SESSION['user_table'] ?? 'usuarios';
 $mensagem = '';
 
 // Verificar se user_id existe
@@ -19,19 +20,32 @@ if (!$user_id) {
     exit;
 }
 
-// Buscar dados do associado logado
+// Buscar dados do usuário logado na tabela correta da sessão
 try {
     $db = Database::getInstance()->getConnection();
-    
-    // Buscar na tabela associados
-    $stmt = $db->prepare("SELECT * FROM associados WHERE id = ?");
+
+    if (!in_array($user_table, ['usuarios', 'associados'], true)) {
+        $user_table = 'usuarios';
+    }
+
+    $stmt = $db->prepare("SELECT * FROM {$user_table} WHERE id = ?");
     $stmt->execute([$user_id]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$usuario) {
-        echo "<div class='alert alert-danger'>Associado não encontrado. ID: $user_id</div>";
-        require_once __DIR__ . '/../../includes/footer.php';
-        exit;
+        // Fallback para sessões antigas sem user_table consistente
+        $fallback_table = $user_table === 'usuarios' ? 'associados' : 'usuarios';
+        $stmt = $db->prepare("SELECT * FROM {$fallback_table} WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$usuario) {
+            echo "<div class='alert alert-danger'>Usuário não encontrado. ID: $user_id</div>";
+            require_once __DIR__ . '/../../includes/footer.php';
+            exit;
+        }
+
+        $user_table = $fallback_table;
     }
 } catch (PDOException $e) {
     echo "<div class='alert alert-danger'>Erro ao buscar dados: " . $e->getMessage() . "</div>";
@@ -46,30 +60,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $senha_atual = $_POST['senha_atual'] ?? '';
     $nova_senha = $_POST['nova_senha'] ?? '';
     $confirmar_senha = $_POST['confirmar_senha'] ?? '';
-    
+
     try {
-        // Verificar se a senha atual está correta
-        if (!empty($senha_atual)) {
-            // Verificar senha em texto plano (temporário)
-            if ($senha_atual !== $usuario['senha']) {
+        if (!empty($senha_atual) || !empty($nova_senha) || !empty($confirmar_senha)) {
+            if (empty($senha_atual) || empty($nova_senha) || empty($confirmar_senha)) {
+                $mensagem = '<div class="alert alert-danger">Para alterar a senha, preencha todos os campos de senha.</div>';
+            } elseif (!password_verify($senha_atual, $usuario['senha'])) {
                 $mensagem = '<div class="alert alert-danger">Senha atual incorreta!</div>';
             } elseif ($nova_senha !== $confirmar_senha) {
                 $mensagem = '<div class="alert alert-danger">As novas senhas não coincidem!</div>';
             } else {
-                // Atualizar dados do associado
-                $stmt = $db->prepare("UPDATE associados SET nome = ?, email = ?, senha = ? WHERE id = ?");
-                $stmt->execute([$nome, $email, $nova_senha, $user_id]);
+                $nova_senha_hash = password_hash($nova_senha, PASSWORD_DEFAULT);
+                $stmt = $db->prepare("UPDATE {$user_table} SET nome = ?, email = ?, senha = ? WHERE id = ?");
+                $stmt->execute([$nome, $email, $nova_senha_hash, $user_id]);
                 $mensagem = '<div class="alert alert-success">Perfil atualizado com sucesso!</div>';
                 $usuario['nome'] = $nome;
                 $usuario['email'] = $email;
+                $usuario['senha'] = $nova_senha_hash;
+                $_SESSION['user_nome'] = $nome;
             }
         } else {
             // Atualizar apenas nome e email
-            $stmt = $db->prepare("UPDATE associados SET nome = ?, email = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE {$user_table} SET nome = ?, email = ? WHERE id = ?");
             $stmt->execute([$nome, $email, $user_id]);
             $mensagem = '<div class="alert alert-success">Perfil atualizado com sucesso!</div>';
             $usuario['nome'] = $nome;
             $usuario['email'] = $email;
+            $_SESSION['user_nome'] = $nome;
         }
     } catch (PDOException $e) {
         $mensagem = '<div class="alert alert-danger">Erro ao atualizar: ' . $e->getMessage() . '</div>';
@@ -148,34 +165,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="mb-3">
                     <strong>Tipo de Usuário:</strong><br>
                     <span class="badge bg-<?php 
-                        switch($usuario['tipo']) {
+                        switch($usuario['tipo'] ?? ($_SESSION['user_tipo'] ?? '')) {
                             case 'Admin': echo 'danger'; break;
                             case 'Gestor': echo 'warning'; break;
                             case 'Usuario': echo 'success'; break;
                             default: echo 'secondary';
                         }
                     ?>">
-                        <?php echo htmlspecialchars($usuario['tipo']); ?>
+                        <?php echo htmlspecialchars($usuario['tipo'] ?? ($_SESSION['user_tipo'] ?? 'N/A')); ?>
                     </span>
                 </div>
                 
                 <div class="mb-3">
                     <strong>Status:</strong><br>
                     <span class="badge bg-<?php 
-                        switch($usuario['status']) {
+                        switch($usuario['status'] ?? '') {
                             case 'ativo': echo 'success'; break;
                             case 'inativo': echo 'danger'; break;
                             case 'pendente': echo 'warning'; break;
                             default: echo 'secondary';
                         }
                     ?>">
-                        <?php echo ucfirst(htmlspecialchars($usuario['status'])); ?>
+                        <?php echo ucfirst(htmlspecialchars($usuario['status'] ?? 'não informado')); ?>
                     </span>
                 </div>
                 
                 <div class="mb-3">
                     <strong>Nível:</strong><br>
-                    <span class="badge bg-info"><?php echo htmlspecialchars($usuario['nivel']); ?></span>
+                    <span class="badge bg-info"><?php echo htmlspecialchars($usuario['nivel'] ?? 'N/A'); ?></span>
                 </div>
                 
                 <div class="mb-3">
@@ -186,14 +203,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="mb-3">
                     <strong>Data de Cadastro:</strong><br>
                     <small class="text-muted">
-                        <?php echo $usuario['data_cadastro'] ? date('d/m/Y H:i', strtotime($usuario['data_cadastro'])) : 'Não informado'; ?>
+                        <?php
+                        $data_cadastro = $usuario['data_cadastro'] ?? ($usuario['created_at'] ?? null);
+                        echo $data_cadastro ? date('d/m/Y H:i', strtotime($data_cadastro)) : 'Não informado';
+                        ?>
                     </small>
                 </div>
                 
                 <div class="mb-3">
                     <strong>Última Atualização:</strong><br>
                     <small class="text-muted">
-                        <?php echo $usuario['ultima_atualizacao'] ? date('d/m/Y H:i', strtotime($usuario['ultima_atualizacao'])) : 'Não informado'; ?>
+                        <?php
+                        $ultima_atualizacao = $usuario['ultima_atualizacao'] ?? ($usuario['updated_at'] ?? null);
+                        echo $ultima_atualizacao ? date('d/m/Y H:i', strtotime($ultima_atualizacao)) : 'Não informado';
+                        ?>
                     </small>
                 </div>
             </div>

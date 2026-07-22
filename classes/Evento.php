@@ -120,5 +120,113 @@ class Evento {
             return false;
         }
     }
+
+    /**
+     * Busca a visão de presença para um usuário comum em todos os eventos agendados.
+     * Retorna sempre uma linha por evento agendado, mesmo sem confirmação.
+     *
+     * @param int $user_id ID do usuário logado.
+     * @param string $user_table Tabela de origem da sessão (associados|usuarios).
+     * @return array
+     */
+    public function getPresencasUsuarioAgendados($user_id, $user_table = 'usuarios') {
+        try {
+            $user_id = (int) $user_id;
+            $user_table = strtolower((string) $user_table);
+
+            $associado_id = null;
+            $usuario_id = null;
+
+            if ($user_table === 'associados') {
+                $associado_id = $user_id;
+            } else {
+                $usuario_id = $user_id;
+
+                // Se o usuário comum estiver vinculado a um associado, usa ambos os vínculos.
+                $stmt_usuario = $this->db->prepare("SELECT associado_id FROM usuarios WHERE id = ?");
+                $stmt_usuario->execute([$usuario_id]);
+                $usuario_data = $stmt_usuario->fetch(PDO::FETCH_ASSOC);
+                if (!empty($usuario_data['associado_id'])) {
+                    $associado_id = (int) $usuario_data['associado_id'];
+                }
+            }
+
+            // Compatibilidade de schema: justificativa pode não existir.
+            $tem_coluna_justificativa = false;
+            $stmt_col = $this->db->query("SHOW COLUMNS FROM evento_presenca LIKE 'justificativa'");
+            if ($stmt_col && $stmt_col->fetch(PDO::FETCH_ASSOC)) {
+                $tem_coluna_justificativa = true;
+            }
+            $select_justificativa = $tem_coluna_justificativa
+                ? "COALESCE(p.justificativa, '') AS justificativa"
+                : "'' AS justificativa";
+
+            $sql = "SELECT
+                        e.id AS evento_id,
+                        e.nome AS evento_nome,
+                        e.data_evento,
+                        e.status AS evento_status,
+                        e.confirmados,
+                        p.status_presenca,
+                        p.data_registro,
+                        {$select_justificativa}
+                    FROM eventos e
+                    LEFT JOIN evento_presenca p
+                        ON p.evento_id = e.id
+                        AND (
+                            (:associado_id IS NOT NULL AND p.associado_id = :associado_id)
+                            OR
+                            (:usuario_id IS NOT NULL AND p.usuario_id = :usuario_id)
+                        )
+                    WHERE e.status = 'Agendado'
+                    ORDER BY e.data_evento DESC";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':associado_id', $associado_id, $associado_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $stmt->bindValue(':usuario_id', $usuario_id, $usuario_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $resultado = [];
+            foreach ($rows as $row) {
+                $status = $row['status_presenca'] ?? '';
+                $justificativa = (string) ($row['justificativa'] ?? '');
+
+                // Fallback: se não houver linha em evento_presenca, verifica JSON de confirmados.
+                if ($status === '' || $status === null) {
+                    $status = 'Não Confirmado';
+                    $confirmados = json_decode($row['confirmados'] ?? '[]', true);
+                    if (is_array($confirmados)) {
+                        foreach ($confirmados as $conf) {
+                            $conf_id = isset($conf['id']) ? (int) $conf['id'] : 0;
+                            $conf_table = strtolower((string) ($conf['table'] ?? ''));
+                            $match_associado = ($associado_id !== null && $conf_table === 'associados' && $conf_id === $associado_id);
+                            $match_usuario = ($usuario_id !== null && $conf_table === 'usuarios' && $conf_id === $usuario_id);
+                            if ($match_associado || $match_usuario) {
+                                $status = 'Confirmado';
+                                if ($justificativa === '' && !empty($conf['justificativa'])) {
+                                    $justificativa = (string) $conf['justificativa'];
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                $resultado[] = [
+                    'evento_id' => (int) $row['evento_id'],
+                    'evento_nome' => $row['evento_nome'],
+                    'status_presenca' => $status,
+                    'justificativa' => $justificativa,
+                    'data_evento' => $row['data_evento'],
+                ];
+            }
+
+            return $resultado;
+        } catch (PDOException $e) {
+            error_log("Erro ao buscar presenças do usuário em eventos agendados: " . $e->getMessage());
+            return [];
+        }
+    }
 }
 ?>

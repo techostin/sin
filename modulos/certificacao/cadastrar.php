@@ -11,6 +11,13 @@ if (!$user->isLoggedIn()) {
     exit;
 }
 
+// Apenas Admin/Gestor podem cadastrar ou editar certificações
+if (!$user->hasPermission(NIVEL_GESTOR)) {
+    echo "<div class='alert alert-danger'>Acesso restrito a gestores e administradores.</div>";
+    require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
+
 $isEdit = isset($_GET['id']) && is_numeric($_GET['id']);
 $certificacaoId = $isEdit ? $_GET['id'] : null;
 

@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </div>
 <?php endif; ?>
 
-<form action="" method="POST" class="row g-3">
+<form action="" method="POST" id="form-insumo" class="row g-3">
     <div class="col-md-6">
         <label for="associado_id" class="form-label">Associado</label>
         <select class="form-select" id="associado_id" name="associado_id" required>
@@ -121,7 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="col-md-6">
         <label for="nome" class="form-label">Nome</label>
         <input type="text" class="form-control" id="nome" name="nome" 
-               value="<?php echo htmlspecialchars($dados_insumos['nome'] ?? ''); ?>" required>
+               value="<?php echo htmlspecialchars($dados_insumos['nome'] ?? ''); ?>" required autocomplete="off">
+        <div id="insumo-validation-feedback" class="mt-2"></div>
     </div>
 
     <div class="col-12">
@@ -188,5 +189,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
     estoqueAnterior.addEventListener('input', atualizarEstoque);
     quantRecebida.addEventListener('input', atualizarEstoque);
+
+    // Validação em tempo real do insumo
+    const nomeInput = document.getElementById('nome');
+    const feedbackDiv = document.getElementById('insumo-validation-feedback');
+    let timeout = null;
+
+    function validarInsumo() {
+        const nomeVal = nomeInput.value.trim();
+
+        if (nomeVal.length < 3) {
+            feedbackDiv.innerHTML = '';
+            return;
+        }
+
+        feedbackDiv.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split"></i> Validando insumo...</span>';
+        
+        fetch(`${window.SITE_URL}/modulos/caderno_campo/validar_insumo.php?nome=${encodeURIComponent(nomeVal)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    feedbackDiv.innerHTML = `
+                        <div class="alert alert-success py-2 px-3 mb-0 mt-1 d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+                            <div>
+                                <strong>Permitido:</strong> ${data.message}
+                                ${data.detalhes ? `<br><small class="text-muted">Categoria: ${data.detalhes.categoria}</small>` : ''}
+                            </div>
+                        </div>`;
+                } else if (data.status === 'warning') {
+                    feedbackDiv.innerHTML = `
+                        <div class="alert alert-warning py-2 px-3 mb-0 mt-1">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                                <strong>Atenção:</strong> ${data.message}
+                            </div>
+                            <small class="d-block">${data.restricoes ? `Restrições: ${data.restricoes}` : ''}</small>
+                        </div>`;
+                } else {
+                    feedbackDiv.innerHTML = `
+                        <div class="alert alert-secondary py-2 px-3 mb-0 mt-1 d-flex align-items-center">
+                            <i class="bi bi-question-circle-fill me-2 fs-5"></i>
+                            <div>
+                                <strong>Alerta:</strong> ${data.message}
+                            </div>
+                        </div>`;
+                }
+            })
+            .catch(err => {
+                console.error('Erro na validação do insumo:', err);
+                feedbackDiv.innerHTML = '';
+            });
+    }
+
+    nomeInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(validarInsumo, 500);
+    });
+
+    // Validar no carregamento inicial
+    validarInsumo();
 });
 </script>

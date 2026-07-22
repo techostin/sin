@@ -36,18 +36,38 @@ $db = Database::getInstance()->getConnection();
 // Roteador de métodos
 switch ($method) {
     case 'GET':
-        handleGet($db);
+        handleGet($db, $user);
         break;
     
     case 'POST':
-        handlePost($db);
+        if (!$user->hasPermission(NIVEL_GESTOR)) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Acesso negado. Apenas administradores e gestores podem emitir certificações.']);
+            exit();
+        }
+        // Detect if it's multipart form (file upload) or JSON
+        if (!empty($_FILES) || isset($_POST['action'])) {
+            handleUploadAssinatura($db);
+        } else {
+            handlePost($db);
+        }
         break;
     
     case 'PUT':
+        if (!$user->hasPermission(NIVEL_GESTOR)) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Acesso negado. Apenas administradores e gestores podem editar certificações.']);
+            exit();
+        }
         handlePut($db);
         break;
     
     case 'DELETE':
+        if (!$user->hasPermission(NIVEL_GESTOR)) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Acesso negado. Apenas administradores e gestores podem excluir certificações.']);
+            exit();
+        }
         handleDelete($db);
         break;
     
@@ -60,21 +80,21 @@ switch ($method) {
 /**
  * GET - Listar certificações ou obter uma específica
  */
-function handleGet($db) {
+function handleGet($db, $user) {
     // Se tem ID, busca uma certificação específica
     if (isset($_GET['id']) && is_numeric($_GET['id'])) {
-        getCertificacaoById($db, $_GET['id']);
+        getCertificacaoById($db, $user, $_GET['id']);
         return;
     }
     
     // Caso contrário, lista todas (com filtros opcionais)
-    listCertificacoes($db);
+    listCertificacoes($db, $user);
 }
 
 /**
  * Buscar certificação por ID
  */
-function getCertificacaoById($db, $id) {
+function getCertificacaoById($db, $user, $id) {
     $sql = "SELECT c.*, a.nome as associado_nome, a.sobrenome as associado_sobrenome
             FROM certificacao_participativa c
             LEFT JOIN associados a ON c.associado_id = a.id
@@ -89,6 +109,16 @@ function getCertificacaoById($db, $id) {
         echo json_encode(['error' => 'Certificação não encontrada']);
         return;
     }
+
+    // Restrição para usuários comuns
+    if ($_SESSION['user_nivel'] == NIVEL_USUARIO) {
+        $associadoId = $user->getAssociadoId();
+        if ($certificacao['associado_id'] != $associadoId) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Acesso negado. Você só pode visualizar seus próprios certificados.']);
+            return;
+        }
+    }
     
     // Decodificar JSON
     if (!empty($certificacao['dados_adicionais'])) {
@@ -102,26 +132,20 @@ function getCertificacaoById($db, $id) {
 /**
  * Listar certificações com filtros
  */
-function listCertificacoes($db) {
+function listCertificacoes($db, $user) {
     $sql = "SELECT c.*, a.nome as associado_nome, a.sobrenome as associado_sobrenome
             FROM certificacao_participativa c
             LEFT JOIN associados a ON c.associado_id = a.id
             WHERE 1=1";
     
     $params = [];
-    
-    // Filtros opcionais
-    if (isset($_GET['tipo_certificacao']) && !empty($_GET['tipo_certificacao'])) {
-        $sql .= " AND c.tipo_certificacao = ?";
-        $params[] = $_GET['tipo_certificacao'];
-    }
-    
-    if (isset($_GET['status']) && !empty($_GET['status'])) {
-        $sql .= " AND c.status = ?";
-        $params[] = $_GET['status'];
-    }
-    
-    if (isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
+
+    // Restrição para usuários comuns: ver apenas o seu próprio histórico
+    if ($_SESSION['user_nivel'] == NIVEL_USUARIO) {
+        $associadoId = $user->getAssociadoId();
+        $sql .= " AND c.associado_id = ?";
+        $params[] = $associadoId;
+    } elseif (isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
         $sql .= " AND c.associado_id = ?";
         $params[] = $_GET['associado_id'];
     }
@@ -143,13 +167,18 @@ function listCertificacoes($db) {
     $offset = ($page - 1) * $limit;
     
     // Contar total de registros
-    $stmtCount = $db->prepare("SELECT COUNT(*) as total FROM certificacao_participativa c WHERE 1=1 " . 
-        (isset($_GET['tipo_certificacao']) && !empty($_GET['tipo_certificacao']) ? " AND c.tipo_certificacao = ?" : "") .
-        (isset($_GET['status']) && !empty($_GET['status']) ? " AND c.status = ?" : "") .
-        (isset($_GET['associado_id']) && is_numeric($_GET['associado_id']) ? " AND c.associado_id = ?" : "") .
-        (isset($_GET['validade']) && $_GET['validade'] === 'vencidas' ? " AND c.data_validade < CURDATE()" : "") .
-        (isset($_GET['validade']) && $_GET['validade'] === 'proximas' ? " AND c.data_validade BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)" : "")
-    );
+    $countSql = "SELECT COUNT(*) as total FROM certificacao_participativa c WHERE 1=1 ";
+    if ($_SESSION['user_nivel'] == NIVEL_USUARIO) {
+        $countSql .= " AND c.associado_id = ?";
+    } else {
+        $countSql .= (isset($_GET['tipo_certificacao']) && !empty($_GET['tipo_certificacao']) ? " AND c.tipo_certificacao = ?" : "") .
+                     (isset($_GET['status']) && !empty($_GET['status']) ? " AND c.status = ?" : "") .
+                     (isset($_GET['associado_id']) && is_numeric($_GET['associado_id']) ? " AND c.associado_id = ?" : "");
+    }
+    $countSql .= (isset($_GET['validade']) && $_GET['validade'] === 'vencidas' ? " AND c.data_validade < CURDATE()" : "") .
+                 (isset($_GET['validade']) && $_GET['validade'] === 'proximas' ? " AND c.data_validade BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)" : "");
+
+    $stmtCount = $db->prepare($countSql);
     
     // Filtrar os parâmetros para o count (apenas os filtros, sem limit/offset)
     $stmtCount->execute($params);
@@ -164,10 +193,25 @@ function listCertificacoes($db) {
     $certificacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Decodificar JSON de dados adicionais
+    // Enriquecer resposta
     foreach ($certificacoes as &$cert) {
         if (!empty($cert['dados_adicionais'])) {
             $cert['dados_adicionais'] = json_decode($cert['dados_adicionais'], true);
         }
+        
+        // Flag para indicar se o documento está disponível (assinado)
+        // Verifica se tem assinatura_arquivo (upload do PDF assinado) OU documento_url
+        $cert['is_signed'] = !empty($cert['assinatura_arquivo']) || !empty($cert['documento_url']);
+        
+        // Incluir informações de assinatura na listagem
+        if (!empty($cert['assinatura_data'])) {
+            $cert['assinatura_data_formatada'] = date('d/m/Y H:i', strtotime($cert['assinatura_data']));
+        } else {
+            $cert['assinatura_data_formatada'] = null;
+        }
+        $cert['data_renovacao_formatada'] = !empty($cert['data_renovacao']) 
+            ? date('d/m/Y', strtotime($cert['data_renovacao'])) 
+            : null;
     }
     
     http_response_code(200);
@@ -338,6 +382,151 @@ function handlePut($db) {
         http_response_code(500);
         echo json_encode([
             'error' => 'Erro ao atualizar certificação',
+            'message' => $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * POST (multipart) - Upload de assinatura digital (PDF do certificado assinado)
+ * 
+ * Recebe o arquivo PDF assinado e salva no servidor, registrando a assinatura
+ */
+function handleUploadAssinatura($db) {
+    $certificacaoId = $_POST['id'] ?? ($_GET['id'] ?? null);
+    
+    if (!$certificacaoId || !is_numeric($certificacaoId)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'ID da certificação é obrigatório']);
+        return;
+    }
+    
+    // Verificar se a certificação existe
+    $checkSql = "SELECT id, numero_certificado, assinatura_arquivo FROM certificacao_participativa WHERE id = ?";
+    $checkStmt = $db->prepare($checkSql);
+    $checkStmt->execute([$certificacaoId]);
+    $cert = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$cert) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Certificação não encontrada']);
+        return;
+    }
+    
+    // Verificar upload do arquivo
+    if (!isset($_FILES['arquivo_assinatura']) || $_FILES['arquivo_assinatura']['error'] !== UPLOAD_ERR_OK) {
+        $errorCode = $_FILES['arquivo_assinatura']['error'] ?? -1;
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE => 'O arquivo excede o tamanho máximo permitido pelo servidor.',
+            UPLOAD_ERR_FORM_SIZE => 'O arquivo excede o tamanho máximo definido no formulário.',
+            UPLOAD_ERR_PARTIAL => 'O upload foi feito parcialmente.',
+            UPLOAD_ERR_NO_FILE => 'Nenhum arquivo foi enviado.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Pasta temporária não encontrada.',
+            UPLOAD_ERR_CANT_WRITE => 'Erro ao escrever o arquivo no disco.',
+            UPLOAD_ERR_EXTENSION => 'Upload bloqueado por extensão.',
+        ];
+        $msg = isset($errorMessages[$errorCode]) ? $errorMessages[$errorCode] : 'Erro desconhecido no upload.';
+        http_response_code(400);
+        echo json_encode(['error' => $msg]);
+        return;
+    }
+    
+    $arquivo = $_FILES['arquivo_assinatura'];
+    
+    // Validar tipo de arquivo (apenas PDF)
+    $allowedTypes = ['application/pdf', 'image/tiff', 'image/tif'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($finfo, $arquivo['tmp_name']);
+    finfo_close($finfo);
+    
+    // Fallback: verificar extensão
+    $ext = strtolower(pathinfo($arquivo['name'], PATHINFO_EXTENSION));
+    $allowedExts = ['pdf'];
+    
+    if (!in_array($ext, $allowedExts)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Formato inválido. Apenas arquivos PDF são aceitos para assinatura digital.']);
+        return;
+    }
+    
+    // Criar diretório de upload se não existir
+    $uploadDir = __DIR__ . '/../../uploads/certificados/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    // Gerar nome único para o arquivo
+    $numeroCert = !empty($cert['numero_certificado']) ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $cert['numero_certificado']) : 'cert';
+    $timestamp = date('Ymd_His');
+    $nomeArquivo = "cert_{$certificacaoId}_{$numeroCert}_{$timestamp}.pdf";
+    $caminhoCompleto = $uploadDir . $nomeArquivo;
+    
+    // Mover arquivo para o diretório de destino
+    if (!move_uploaded_file($arquivo['tmp_name'], $caminhoCompleto)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Erro ao salvar o arquivo de assinatura.']);
+        return;
+    }
+    
+    // Construir URL pública do arquivo
+    $documentoUrl = SITE_URL . '/uploads/certificados/' . $nomeArquivo;
+    
+    // Registrar assinatura no banco
+    $usuarioNome = $_SESSION['user_nome'] ?? 'Administrador';
+    
+    $updateSql = "UPDATE certificacao_participativa SET 
+                  assinatura_arquivo = ?,
+                  assinatura_data = NOW(),
+                  assinatura_por = ?,
+                  documento_url = ?,
+                  updated_at = NOW()
+                  WHERE id = ?";
+    
+    try {
+        $stmt = $db->prepare($updateSql);
+        $stmt->execute([$nomeArquivo, $usuarioNome, $documentoUrl, $certificacaoId]);
+        
+        // Se veio da renovação, também atualizar status e data de renovação
+        if (isset($_POST['status'])) {
+            $renovSql = "UPDATE certificacao_participativa SET 
+                         status = ?,
+                         data_emissao = ?,
+                         data_validade = ?,
+                         numero_certificado = ?,
+                         observacoes = CONCAT(IFNULL(observacoes, ''), ?),
+                         data_renovacao = CURDATE(),
+                         updated_at = NOW()
+                         WHERE id = ?";
+            $obsAdicional = "\n\n[Renovado em " . date('d/m/Y H:i') . "] " . ($_POST['observacoes'] ?? '');
+            $renovStmt = $db->prepare($renovSql);
+            $renovStmt->execute([
+                $_POST['status'] ?? 'Ativa',
+                $_POST['data_emissao'] ?? date('Y-m-d'),
+                $_POST['data_validade'] ?? date('Y-m-d', strtotime('+1 year')),
+                $_POST['numero_certificado'] ?? $cert['numero_certificado'],
+                $obsAdicional,
+                $certificacaoId
+            ]);
+        }
+        
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Certificado assinado e salvo com sucesso!',
+            'documento_url' => $documentoUrl,
+            'arquivo' => $nomeArquivo,
+            'assinado_por' => $usuarioNome,
+            'assinado_em' => date('Y-m-d H:i:s')
+        ]);
+        
+    } catch (PDOException $e) {
+        // Remover arquivo se falhou no banco
+        if (file_exists($caminhoCompleto)) {
+            unlink($caminhoCompleto);
+        }
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'Erro ao registrar assinatura',
             'message' => $e->getMessage()
         ]);
     }

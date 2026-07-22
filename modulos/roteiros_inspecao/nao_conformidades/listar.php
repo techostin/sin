@@ -3,115 +3,398 @@ $page_title = "Não Conformidades";
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/menu.php';
 
-// Verificar autenticação
 if (!$user->isLoggedIn()) {
     echo "<div class='alert alert-danger'>Acesso negado.</div>";
     require_once __DIR__ . '/../../../includes/footer.php';
     exit;
 }
+
+$userNivel = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
+$isAdmin   = $userNivel <= NIVEL_GESTOR;
 ?>
 
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Gestão de Não Conformidades</h1>
-    <p class="text-muted">Acompanhamento de pendências identificadas nas inspeções técnicas.</p>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Não Conformidades</h1>
+            <p class="text-muted mb-0">Acompanhe e resolva pendências identificadas nas inspeções técnicas.</p>
+        </div>
+    </div>
 
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-danger text-white mb-4">
-                <div class="card-body">Abertas: <span id="total-abertas">0</span></div>
+    <!-- KPI Cards -->
+    <div class="row g-3 mb-4" id="kpi-cards">
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                        <i class="bi bi-exclamation-circle-fill text-danger fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">ABERTAS</div>
+                        <div class="fs-3 fw-bold text-danger" id="kpi-abertas">—</div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-warning text-dark mb-4">
-                <div class="card-body">Em Prazo: <span id="total-prazo">0</span></div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                        <i class="bi bi-arrow-clockwise text-warning fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">EM CORREÇÃO</div>
+                        <div class="fs-3 fw-bold text-warning" id="kpi-em-correcao">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">RESOLVIDAS</div>
+                        <div class="fs-3 fw-bold text-success" id="kpi-resolvidas">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-dark bg-opacity-10 p-3">
+                        <i class="bi bi-clock-history text-dark fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">VENCIDAS</div>
+                        <div class="fs-3 fw-bold" id="kpi-vencidas">—</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header">
-            <i class="bi bi-table me-1"></i>
-            Lista de Ocorrências
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <label class="form-label mb-0 small fw-bold">Status:</label>
+                </div>
+                <div class="col-auto">
+                    <select class="form-select form-select-sm" id="filtro-status">
+                        <option value="">Todos</option>
+                        <option value="Aberta">Abertas</option>
+                        <option value="Em Correção">Em Correção</option>
+                        <option value="Resolvida">Resolvidas</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label mb-0 small fw-bold">Gravidade:</label>
+                </div>
+                <div class="col-auto">
+                    <select class="form-select form-select-sm" id="filtro-gravidade">
+                        <option value="">Todas</option>
+                        <option value="Baixa">Baixa</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Critica">Crítica</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-limpar-filtros">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <table class="table table-hover" id="ncTable">
-                <thead>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-white fw-bold">
+            <i class="bi bi-table me-1"></i> Lista de Ocorrências
+        </div>
+        <div class="card-body p-0">
+            <table id="ncTable" class="table table-hover mb-0">
+                <thead class="table-light">
                     <tr>
-                        <th>Data</th>
+                        <th>Data Visita</th>
+                        <?php if ($isAdmin): ?>
                         <th>Produtor</th>
+                        <?php endif; ?>
                         <th>Propriedade</th>
                         <th>Descrição</th>
+                        <th>Gravidade</th>
                         <th>Prazo</th>
                         <th>Status</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
-                <tbody id="lista-nc">
-                    <!-- Preenchido via AJAX -->
-                </tbody>
+                <tbody></tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Atualizar NC -->
+<div class="modal fade" id="modalNC" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Atualizar Não Conformidade</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modal-nc-body">
+                <div class="text-center py-3"><div class="spinner-border text-primary"></div></div>
+            </div>
         </div>
     </div>
 </div>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 
-<!-- DataTables -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
-<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+<style>
+.kpi-vencida { color: #dc3545 !important; }
+</style>
 
 <script>
+const IS_ADMIN   = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+const API_NC     = '<?php echo SITE_URL; ?>/api/nao_conformidades.php';
+const SITE_URL_  = '<?php echo SITE_URL; ?>';
+
+const STATUS_BADGE = {
+    'Aberta':      '<span class="badge bg-danger">Aberta</span>',
+    'Em Correção': '<span class="badge bg-warning text-dark">Em Correção</span>',
+    'Resolvida':   '<span class="badge bg-success">Resolvida</span>',
+};
+const GRAVIDADE_BADGE = {
+    'Baixa':   '<span class="badge bg-secondary">Baixa</span>',
+    'Alta':    '<span class="badge bg-warning text-dark">Alta</span>',
+    'Critica': '<span class="badge bg-danger">Crítica</span>',
+};
+
+let ncTable;
+
 $(document).ready(function() {
-    const table = $('#ncTable').DataTable({
-        ajax: {
-            url: '<?php echo SITE_URL; ?>/api/roteiros-inspecao?action=nao_conformidades',
-            dataSrc: 'data'
-        },
-        columns: [
-            { 
-                data: 'data_visita',
-                render: function(data) { return data ? new Date(data).toLocaleDateString('pt-BR') : '-'; }
-            },
-            { data: 'propriedade_nome' },
-            { 
-                data: 'descricao',
-                render: function(data) { return mb_strimwidth_js(data, 60); }
-            },
-            { 
-                data: 'status',
-                render: function(data) {
-                    const classes = { 'Aberta': 'danger', 'Resolvida': 'success', 'Em Correção': 'warning' };
-                    return `<span class="badge bg-${classes[data] || 'secondary'}">${data}</span>`;
-                }
-            },
-            { 
-                data: 'prazo_correcao',
-                render: function(data) { return data ? new Date(data).toLocaleDateString('pt-BR') : 'Pendente'; }
-            },
-            {
-                data: null,
-                render: function(row) {
-                    return `
-                        <div class="btn-group">
-                            <button class="btn btn-outline-success btn-sm" title="Resolver"><i class="bi bi-check-circle"></i></button>
-                            <button class="btn btn-outline-primary btn-sm" title="Detalhes"><i class="bi bi-eye"></i></button>
-                        </div>
-                    `;
-                }
-            }
-        ],
-        language: { url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' },
-        drawCallback: function(settings) {
-            const data = settings.json ? settings.json.data : [];
-            $('#count-abertas').text(data.filter(i => i.status === 'Aberta').length);
-            $('#count-correcao').text(data.filter(i => i.status === 'Em Correção').length);
+
+    // Definir colunas dinamicamente
+    const columns = [
+        {
+            data: 'data_visita',
+            render: d => d ? new Date(d).toLocaleDateString('pt-BR') : '—'
         }
+    ];
+    if (IS_ADMIN) {
+        columns.push({
+            data: null,
+            render: r => `${r.associado_nome} ${r.associado_sobrenome}`
+        });
+    }
+    columns.push(
+        { data: 'propriedade_nome' },
+        {
+            data: 'descricao',
+            render: d => d && d.length > 60 ? d.substring(0, 60) + '…' : (d || '—')
+        },
+        {
+            data: 'gravidade',
+            render: d => GRAVIDADE_BADGE[d] || `<span class="badge bg-secondary">${d || '—'}</span>`
+        },
+        {
+            data: 'prazo_correcao',
+            render: (d, _, row) => {
+                if (!d) return '<span class="text-muted">Sem prazo</span>';
+                const dt     = new Date(d);
+                const venceu = dt < new Date() && row.status !== 'Resolvida';
+                const label  = dt.toLocaleDateString('pt-BR');
+                return venceu ? `<span class="text-danger fw-bold"><i class="bi bi-clock"></i> ${label}</span>` : label;
+            }
+        },
+        {
+            data: 'status',
+            render: d => STATUS_BADGE[d] || `<span class="badge bg-secondary">${d}</span>`
+        },
+        {
+            data: null,
+            render: row => {
+                let btns = `<div class="btn-group">`;
+                btns += `<a href="${SITE_URL_}/nao-conformidade/acompanhar?id=${row.id}"
+                            class="btn btn-outline-primary btn-sm" title="Acompanhar Resolução">
+                             <i class="bi bi-clock-history"></i> Acompanhar
+                          </a>`;
+                btns += `<a href="${SITE_URL_}/visita-tecnica/${row.visita_tecnica_id}/relatorio"
+                            class="btn btn-outline-secondary btn-sm" title="Ver Visita">
+                            <i class="bi bi-eye"></i> Visita
+                         </a>`;
+                btns += `</div>`;
+                return btns;
+            }
+        }
+    );
+
+    // Inicializar DataTable
+    ncTable = $('#ncTable').DataTable({
+        ajax: {
+            url: API_NC,
+            dataSrc: json => {
+                // Atualizar KPI cards
+                const k = json.kpis || {};
+                $('#kpi-abertas').text(k.abertas ?? 0);
+                $('#kpi-em-correcao').text(k.em_correcao ?? 0);
+                $('#kpi-resolvidas').text(k.resolvidas ?? 0);
+                const vencidas = k.vencidas ?? 0;
+                $('#kpi-vencidas').text(vencidas).toggleClass('kpi-vencida', vencidas > 0);
+                return json.data || [];
+            }
+        },
+        columns,
+        order: [[0, 'desc']],
+        language: { url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' }
     });
 
-    function mb_strimwidth_js(str, length) {
-        if (!str) return '-';
-        return str.length > length ? str.substring(0, length) + '...' : str;
-    }
+    // Filtros
+    $('#filtro-status, #filtro-gravidade').on('change', function() {
+        ncTable.ajax.url(buildUrl()).load();
+    });
+    $('#btn-limpar-filtros').on('click', function() {
+        $('#filtro-status, #filtro-gravidade').val('');
+        ncTable.ajax.url(API_NC).load();
+    });
+
+    // Abrir modal de detalhes/edição
+    $('#ncTable').on('click', '.btn-detalhe', function() {
+        const id = $(this).data('id');
+        $('#modal-nc-body').html('<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>');
+        $('#modalNC').modal('show');
+        fetch(`${API_NC}?action=detail&id=${id}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.error);
+                renderModal(data.data);
+            })
+            .catch(err => {
+                $('#modal-nc-body').html(`<div class="alert alert-danger">${err.message}</div>`);
+            });
+    });
+
+    // Salvar atualização
+    $('#modal-nc-body').on('submit', '#formNC', function(e) {
+        e.preventDefault();
+        const payload = {};
+        $(this).serializeArray().forEach(i => payload[i.name] = i.value);
+        fetch(API_NC, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                $('#modalNC').modal('hide');
+                ncTable.ajax.url(buildUrl()).load();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        });
+    });
 });
+
+function buildUrl() {
+    const st = $('#filtro-status').val();
+    const gr = $('#filtro-gravidade').val();
+    let url  = API_NC;
+    const parts = [];
+    if (st) parts.push(`status=${encodeURIComponent(st)}`);
+    if (gr) parts.push(`gravidade=${encodeURIComponent(gr)}`);
+    return parts.length ? url + '?' + parts.join('&') : url;
+}
+
+function renderModal(nc) {
+    const readOnly = nc.status === 'Resolvida';
+    const disabledAttr = readOnly ? 'disabled' : '';
+
+    $('#modal-nc-body').html(`
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <p class="mb-1 text-muted small">VISITA</p>
+                <p class="fw-bold">#${nc.visita_tecnica_id} — ${new Date(nc.data_visita).toLocaleDateString('pt-BR')}</p>
+            </div>
+            <div class="col-md-6">
+                <p class="mb-1 text-muted small">PROPRIEDADE / PRODUTOR</p>
+                <p class="fw-bold">${nc.propriedade_nome} — ${nc.associado_nome} ${nc.associado_sobrenome}</p>
+            </div>
+        </div>
+        <div class="card bg-light border-0 mb-3">
+            <div class="card-body py-2">
+                <div class="text-muted small mb-1">REQUISITO / NÃO CONFORMIDADE IDENTIFICADA:</div>
+                <div class="fw-bold text-dark fs-6">${nc.descricao || nc.item_texto || 'Item #' + nc.item_checklist_id}</div>
+            </div>
+        </div>
+
+        <form id="formNC">
+            <input type="hidden" name="id" value="${nc.id}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Status</label>
+                    <select class="form-select" name="status" ${disabledAttr}>
+                        <option value="Aberta"      ${nc.status === 'Aberta'       ? 'selected' : ''}>Aberta</option>
+                        <option value="Em Correção" ${nc.status === 'Em Correção'  ? 'selected' : ''}>Em Correção</option>
+                        <option value="Resolvida"   ${nc.status === 'Resolvida'    ? 'selected' : ''}>Resolvida</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Prazo de Correção</label>
+                    <input type="date" class="form-control" name="prazo_correcao"
+                           value="${nc.prazo_correcao ? nc.prazo_correcao.split('T')[0] : ''}" ${disabledAttr}>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Responsável pela Correção</label>
+                    <input type="text" class="form-control" name="responsavel_correcao"
+                           value="${nc.responsavel_correcao || ''}" ${disabledAttr}
+                           placeholder="Ex: Nome do Associado / Técnico">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Gravidade</label>
+                    <select class="form-select" name="gravidade" ${disabledAttr}>
+                        <option value="Baixa"   ${nc.gravidade === 'Baixa'   ? 'selected' : ''}>Baixa</option>
+                        <option value="Alta"    ${nc.gravidade === 'Alta'    ? 'selected' : ''}>Alta</option>
+                        <option value="Critica" ${nc.gravidade === 'Critica' ? 'selected' : ''}>Crítica</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Plano de Ação (Ação Corretiva)</label>
+                    <textarea class="form-control" name="acao_corretiva" rows="2"
+                              ${disabledAttr} placeholder="Descreva o que será feito para corrigir...">${nc.acao_corretiva || ''}</textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Observações Adicionais</label>
+                    <textarea class="form-control" name="observacoes" rows="2"
+                              ${disabledAttr} placeholder="Outras notas pertinentes...">${nc.observacoes || ''}</textarea>
+                </div>
+            </div>
+            ${!readOnly ? `
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary px-4 fw-bold">
+                    <i class="bi bi-save me-1"></i> SALVAR ALTERAÇÕES
+                </button>
+            </div>` : `
+            <div class="alert alert-success mt-3 mb-0 d-flex align-items-center">
+                <i class="bi bi-check-circle-fill me-3 fs-4"></i>
+                <div>
+                    <strong>Não conformidade resolvida!</strong><br>
+                    Verificado em ${nc.data_resolucao ? new Date(nc.data_resolucao).toLocaleDateString('pt-BR') : '—'}.
+                </div>
+            </div>`}
+        </form>
+    `);
+}
 </script>

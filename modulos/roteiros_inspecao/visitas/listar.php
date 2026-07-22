@@ -3,25 +3,34 @@ $page_title = "Visitas Técnicas / Inspeções";
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/menu.php';
 
-// Verificar autenticação
 if (!$user->isLoggedIn()) {
     echo "<div class='alert alert-danger'>Acesso negado.</div>";
     require_once __DIR__ . '/../../../includes/footer.php';
     exit;
 }
+
+// Controle de acesso no PHP para adaptar a view
+$userNivel      = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
+$userTable      = $_SESSION['user_table'] ?? 'associados';
+$isAdmin        = $userNivel <= NIVEL_GESTOR;        // admin (1) ou gestor (2)
+$isUsuarioComum = !$isAdmin && $userTable === 'associados';
+$associadoIdLogado = $isUsuarioComum ? ($_SESSION['user_id'] ?? null) : null;
 ?>
 
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
         <h1>Visitas Técnicas e Inspeções</h1>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgendarVisita">
+        <?php if ($isAdmin): ?>
+        <a href="<?php echo SITE_URL; ?>/visita-tecnica/agendar" class="btn btn-primary">
             <i class="bi bi-calendar-plus"></i> Agendar Visita
-        </button>
+        </a>
+        <?php endif; ?>
     </div>
 
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-white">
-            <i class="bi bi-list-check me-1"></i> Cronograma de Inspeções
+            <i class="bi bi-list-check me-1"></i>
+            <?php echo $isAdmin ? 'Cronograma de Inspeções (Todos os Associados)' : 'Minhas Visitas Técnicas'; ?>
         </div>
         <div class="card-body">
             <table id="visitasTable" class="table table-striped">
@@ -29,7 +38,9 @@ if (!$user->isLoggedIn()) {
                     <tr>
                         <th>Data</th>
                         <th>Propriedade</th>
+                        <?php if ($isAdmin): ?>
                         <th>Agricultor</th>
+                        <?php endif; ?>
                         <th>Roteiro</th>
                         <th>Status</th>
                         <th>Conformidade</th>
@@ -44,7 +55,8 @@ if (!$user->isLoggedIn()) {
     </div>
 </div>
 
-<!-- Modal Agendar Visita -->
+<?php if ($isAdmin): ?>
+<!-- Modal Agendar Visita — Apenas Admin/Gestor -->
 <div class="modal fade" id="modalAgendarVisita" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -57,19 +69,19 @@ if (!$user->isLoggedIn()) {
                     <div class="mb-3">
                         <label class="form-label">Agricultor</label>
                         <select class="form-select" name="associado_id" id="select_associado" required>
-                            <!-- Populado via script ou PHP se preferir -->
+                            <option value="">Selecione o Agricultor...</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Propriedade</label>
                         <select class="form-select" name="propriedade_id" id="select_propriedade" required>
-                            <!-- Populado via script -->
+                            <option value="">Selecione primeiro o Agricultor</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Roteiro / Template</label>
                         <select class="form-select" name="roteiro_id" id="select_roteiro" required>
-                            <!-- Populado via script -->
+                            <option value="">Carregando roteiros...</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -82,6 +94,7 @@ if (!$user->isLoggedIn()) {
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 
@@ -91,80 +104,135 @@ if (!$user->isLoggedIn()) {
 <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
+const IS_ADMIN       = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+const ASSOCIADO_SELF = <?php echo $associadoIdLogado ? (int)$associadoIdLogado : 'null'; ?>;
+
 $(document).ready(function() {
-    // Inicializar Tabela
-    const table = $('#visitasTable').DataTable({
+
+    // ----- Definir colunas dinamicamente conforme perfil -----
+    const columns = [
+        {
+            data: 'data_visita',
+            render: d => new Date(d).toLocaleDateString('pt-BR')
+        },
+        { data: 'propriedade_nome' }
+    ];
+
+    // Coluna Agricultor: apenas para admin/gestor
+    if (IS_ADMIN) {
+        columns.push({
+            data: null,
+            render: row => `${row.associado_nome} ${row.associado_sobrenome}`
+        });
+    }
+
+    columns.push(
+        { data: 'roteiro_nome' },
+        {
+            data: 'status',
+            render: data => {
+                const cls = { 'Agendada': 'info', 'Realizada': 'success', 'Cancelada': 'danger' };
+                return `<span class="badge bg-${cls[data] || 'secondary'}">${data}</span>`;
+            }
+        },
+        {
+            data: 'conformidade',
+            render: data => data || '<span class="text-muted">—</span>'
+        },
+        {
+            data: null,
+            render: row => {
+                let btns = '<div class="btn-group">';
+                if (row.status === 'Agendada' && IS_ADMIN) {
+                    btns += `<a href="${SITE_URL}/visita-tecnica/${row.id}/realizar"
+                                class="btn btn-outline-primary btn-sm" title="Realizar Inspeção">
+                                <i class="bi bi-clipboard-check"></i> Realizar</a>`;
+                }
+                if (row.status === 'Realizada') {
+                    btns += `<a href="${SITE_URL}/visita-tecnica/${row.id}/relatorio"
+                                class="btn btn-outline-success btn-sm" title="Ver Detalhes">
+                                <i class="bi bi-eye"></i> Ver</a>`;
+                    btns += `<a href="${SITE_URL}/api/roteiros_inspecao.php?action=relatorio&id=${row.id}"
+                                target="_blank" class="btn btn-outline-danger btn-sm" title="Download PDF">
+                                <i class="bi bi-file-earmark-pdf"></i></a>`;
+                }
+                btns += '</div>';
+                return btns;
+            }
+        }
+    );
+
+    // ----- DataTable -----
+    $('#visitasTable').DataTable({
         ajax: {
             url: '<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=visitas',
             dataSrc: 'data'
         },
-        columns: [
-            { 
-                data: 'data_visita',
-                render: function(data) { return new Date(data).toLocaleDateString('pt-BR'); }
-            },
-            { data: 'propriedade_nome' },
-            { 
-                data: null,
-                render: function(row) { return row.associado_nome + ' ' + row.associado_sobrenome; }
-            },
-            { data: 'roteiro_nome' },
-            { 
-                data: 'status',
-                render: function(data) {
-                    const classes = { 'Agendada': 'info', 'Realizada': 'success', 'Cancelada': 'danger' };
-                    return `<span class="badge bg-${classes[data] || 'secondary'}">${data}</span>`;
-                }
-            },
-            { data: 'conformidade' },
-            {
-                data: null,
-                render: function(row) {
-                    return `
-                        <div class="btn-group">
-                            <a href="#" class="btn btn-outline-success btn-sm" title="Realizar Checklist"><i class="bi bi-clipboard-check"></i></a>
-                            <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye"></i></button>
-                        </div>
-                    `;
-                }
-            }
-        ],
+        columns: columns,
         language: { url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' }
     });
 
-    // Carregar dados para o modal
-    fetch('<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=templates')
-        .then(res => res.json())
-        .then(data => {
-            data.data.forEach(t => $('#select_roteiro').append(`<option value="${t.id}">${t.nome}</option>`));
+    // ----- Modal (apenas admin/gestor acessa o HTML, então os selects existem) -----
+    if (IS_ADMIN) {
+
+        // Carregar Roteiros
+        fetch('<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=templates')
+            .then(res => res.ok ? res.json() : Promise.reject(res.status))
+            .then(data => {
+                const sel = $('#select_roteiro');
+                sel.empty().append('<option value="">Selecione o Roteiro...</option>');
+                (data.data || []).forEach(t => sel.append(`<option value="${t.id}">${t.nome}</option>`));
+            })
+            .catch(err => console.error('Roteiros:', err));
+
+        // Carregar Associados
+        fetch('<?php echo SITE_URL; ?>/api/associados/listar.php')
+            .then(res => res.ok ? res.json() : Promise.reject(res.status))
+            .then(data => {
+                const sel = $('#select_associado');
+                sel.empty().append('<option value="">Selecione o Agricultor...</option>');
+                (data.data || []).forEach(a => sel.append(`<option value="${a.id}">${a.nome}</option>`));
+            })
+            .catch(err => console.error('Associados:', err));
+
+        // Carregar Propriedades ao mudar agricultor
+        $('#select_associado').change(function() {
+            const aid = $(this).val();
+            const selP = $('#select_propriedade');
+            if (!aid) { selP.empty().append('<option value="">Selecione primeiro o Agricultor</option>'); return; }
+            selP.empty().append('<option value="">Carregando...</option>');
+            fetch(`<?php echo SITE_URL; ?>/api/get_propriedades_associado.php?associado_id=${aid}`)
+                .then(r => r.json())
+                .then(data => {
+                    selP.empty().append('<option value="">Selecione a Propriedade</option>');
+                    const list = Array.isArray(data) ? data : [];
+                    list.length
+                        ? list.forEach(p => selP.append(`<option value="${p.id}">${p.nome}</option>`))
+                        : selP.append('<option disabled>Nenhuma propriedade encontrada</option>');
+                })
+                .catch(() => selP.empty().append('<option disabled>Erro ao carregar</option>'));
         });
 
-    fetch('<?php echo SITE_URL; ?>/api/get_associacao_detalhes.php') // Exemplo de endpoint existente
-        .then(res => res.json())
-        .then(data => {
-            // Aqui eu assumo que há uma forma de pegar associados e propriedades. 
-            // Para brevidade estou omitindo a lógica completa de população dos selects.
+        // Submeter agendamento
+        $('#formAgendarVisita').submit(function(e) {
+            e.preventDefault();
+            const payload = {};
+            $(this).serializeArray().forEach(i => payload[i.name] = i.value);
+            fetch('<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=visitas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    $('#modalAgendarVisita').modal('hide');
+                    location.reload();
+                } else {
+                    alert('Erro ao agendar: ' + (data.error || ''));
+                }
+            });
         });
-
-    $('#formAgendarVisita').submit(function(e) {
-        e.preventDefault();
-        const data = {};
-        $(this).serializeArray().forEach(item => data[item.name] = item.value);
-
-        fetch('<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=visitas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert('Visita agendada!');
-                location.reload();
-            } else {
-                alert('Erro ao agendar');
-            }
-        });
-    });
+    }
 });
 </script>

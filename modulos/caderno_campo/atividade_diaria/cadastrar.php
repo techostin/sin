@@ -235,6 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="<?php echo htmlspecialchars($insumo['nome']); ?>"><?php echo htmlspecialchars($insumo['nome']); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <div id="insumo-atividade-feedback" class="mt-1"></div>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -265,6 +266,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const insumoSelect = document.getElementById('insumo_utilisado');
+    const feedbackDiv = document.getElementById('insumo-atividade-feedback');
+
+    if (insumoSelect && feedbackDiv) {
+        insumoSelect.addEventListener('change', function() {
+            const nome = this.value;
+            if (!nome || nome.length < 2) {
+                feedbackDiv.innerHTML = '';
+                return;
+            }
+
+            feedbackDiv.innerHTML = '<span class="text-muted small"><i class="bi bi-hourglass-split"></i> Validando insumo...</span>';
+
+            fetch('<?php echo SITE_URL; ?>/modulos/caderno_campo/validar_insumo.php?nome=' + encodeURIComponent(nome))
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.status === 'success') {
+                        feedbackDiv.innerHTML = '<span class="text-success small"><i class="bi bi-check-circle-fill"></i> ' + data.message + '</span>';
+                    } else if (data.status === 'warning') {
+                        feedbackDiv.innerHTML = '<span class="text-warning small"><i class="bi bi-exclamation-triangle-fill"></i> ' + data.message + '</span>';
+                    } else {
+                        feedbackDiv.innerHTML = '<span class="text-muted small"><i class="bi bi-question-circle-fill"></i> ' + data.message + '</span>';
+                    }
+                })
+                .catch(function() {
+                    feedbackDiv.innerHTML = '';
+                });
+        });
+    }
+});
+</script>
 
 <?php
 require_once __DIR__ . '/../../../includes/footer.php';

@@ -51,7 +51,8 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
             <button class="btn btn-primary" onclick="window.print()">
                 <i class="bi bi-printer"></i> Imprimir
             </button>
-            <?php if ($plano['status'] === 'Em Análise' && $user->hasPermission(NIVEL_ADMIN)): ?>
+            <?php $statusNormalizado = trim((string) ($plano['status'] ?? '')); $statusNormalizado = strtolower(str_replace(['_', '-'], ' ', $statusNormalizado)); ?>
+            <?php if (($statusNormalizado === 'em análise' || $statusNormalizado === 'em analise' || $statusNormalizado === 'em analise') && $user->hasPermission(NIVEL_GESTOR)): ?>
                 <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo $id; ?>/aprovar" class="btn btn-success">
                     <i class="bi bi-check-lg"></i> Aprovar Plano
                 </a>
@@ -60,13 +61,23 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <!-- Status Badge Card -->
-    <div class="card mb-4 border-start border-4 border-<?php 
-        echo $plano['status'] === 'Aprovado' ? 'success' : ($plano['status'] === 'Reprovado' ? 'danger' : 'info'); 
-    ?>">
+    <?php
+        $statusLabel = trim((string) ($plano['status'] ?? ''));
+        $statusLower = strtolower(str_replace(['_', '-'], ' ', $statusLabel));
+        $statusColor = 'info';
+        if ($statusLower === 'aprovado') {
+            $statusColor = 'success';
+        } elseif ($statusLower === 'reprovado') {
+            $statusColor = 'danger';
+        } elseif ($statusLower === 'revisao necessaria' || $statusLower === 'revisão necessária' || $statusLower === 'revisao necessaria') {
+            $statusColor = 'warning';
+        }
+    ?>
+    <div class="card mb-4 border-start border-4 border-<?php echo $statusColor; ?>">
         <div class="card-body d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small">STATUS ATUAL:</span>
-                <span class="h5 mb-0 ms-2"><?php echo $plano['status']; ?></span>
+                <span class="h5 mb-0 ms-2"><?php echo htmlspecialchars($statusLabel ?: 'Rascunho'); ?></span>
             </div>
             <div class="text-end">
                 <span class="text-muted small">SAFRA:</span>
@@ -124,17 +135,49 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
                     <i class="bi bi-tools me-1 text-success"></i> 2. Práticas de Manejo e Conservação
                 </div>
                 <div class="card-body">
-                    <div class="mb-4">
-                        <label class="fw-bold text-success small">MANEJO DE PRAGAS E DOENÇAS</label>
-                        <p class="border-start border-3 border-light ps-3"><?php echo nl2br($plano['manejo_pragas']) ?: 'Nenhuma prática específica registrada.'; ?></p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-bug"></i> MANEJO DE PRAGAS</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['manejo_pragas']) ?: 'Nenhuma prática específica registrada.'; ?></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-virus"></i> MANEJO DE DOENÇAS</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['manejo_doencas']) ?: 'Nenhuma prática específica registrada.'; ?></p>
+                        </div>
                     </div>
-                    <div class="mb-4">
-                        <label class="fw-bold text-success small">MANEJO DE SOLO E ADUBAÇÃO</label>
-                        <p class="border-start border-3 border-light ps-3"><?php echo nl2br($plano['adubacao_verde']) ?: 'Nenhuma prática específica registrada.'; ?></p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-tree"></i> PRÁTICAS DE CONSERVAÇÃO</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['praticas_conservacao']) ?: 'Nenhuma prática específica registrada.'; ?></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-arrow-repeat"></i> ROTAÇÃO DE CULTURAS</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['rotacao_culturas']) ?: 'Não informado.'; ?></p>
+                        </div>
                     </div>
-                    <div>
-                        <label class="fw-bold text-success small">ROTAÇÃO DE CULTURAS E COMPOSTAGEM</label>
-                        <p class="border-start border-3 border-light ps-3"><?php echo nl2br($plano['compostagem']) ?: 'Não informado.'; ?></p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-flower2"></i> COMPOSTAGEM / ADUBAÇÃO VERDE</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['compostagem']) ?: 'Não informado.'; ?></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-droplet"></i> BIOFERTILIZANTES</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['biofertilizantes']) ?: 'Não informado.'; ?></p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-droplet-half"></i> FONTES DE ÁGUA</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['fonte_agua']) ?: 'Não informado.'; ?></p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-success small"><i class="bi bi-sun"></i> CLIMA / MICROCLIMA</label>
+                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['clima']) ?: 'Não informado.'; ?></p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold text-success small"><i class="bi bi-heart-pulse"></i> MANEJO DE SOLO E ADUBAÇÃO</label>
+                        <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['adubacao_verde']) ?: 'Nenhuma prática específica registrada.'; ?></p>
                     </div>
                 </div>
             </div>
@@ -184,13 +227,9 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     <?php endif; ?>
                     
-                    <form action="upload_croqui.php" method="POST" enctype="multipart/form-data">
-                        <input type="hidden" name="plano_id" value="<?php echo $id; ?>">
-                        <div class="input-group input-group-sm">
-                            <input type="file" class="form-control" name="croqui">
-                            <button class="btn btn-outline-primary" type="submit">Upload</button>
-                        </div>
-                    </form>
+                    <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo $id; ?>/upload_croqui" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-upload"></i> Enviar/Atualizar Croqui
+                    </a>
                 </div>
             </div>
 

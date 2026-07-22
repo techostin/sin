@@ -13,13 +13,45 @@ if (!$user->isLoggedIn()) {
 
 $db = Database::getInstance()->getConnection();
 
-// Buscar propriedades para o select
-$stmtProp = $db->query("SELECT id, propriedade FROM propriedades ORDER BY propriedade");
-$propriedades = $stmtProp->fetchAll(PDO::FETCH_ASSOC);
+// Restringir dados para usuário comum: somente vínculos do próprio usuário
+$is_usuario_comum = isset($_SESSION['user_tipo']) && strtolower((string) $_SESSION['user_tipo']) === 'usuario';
+$associado_vinculado_id = null;
 
-// Buscar associados para o select
-$stmtAssoc = $db->query("SELECT id, nome, sobrenome FROM associados ORDER BY nome");
-$associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
+if ($is_usuario_comum) {
+    if (isset($_SESSION['user_table']) && $_SESSION['user_table'] === 'usuarios') {
+        $stmtUsr = $db->prepare("SELECT associado_id FROM usuarios WHERE id = ?");
+        $stmtUsr->execute([$_SESSION['user_id']]);
+        $usrData = $stmtUsr->fetch(PDO::FETCH_ASSOC);
+        if (!empty($usrData['associado_id'])) {
+            $associado_vinculado_id = (int) $usrData['associado_id'];
+        }
+    } elseif (isset($_SESSION['user_id'])) {
+        // Login direto pela tabela associados
+        $associado_vinculado_id = (int) $_SESSION['user_id'];
+    }
+}
+
+if ($is_usuario_comum) {
+    if ($associado_vinculado_id) {
+        $stmtProp = $db->prepare("SELECT id, propriedade FROM propriedades WHERE associado_id = ? ORDER BY propriedade");
+        $stmtProp->execute([$associado_vinculado_id]);
+        $propriedades = $stmtProp->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtAssoc = $db->prepare("SELECT id, nome, sobrenome FROM associados WHERE id = ? ORDER BY nome");
+        $stmtAssoc->execute([$associado_vinculado_id]);
+        $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $propriedades = [];
+        $associados = [];
+    }
+} else {
+    // Gestor/Admin: visão completa
+    $stmtProp = $db->query("SELECT id, propriedade FROM propriedades ORDER BY propriedade");
+    $propriedades = $stmtProp->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmtAssoc = $db->query("SELECT id, nome, sobrenome FROM associados ORDER BY nome");
+    $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 
 <div class="container-fluid px-4">
@@ -56,7 +88,17 @@ $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <form id="formPlanoManejo">
+            <form id="formPlanoManejo" novalidate>
+                <?php if ($is_usuario_comum && (!$associado_vinculado_id || count($associados) === 0)): ?>
+                    <div class="alert alert-warning">
+                        Não foi encontrado agricultor vinculado ao seu usuário. Entre em contato com o administrador.
+                    </div>
+                <?php endif; ?>
+                <?php if ($is_usuario_comum && count($propriedades) === 0): ?>
+                    <div class="alert alert-warning">
+                        Nenhuma propriedade vinculada ao seu usuário foi encontrada.
+                    </div>
+                <?php endif; ?>
                 <!-- Step 1: Identificação -->
                 <div class="step-content" id="step-1">
                     <h5 class="mb-3">Informações Básicas</h5>
@@ -64,18 +106,26 @@ $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
                         <div class="col-md-6 mb-3">
                             <label for="propriedade_id" class="form-label">Propriedade</label>
                             <select class="form-select" id="propriedade_id" name="propriedade_id" required>
-                                <option value="">Selecione a Propriedade</option>
+                                <option value="">
+                                    <?php echo $is_usuario_comum ? 'Selecione sua propriedade' : 'Selecione a Propriedade'; ?>
+                                </option>
                                 <?php foreach ($propriedades as $p): ?>
-                                    <option value="<?php echo $p['id']; ?>"><?php echo $p['propriedade']; ?></option>
+                                    <option value="<?php echo $p['id']; ?>" <?php echo ($is_usuario_comum && count($propriedades) === 1) ? 'selected' : ''; ?>>
+                                        <?php echo $p['propriedade']; ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="associado_id" class="form-label">Agricultor Responsável</label>
                             <select class="form-select" id="associado_id" name="associado_id" required>
-                                <option value="">Selecione o Agricultor</option>
+                                <option value="">
+                                    <?php echo $is_usuario_comum ? 'Selecione o agricultor vinculado' : 'Selecione o Agricultor'; ?>
+                                </option>
                                 <?php foreach ($associados as $a): ?>
-                                    <option value="<?php echo $a['id']; ?>"><?php echo $a['nome'] . ' ' . $a['sobrenome']; ?></option>
+                                    <option value="<?php echo $a['id']; ?>" <?php echo ($is_usuario_comum && count($associados) === 1) ? 'selected' : ''; ?>>
+                                        <?php echo $a['nome'] . ' ' . $a['sobrenome']; ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -125,16 +175,88 @@ $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
 
                 <!-- Step 3: Práticas -->
                 <div class="step-content d-none" id="step-3">
-                    <h5 class="mb-3">Práticas de Manejo</h5>
-                    <p class="text-muted small">Descreva brevemente como é feito o manejo em cada área:</p>
+                    <h5 class="mb-3">Práticas de Manejo e Conservação</h5>
+                    <p class="text-muted small">Descreva detalhadamente as práticas adotadas na propriedade para refletir a intenção do agricultor:</p>
+
+                    <!-- Linha 1 -->
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Manejo de Pragas e Doenças</label>
-                            <textarea class="form-control" name="manejo_pragas" rows="3" placeholder="Ex: Caldas, Controle Biológico..."></textarea>
+                            <label class="form-label">
+                                <i class="bi bi-bug text-danger"></i> Manejo de Pragas
+                            </label>
+                            <textarea class="form-control" name="manejo_pragas" rows="3" placeholder="Ex: Caldas naturais, Controle biológico (joaninhas, vespas), Armadilhas luminosas, Plantas repelentes..."></textarea>
+                            <small class="text-muted">Quais métodos usa para controlar pragas nas lavouras?</small>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Manejo de Solo e Adubação</label>
-                            <textarea class="form-control" name="adubacao_verde" rows="3" placeholder="Ex: Adubação verde, Compostagem..."></textarea>
+                            <label class="form-label">
+                                <i class="bi bi-virus text-danger"></i> Manejo de Doenças
+                            </label>
+                            <textarea class="form-control" name="manejo_doencas" rows="3" placeholder="Ex: Calda bordalesa, Biofertilizantes, Eliminação de plantas doentes, Variedades resistentes..."></textarea>
+                            <small class="text-muted">Como lida com doenças nas culturas?</small>
+                        </div>
+                    </div>
+
+                    <!-- Linha 2 -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-tree text-success"></i> Práticas de Conservação
+                            </label>
+                            <textarea class="form-control" name="praticas_conservacao" rows="3" placeholder="Ex: Curvas de nível, Plantio direto, Cobertura morta, Cordões vegetados, Terraceamento, Quebra-ventos..."></textarea>
+                            <small class="text-muted">Práticas para conservar solo, água e biodiversidade.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-arrow-repeat text-primary"></i> Rotação de Culturas
+                            </label>
+                            <textarea class="form-control" name="rotacao_culturas" rows="3" placeholder="Ex: Rotação milho/feijão/abóbora, Pousio, Consórcio de culturas, Sequência de plantio..."></textarea>
+                            <small class="text-muted">Qual o sistema de rotação ou consórcio utilizado?</small>
+                        </div>
+                    </div>
+
+                    <!-- Linha 3 -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-flower2 text-warning"></i> Compostagem / Adubação Verde
+                            </label>
+                            <textarea class="form-control" name="compostagem" rows="3" placeholder="Ex: Composteira, Vermicompostagem, Bokashi, Adubos verdes (crotalária, mucuna), Esterco curtido..."></textarea>
+                            <small class="text-muted">Como produz e aplica adubo orgânico na propriedade?</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-droplet text-info"></i> Biofertilizantes / Adubação
+                            </label>
+                            <textarea class="form-control" name="biofertilizantes" rows="3" placeholder="Ex: Biofertilizante líquido, EM (Microrganismos Eficazes), Chorume, Cinzas, Farinha de ossos..."></textarea>
+                            <small class="text-muted">Quais biofertilizantes ou preparados naturais utiliza?</small>
+                        </div>
+                    </div>
+
+                    <!-- Linha 4 -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-droplet-half text-primary"></i> Fontes de Água
+                            </label>
+                            <textarea class="form-control" name="fonte_agua" rows="3" placeholder="Ex: Nascente, Poço artesiano, Cacimba, Rio, Açude, Captação de chuva, Irrigação por gotejamento..."></textarea>
+                            <small class="text-muted">Quais fontes de água e sistemas de irrigação existem?</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-sun text-warning"></i> Clima / Microclima
+                            </label>
+                            <textarea class="form-control" name="clima" rows="3" placeholder="Ex: Temperatura média, Período chuvoso, Risco de geada, Ventos predominantes, Sombreamento natural..."></textarea>
+                            <small class="text-muted">Descreva as condições climáticas da propriedade.</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                <i class="bi bi-heart-pulse text-danger"></i> Manejo de Solo
+                            </label>
+                            <textarea class="form-control" name="adubacao_verde" rows="3" placeholder="Ex: Adubação verde, Compostagem, Cobertura morta, Plantio direto, Minhocário, Análise de solo..."></textarea>
+                            <small class="text-muted">Descreva o manejo de solo e adubação realizado.</small>
                         </div>
                     </div>
                 </div>
@@ -280,7 +402,7 @@ $(document).ready(function() {
                 <button type="button" class="btn-close position-absolute top-0 end-0 m-2 remove-cultivo" style="font-size: 0.7rem;"></button>
                 <div class="col-md-4 mb-2">
                     <label class="form-label small">Cultura</label>
-                    <input type="text" class="form-control form-control-sm" name="cultivos[${index}][cultura]" required>
+                    <input type="text" class="form-control form-control-sm" name="cultivos[${index}][cultura]">
                 </div>
                 <div class="col-md-4 mb-2">
                     <label class="form-label small">Área (ha)</label>
@@ -316,6 +438,13 @@ $(document).ready(function() {
             descricao_solo: $('textarea[name="descricao_solo"]').val(),
             topografia: $('select[name="topografia"]').val(),
             manejo_pragas: $('textarea[name="manejo_pragas"]').val(),
+            manejo_doencas: $('textarea[name="manejo_doencas"]').val(),
+            praticas_conservacao: $('textarea[name="praticas_conservacao"]').val(),
+            rotacao_culturas: $('textarea[name="rotacao_culturas"]').val(),
+            compostagem: $('textarea[name="compostagem"]').val(),
+            biofertilizantes: $('textarea[name="biofertilizantes"]').val(),
+            fonte_agua: $('textarea[name="fonte_agua"]').val(),
+            clima: $('textarea[name="clima"]').val(),
             adubacao_verde: $('textarea[name="adubacao_verde"]').val(),
             cultivos: []
         };
@@ -333,19 +462,6 @@ $(document).ready(function() {
         $('#preview-solo').text(formData.descricao_solo || '-');
         $('#preview-topo').text(formData.topografia || '-');
 
-        // Cultivos DataTable
-        const cultivosTable = $('#previewCultivosTable').DataTable({
-            destroy: true,
-            data: [],
-            pageLength: 5,
-            language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-            columns: [
-                { data: 'cultura' },
-                { data: 'area_cultivada_ha', render: function(data) { return data || '0.00'; } },
-                { data: 'tipo_semente' }
-            ]
-        });
-
         // Coletar cultivos
         let cultivos = [];
         $('#lista-cultivos .row').each(function() {
@@ -354,23 +470,49 @@ $(document).ready(function() {
             const semente = $(this).find('select[name*="[tipo_semente]"]').val();
             
             if (cultura) {
-                cultivos.push({cultura, area_cultivada_ha: parseFloat(area).toFixed(2), tipo_semente});
+                cultivos.push({
+                    cultura,
+                    area_cultivada_ha: (parseFloat(area) || 0).toFixed(2),
+                    tipo_semente: semente
+                });
             }
         });
         
         formData.cultivos = cultivos;
-        cultivosTable.clear().rows.add(cultivos).draw();
+        // Renderização resiliente: usa DataTable quando disponível; fallback para tabela simples.
+        if ($.fn.DataTable) {
+            const cultivosTable = $('#previewCultivosTable').DataTable({
+                destroy: true,
+                data: cultivos,
+                pageLength: 5,
+                language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
+                columns: [
+                    { data: 'cultura' },
+                    { data: 'area_cultivada_ha', render: function(data) { return data || '0.00'; } },
+                    { data: 'tipo_semente' }
+                ]
+            });
+            cultivosTable.draw();
+        } else {
+            const $tbody = $('#previewCultivosTable tbody');
+            $tbody.empty();
+            cultivos.forEach(c => {
+                $tbody.append(`<tr><td>${c.cultura}</td><td>${c.area_cultivada_ha}</td><td>${c.tipo_semente}</td></tr>`);
+            });
+        }
         $('#total-cultivos').text(cultivos.length + ' cultivos');
     };
 
     // Navegação entre etapas (Next)
     $('#next-btn').click(function() {
-        if (currentStep === 4) {
-            gerarPreview();
-        }
         if (currentStep < totalSteps) {
             currentStep++;
-            updateWizard();
+            try {
+                updateWizard();
+            } catch (error) {
+                console.error('Erro ao avançar etapa:', error);
+                // Não bloquear a navegação do wizard por erro de preview.
+            }
         }
     });
 
@@ -393,6 +535,13 @@ $(document).ready(function() {
             descricao_solo: $('textarea[name="descricao_solo"]').val().trim(),
             topografia: $('select[name="topografia"]').val(),
             manejo_pragas: $('textarea[name="manejo_pragas"]').val().trim(),
+            manejo_doencas: $('textarea[name="manejo_doencas"]').val().trim(),
+            praticas_conservacao: $('textarea[name="praticas_conservacao"]').val().trim(),
+            rotacao_culturas: $('textarea[name="rotacao_culturas"]').val().trim(),
+            compostagem: $('textarea[name="compostagem"]').val().trim(),
+            biofertilizantes: $('textarea[name="biofertilizantes"]').val().trim(),
+            fonte_agua: $('textarea[name="fonte_agua"]').val().trim(),
+            clima: $('textarea[name="clima"]').val().trim(),
             adubacao_verde: $('textarea[name="adubacao_verde"]').val().trim(),
             observacoes: $('textarea[name="observacoes"]').val().trim(),
             cultivos: []
@@ -428,7 +577,7 @@ $(document).ready(function() {
 
         console.log('Enviando:', formData); // Debug
 
-        fetch('<?php echo SITE_URL; ?>/api/plano-manejo', {
+        fetch('<?php echo SITE_URL; ?>/api/plano_manejo.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(formData)

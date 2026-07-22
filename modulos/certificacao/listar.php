@@ -9,6 +9,9 @@ if (!$user->isLoggedIn()) {
     require_once __DIR__ . '/../../includes/footer.php';
     exit;
 }
+
+$userNivel = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
+$isAdmin = $userNivel <= NIVEL_GESTOR;
 ?>
 
 <h1 class="mt-4">Certificações Participativas</h1>
@@ -18,9 +21,11 @@ if (!$user->isLoggedIn()) {
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Lista de Certificações</span>
         <div>
+            <?php if ($isAdmin): ?>
             <a href="<?php echo SITE_URL; ?>/certificacao/novo" class="btn btn-success btn-sm">
                 <i class="bi bi-plus-circle"></i> Nova Certificação
             </a>
+            <?php endif; ?>
             <a href="<?php echo SITE_URL; ?>/" class="btn btn-secondary btn-sm ms-2">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
@@ -124,6 +129,9 @@ require_once __DIR__ . '/../../includes/footer.php';
     src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap5.min.js"></script>
 
 <script>
+    const USER_NIVEL = <?php echo $userNivel; ?>;
+    const NIVEL_GESTOR = <?php echo NIVEL_GESTOR; ?>;
+    const IS_ADMIN_VIEW = USER_NIVEL <= NIVEL_GESTOR;
     let table;
 
     $(document).ready(function () {
@@ -165,6 +173,7 @@ require_once __DIR__ . '/../../includes/footer.php';
                 },
                 {
                     data: null,
+                    visible: IS_ADMIN_VIEW, // Ocultar coluna associado para o próprio associado
                     render: function (row) {
                         return `${row.associado_nome || ''} ${row.associado_sobrenome || ''}`;
                     }
@@ -219,37 +228,78 @@ require_once __DIR__ . '/../../includes/footer.php';
                     className: 'text-center',
                     orderable: false,
                     render: function (row) {
-                        return `
-                        <div class="btn-group" role="group">
-                            <a href="<?php echo SITE_URL; ?>/certificacao/${row.id}/editar" 
-                               class="btn btn-outline-primary btn-sm" 
-                               title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="<?php echo SITE_URL; ?>/certificacao/${row.id}/renovar" 
-                               class="btn btn-outline-success btn-sm" 
-                               title="Renovar">
-                                <i class="bi bi-arrow-repeat"></i>
-                            </a>
-                            <a href="<?php echo SITE_URL; ?>/certificacao/historico/${row.associado_id}" 
-                               class="btn btn-outline-secondary btn-sm" 
-                               title="Ver Histórico">
-                                <i class="bi bi-clock-history"></i>
-                            </a>
+                        let html = `<div class="btn-group" role="group">`;
+                        
+                        // Botões administrativos
+                        if (IS_ADMIN_VIEW) {
+                            html += `
+                                <a href="<?php echo SITE_URL; ?>/certificacao/${row.id}/editar" 
+                                   class="btn btn-outline-primary btn-sm" 
+                                   title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="<?php echo SITE_URL; ?>/certificacao/${row.id}/renovar" 
+                                   class="btn btn-outline-success btn-sm" 
+                                   title="Renovar">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </a>
+                            `;
+                        }
+
+                        // Botão Histórico (Admin vê de todos, Usuário vê o próprio na lista já)
+                        if (IS_ADMIN_VIEW) {
+                            html += `
+                                <a href="<?php echo SITE_URL; ?>/certificacao/historico/${row.associado_id}" 
+                                   class="btn btn-outline-secondary btn-sm" 
+                                   title="Ver Histórico">
+                                    <i class="bi bi-clock-history"></i>
+                                </a>
+                            `;
+                        }
+
+                        // Detalhes (Todos)
+                        html += `
                             <button type="button" 
                                     class="btn btn-outline-info btn-sm" 
                                     onclick="visualizarCertificacao(${row.id})"
                                     title="Ver Detalhes">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button type="button" 
-                                    class="btn btn-outline-danger btn-sm" 
-                                    onclick="excluirCertificacao(${row.id})"
-                                    title="Excluir">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    `;
+                        `;
+
+                        // Download (Somente se assinado)
+                        if (row.is_signed && row.documento_url) {
+                            html += `
+                                <a href="${row.documento_url}" 
+                                   class="btn btn-outline-dark btn-sm" 
+                                   target="_blank"
+                                   title="Baixar Certificado Assinado">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                            `;
+                        } else if (!IS_ADMIN_VIEW) {
+                            // Para o usuário comum, mostrar que está pendente de assinatura
+                             html += `
+                                <button class="btn btn-outline-secondary btn-sm" disabled title="Aguardando assinatura da certificadora">
+                                    <i class="bi bi-hourglass-split"></i>
+                                </button>
+                            `;
+                        }
+
+                        // Excluir (Admin)
+                        if (IS_ADMIN_VIEW) {
+                            html += `
+                                <button type="button" 
+                                        class="btn btn-outline-danger btn-sm" 
+                                        onclick="excluirCertificacao(${row.id})"
+                                        title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            `;
+                        }
+
+                        html += `</div>`;
+                        return html;
                     }
                 }
             ],
@@ -297,6 +347,32 @@ require_once __DIR__ . '/../../includes/footer.php';
         fetch(`<?php echo SITE_URL; ?>/api/certificacao/controller.php?id=${id}`)
             .then(response => response.json())
             .then(data => {
+                // Formatar assinatura
+                let assinaturaInfo = '';
+                if (data.assinatura_arquivo && data.assinatura_data) {
+                    const assData = new Date(data.assinatura_data);
+                    assinaturaInfo = `
+                        <div class="alert alert-success mt-2 mb-0 py-2">
+                            <small>
+                                <i class="bi bi-patch-check-fill text-success"></i> 
+                                <strong>Assinado digitalmente</strong> por ${data.assinatura_por || 'Administrador'} 
+                                em ${assData.toLocaleString('pt-BR')}
+                            </small>
+                        </div>
+                    `;
+                } else if (data.data_renovacao) {
+                    const renData = new Date(data.data_renovacao);
+                    assinaturaInfo = `
+                        <div class="alert alert-warning mt-2 mb-0 py-2">
+                            <small>
+                                <i class="bi bi-hourglass-split"></i> 
+                                <strong>Renovado</strong> em ${renData.toLocaleDateString('pt-BR')} - 
+                                aguardando upload do certificado assinado
+                            </small>
+                        </div>
+                    `;
+                }
+                
                 let html = `
                 <div class="row">
                     <div class="col-md-6">
@@ -310,9 +386,21 @@ require_once __DIR__ . '/../../includes/footer.php';
                         <p><strong>Organismo:</strong> ${data.organismo_certificador || '-'}</p>
                     </div>
                 </div>
+                ${assinaturaInfo}
                 <hr>
-                <p><strong>Associado:</strong> ${data.associado_nome} ${data.associado_sobrenome}</p>
-                ${data.nome_grupo ? `<p><strong>Grupo:</strong> ${data.nome_grupo}</p>` : ''}
+                <div class="d-flex justify-content-between align-items-center">
+                    <p class="mb-0"><strong>Associado:</strong> ${data.associado_nome} ${data.associado_sobrenome}</p>
+                    ${data.is_signed && data.documento_url ? `
+                        <a href="${data.documento_url}" class="btn btn-primary btn-sm" target="_blank">
+                            <i class="bi bi-file-earmark-pdf"></i> Baixar Certificado Assinado
+                        </a>
+                    ` : `
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-info-circle"></i> Disponível após assinatura
+                        </span>
+                    `}
+                </div>
+                ${data.nome_grupo ? `<p class="mt-2 text-muted small"><strong>Grupo:</strong> ${data.nome_grupo}</p>` : ''}
                 ${data.observacoes ? `<hr><p><strong>Observações:</strong><br>${data.observacoes}</p>` : ''}
             `;
 

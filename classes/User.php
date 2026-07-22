@@ -68,6 +68,14 @@ class User {
     }
 
     /**
+     * Helper para verificar se o usuário é Gestor ou Admin
+     * @return bool
+     */
+    public function isGestorOuAdmin(): bool {
+        return $this->hasPermission(NIVEL_GESTOR);
+    }
+
+    /**
      * Busca dados do usuário logado
      * @return array|false Dados do usuário ou false se não encontrado
      */

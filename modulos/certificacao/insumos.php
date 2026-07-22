@@ -2,6 +2,13 @@
 $page_title = "Insumos Orgânicos Aprovados";
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
+
+// Apenas Admin/Gestor podem acessar o catálogo de insumos aprovados
+if (!$user->hasPermission(NIVEL_GESTOR)) {
+    echo "<div class='alert alert-danger'>Acesso restrito a gestores e administradores.</div>";
+    require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
 ?>
 
 <div class="container-fluid px-4">
