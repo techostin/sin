@@ -77,7 +77,13 @@ class Propriedade {
      */
     public function getById($id) {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM propriedades WHERE id = :id");
+            $stmt = $this->db->prepare("
+                SELECT p.*, c.nome AS cidade_nome, e.uf AS estado_sigla
+                FROM propriedades p
+                LEFT JOIN cidades c ON p.cidade = c.id
+                LEFT JOIN estados e ON p.estado = e.uf
+                WHERE p.id = :id
+            ");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);

@@ -78,6 +78,20 @@ function gerarRelatorioPdf() {
         die("ID da visita não informado");
     }
 
+    // Se não for numérico, buscar pelo hashid para obter o id real
+    if (!is_numeric($id)) {
+        $db = Database::getInstance()->getConnection();
+        $stmt = $db->prepare("SELECT id FROM visitas_tecnicas WHERE hashid = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $id = $row['id'];
+        } else {
+            http_response_code(404);
+            die("Visita não encontrada");
+        }
+    }
+
     try {
         $report = new VisitaReport($id);
         $pdf = $report->gerarRelatorioVisita();
@@ -122,7 +136,12 @@ function listVisitas($db) {
     }
     
     if (isset($_GET['id'])) {
-        $sql .= " AND v.id = ?";
+        // Aceita tanto id numérico quanto hashid
+        if (is_numeric($_GET['id'])) {
+            $sql .= " AND v.id = ?";
+        } else {
+            $sql .= " AND v.hashid = ?";
+        }
         $params[] = $_GET['id'];
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
@@ -230,19 +249,29 @@ function createVisita($db, $input) {
         return;
     }
     
-    $sql = "INSERT INTO visitas_tecnicas (associado_id, propriedade_id, roteiro_id, data_visita, 
+    // Gerar hashid único
+    $hashid = '';
+    do {
+        $hashid = substr(md5(uniqid(mt_rand(), true)), 0, 16);
+        $stmtCheck = $db->prepare("SELECT id FROM visitas_tecnicas WHERE hashid = ?");
+        $stmtCheck->execute([$hashid]);
+    } while ($stmtCheck->fetch());
+    
+    $sql = "INSERT INTO visitas_tecnicas (hashid, associado_id, propriedade_id, roteiro_id, data_visita, 
                                         tecnico_responsavel_id, acompanhantes, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     
     try {
         $stmt = $db->prepare($sql);
         $stmt->execute([
+            $hashid,
             $input['associado_id'], $input['propriedade_id'], $input['roteiro_id'],
             $input['data_visita'], $input['tecnico_responsavel_id'] ?? $_SESSION['user_id'],
             $input['acompanhantes'] ?? null, $input['status'] ?? 'Agendada'
         ]);
         
-        echo json_encode(['success' => true, 'id' => $db->lastInsertId()]);
+        $insertId = $db->lastInsertId();
+        echo json_encode(['success' => true, 'id' => $insertId, 'hashid' => $hashid]);
     } catch (PDOException $e) {
         http_response_code(500);
         echo json_encode(['error' => 'Erro ao agendar visita', 'message' => $e->getMessage()]);

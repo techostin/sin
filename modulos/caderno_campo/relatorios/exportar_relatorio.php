@@ -64,6 +64,14 @@ switch ($relatorio) {
         }
         break;
 
+    case 'ocorrencias':
+        if ($tipo === 'excel') {
+            $arquivo = 'ocorrencias_excel.php';
+        } else {
+            $arquivo = 'ocorrencias.php';
+        }
+        break;
+
     case 'propriedade':
         $arquivo = 'propriedade.php'; // Apenas PDF disponível
         break;

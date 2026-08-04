@@ -12,6 +12,18 @@ class VisitaTecnica {
     }
 
     /**
+     * Gera um hashid único para uma nova visita
+     */
+    public function getNextHashid() {
+        do {
+            $hash = substr(md5(uniqid(mt_rand(), true)), 0, 16);
+            $stmt = $this->db->prepare("SELECT id FROM visitas_tecnicas WHERE hashid = ?");
+            $stmt->execute([$hash]);
+        } while ($stmt->fetch());
+        return $hash;
+    }
+
+    /**
      * Busca uma visita detalhada por ID
      */
     public function getById($id) {
@@ -25,6 +37,30 @@ class VisitaTecnica {
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($row) {
+            $row['resultado'] = json_decode($row['resultado'], true);
+            $row['checklist_template'] = json_decode($row['checklist_template'], true);
+        }
+        
+        return $row;
+    }
+
+    /**
+     * Busca uma visita detalhada por hashid
+     */
+    public function getByHashid($hashid) {
+        $sql = "SELECT v.*, a.nome as associado_nome, a.sobrenome as associado_sobrenome, 
+                       p.propriedade as propriedade_nome, r.nome as roteiro_nome, r.checklist as checklist_template
+                FROM visitas_tecnicas v
+                JOIN associados a ON v.associado_id = a.id
+                JOIN propriedades p ON v.propriedade_id = p.id
+                JOIN roteiros_inspecao r ON v.roteiro_id = r.id
+                WHERE v.hashid = ?";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$hashid]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($row) {

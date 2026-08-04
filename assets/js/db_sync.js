@@ -256,7 +256,6 @@ class OfflineSyncEngine {
         `;
         container.insertBefore(alertDiv, container.firstChild);
     }
-}
 
     checkPendingCount(callback) {
         if (!this.db) {

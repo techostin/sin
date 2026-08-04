@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </select>
             </div>
             <button type="submit" class="btn btn-success">Salvar</button>
-            <a href="<?php echo SITE_URL; ?>" class="btn btn-secondary">Voltar</a>
+            <a href="<?php echo SITE_URL; ?>/eventos" class="btn btn-secondary">Voltar</a>
         </form>
     </div>
 </div>

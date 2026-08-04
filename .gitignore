@@ -1,0 +1,16 @@
+# Dependências (gerenciadas pelo Composer/npm, não versionar)
+/vendor/
+/node_modules/
+
+# Conteúdo enviado por usuários (logos, fotos, certificados, croquis)
+/uploads/
+
+# Logs e ambiente
+*.log
+.env
+.env.local
+
+# SO / editor
+.DS_Store
+Thumbs.db
+*.swp

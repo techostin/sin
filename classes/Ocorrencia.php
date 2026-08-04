@@ -18,11 +18,14 @@ class Ocorrencia {
                         om.*, 
                         p.propriedade, 
                         l.nome as lavoura_nome,
-                        i.nome as insumo_nome
+                        i.nome as insumo_nome,
+                        a.nome as associado_nome,
+                        a.sobrenome as associado_sobrenome
                     FROM ocorrencias_manejo om
                     LEFT JOIN propriedades p ON om.propriedade_id = p.id
                     LEFT JOIN lavouras l ON om.lavoura_id = l.id
                     LEFT JOIN insumos i ON om.insumo_utilizado_id = i.id
+                    LEFT JOIN associados a ON om.associado_id = a.id
                     WHERE om.associado_id = :associado_id
                     ORDER BY om.data_deteccao DESC, om.created_at DESC";
             
@@ -32,6 +35,34 @@ class Ocorrencia {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Erro ao buscar ocorrências: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Retorna TODAS as ocorrências (para Gestor/Admin).
+     */
+    public function getAll() {
+        try {
+            $sql = "SELECT 
+                        om.*, 
+                        p.propriedade, 
+                        l.nome as lavoura_nome,
+                        i.nome as insumo_nome,
+                        a.nome as associado_nome,
+                        a.sobrenome as associado_sobrenome
+                    FROM ocorrencias_manejo om
+                    LEFT JOIN propriedades p ON om.propriedade_id = p.id
+                    LEFT JOIN lavouras l ON om.lavoura_id = l.id
+                    LEFT JOIN insumos i ON om.insumo_utilizado_id = i.id
+                    LEFT JOIN associados a ON om.associado_id = a.id
+                    ORDER BY om.created_at DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Erro ao buscar todas as ocorrências: " . $e->getMessage());
             return [];
         }
     }

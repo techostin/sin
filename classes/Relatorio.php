@@ -175,9 +175,12 @@ class Relatorio {
      */
     protected function buscarDadosAssociados() {
         $sql = "
-            SELECT a.*, ass.nome as associacao_nome 
+            SELECT a.id, a.nome, a.sobrenome, a.email, a.telefone,
+                   a.cpf, a.rg, a.status,
+                   ci.nome as cidade_nome, es.uf as estado_uf
             FROM associados a
-            LEFT JOIN associacoes ass ON a.vinculo = ass.id
+            LEFT JOIN cidades ci ON a.cidade = ci.id
+            LEFT JOIN estados es ON ci.estado = es.id
             WHERE 1=1
         ";
         

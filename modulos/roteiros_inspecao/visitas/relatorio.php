@@ -3,7 +3,22 @@ $page_title = "Detalhes da Inspeção";
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/menu.php';
 
+// Aceitar tanto id numérico quanto hashid
 $id = $_GET['id'] ?? null;
+$hashid = $_GET['hashid'] ?? null;
+
+// Se não tem id numérico mas tem hashid, buscar o id
+if (!$id && $hashid) {
+    require_once __DIR__ . '/../../../classes/Database.php';
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare("SELECT id FROM visitas_tecnicas WHERE hashid = ?");
+    $stmt->execute([$hashid]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $id = $row['id'];
+    }
+}
+
 if (!$id) {
     echo "<div class='alert alert-danger mt-4'>ID da visita ausente.</div>";
     require_once __DIR__ . '/../../../includes/footer.php';

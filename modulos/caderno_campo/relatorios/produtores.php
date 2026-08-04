@@ -55,9 +55,9 @@ try {
                 <th>Nome Completo</th>
                 <th>E-mail</th>
                 <th>Telefone</th>
-                <th>CPF/CNPJ</th>
-                <th>Associação</th>
-                <th>Cidade/UF</th>
+                <th>RG</th>
+                <th>Cidade</th>
+                <th>UF</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -75,9 +75,9 @@ try {
                 <td>' . htmlspecialchars($item['nome'] . ' ' . $item['sobrenome']) . '</td>
                 <td>' . htmlspecialchars($item['email'] ?? '-') . '</td>
                 <td>' . htmlspecialchars($item['telefone'] ?? '-') . '</td>
-                <td>' . htmlspecialchars($item['cpf_cnpj'] ?? '-') . '</td>
-                <td>' . htmlspecialchars($item['associacao_nome'] ?? 'Sem Vínculo') . '</td>
-                <td>' . htmlspecialchars(($item['cidade'] ?? '-') . '/' . ($item['uf'] ?? '-')) . '</td>
+                <td>' . htmlspecialchars($item['rg'] ?? '-') . '</td>
+                <td>' . htmlspecialchars($item['cidade_nome'] ?? '-') . '</td>
+                <td>' . htmlspecialchars($item['estado_uf'] ?? '-') . '</td>
                 <td><span class="badge ' . $statusClass . '">' . $statusText . '</span></td>
             </tr>';
         }

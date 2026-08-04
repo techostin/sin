@@ -1,3 +1,6 @@
+<!-- Overlay para fechar sidebar no mobile -->
+<div id="sidebar-overlay"></div>
+
 <!-- Sidebar -->
 <div class="bg-dark border-right" id="sidebar-wrapper">
     <div class="sidebar-heading text-white"><b><?php echo SITE_TITLE; ?></b></div>
@@ -12,19 +15,21 @@
         
         <!-- Menu Associados (Apenas Gestores/Admin) -->
         <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="#associadosSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-people-fill"></i> Associados</a>
-        <div class="collapse" id="associadosSubmenu">
-            <a href="<?php echo SITE_URL; ?>/associados" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Listar</a>
-            <a href="<?php echo SITE_URL; ?>/associado/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Cadastrar</a>
-        </div>
+        <a href="<?php echo SITE_URL; ?>/associados" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-people-fill"></i> Associados</a>
         <?php endif; ?>
 
         <!-- Menu Associações -->
-        <a href="#associacoesSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-building-fill"></i> Associações</a>
-        <div class="collapse" id="associacoesSubmenu">
-            <a href="<?php echo SITE_URL; ?>/associacoes" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Listar</a>
-            <a href="<?php echo SITE_URL; ?>/associacao/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Cadastrar</a>
+        <a href="<?php echo SITE_URL; ?>/associacoes" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-building-fill"></i> Associações</a>
+
+        <!-- Menu Produção Orgânica — Versão Agricultor (itens de consulta pessoal) -->
+        <?php if (!$user->hasPermission(NIVEL_GESTOR)): ?>
+        <a href="#organicoSubmenuAgricultor" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-patch-check-fill text-success"></i> Produção Orgânica</a>
+        <div class="collapse" id="organicoSubmenuAgricultor">
+            <a href="<?php echo SITE_URL; ?>/certificacoes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-award me-1"></i> Minhas Certificações</a>
+            <a href="<?php echo SITE_URL; ?>/plano-manejo/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-plus-circle me-1"></i> Novo Plano de Manejo</a>
+            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-journal-text me-1"></i> Meu Plano de Manejo</a>
         </div>
+        <?php endif; ?>
 
         <!-- Bloco Fiscalização & Conformidade (Apenas Admin/Gestor) -->
         <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
@@ -52,16 +57,6 @@
             <!-- Relatórios -->
             <div class="list-group-item bg-dark text-white-50 ps-5 py-1" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;">Relatórios</div>
             <a href="<?php echo SITE_URL; ?>/relatorios-admin" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-file-earmark-bar-graph me-1"></i> Relatórios Administrativos</a>
-        </div>
-        <?php endif; ?>
-
-        <!-- Menu Produção Orgânica — Versão Agricultor (itens de consulta pessoal) -->
-        <?php if (!$user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="#organicoSubmenuAgricultor" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-patch-check-fill text-success"></i> Produção Orgânica</a>
-        <div class="collapse" id="organicoSubmenuAgricultor">
-            <a href="<?php echo SITE_URL; ?>/certificacoes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-award me-1"></i> Minhas Certificações</a>
-            <a href="<?php echo SITE_URL; ?>/plano-manejo/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-plus-circle me-1"></i> Novo Plano de Manejo</a>
-            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-journal-text me-1"></i> Meu Plano de Manejo</a>
         </div>
         <?php endif; ?>
 
@@ -136,43 +131,26 @@
         </div>
 
         <!-- Menu Fornecedores -->
-        <a href="#fornecedoresSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-truck"></i> Fornecedores</a>
-        <div class="collapse" id="fornecedoresSubmenu">
-            <a href="<?php echo SITE_URL; ?>/fornecedor" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Listar</a>
-            <a href="<?php echo SITE_URL; ?>/fornecedor/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Cadastrar</a>
-        </div>
+        <a href="<?php echo SITE_URL; ?>/fornecedor" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-truck"></i> Fornecedores</a>
 
         <!-- Menu Contas (Apenas Gestores/Admin) -->
         <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="#contasSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-cash-stack"></i> Contas</a>
-        <div class="collapse" id="contasSubmenu">
-            <a href="<?php echo SITE_URL; ?>/contas" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Listar Contas</a>
-            <a href="<?php echo SITE_URL; ?>/conta/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Cadastrar Conta</a>
-        </div>
+        <a href="<?php echo SITE_URL; ?>/contas" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-cash-stack"></i> Contas</a>
         <?php endif; ?>
 
         <!-- Menu Eventos -->
-        <a href="#eventosSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-calendar-event-fill"></i> Eventos</a>
-        <div class="collapse" id="eventosSubmenu">
-            <a href="<?php echo SITE_URL; ?>/eventos" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Listar Eventos</a>
-            <a href="<?php echo SITE_URL; ?>/eventos/presencas" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Presenças</a>
-            <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-                <a href="<?php echo SITE_URL; ?>/evento/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Cadastrar Evento</a>
-            <?php endif; ?>
-        </div>
+        <a href="<?php echo SITE_URL; ?>/eventos" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-calendar-event-fill"></i> Eventos</a>
         
         <!-- Menu Usuários (Apenas Gestores/Admin) -->
         <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="#usuariosSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-person-badge-fill"></i> Usuários</a>
-        <div class="collapse" id="usuariosSubmenu">
-            <a href="<?php echo SITE_URL; ?>/usuarios" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Listar Usuários</a>
-            <a href="<?php echo SITE_URL; ?>/usuario/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5">Cadastrar Usuário</a>
-        </div>
+        <a href="<?php echo SITE_URL; ?>/usuarios" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-person-badge-fill"></i> Usuários</a>
         <?php endif; ?>
 
         <a href="<?php echo SITE_URL; ?>/logout" class="list-group-item list-group-item-action bg-danger text-white"><i class="bi bi-box-arrow-right"></i> Sair</a>
     </div>
 </div>
+
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var indicator = document.createElement('div');
@@ -199,6 +177,60 @@ document.addEventListener('DOMContentLoaded', function() {
         updateIndicator();
         window.addEventListener('online', updateIndicator);
         window.addEventListener('offline', updateIndicator);
+    }
+
+    // ── Sidebar overlay: fechar ao clicar fora ──
+    var overlay = document.getElementById('sidebar-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            document.getElementById('wrapper').classList.remove('toggled');
+            overlay.classList.remove('active');
+        });
+    }
+
+    // ── menu-toggle desktop: também mostra/oculta overlay no mobile ──
+    var menuToggle = document.getElementById('menu-toggle');
+    if (menuToggle) {
+        menuToggle.addEventListener('click', function() {
+            if (window.innerWidth < 992 && overlay) {
+                overlay.classList.toggle('active');
+            }
+        });
+    }
+
+    // ── Bottom Nav: marcar item ativo pela URL ──
+    var path = window.location.pathname;
+    var bnavItems = document.querySelectorAll('.bottom-nav-item[data-page]');
+    bnavItems.forEach(function(item) {
+        var page = item.dataset.page;
+        var isActive = false;
+        if (page === 'home' && (path === '/' || path.includes('dashboard'))) isActive = true;
+        if (page === 'campo' && path.includes('atividade')) isActive = true;
+        if (page === 'sync' && path.includes('sincronizacao')) isActive = true;
+        if (isActive) item.classList.add('active');
+    });
+
+    // ── Bottom Nav: sync badge count ──
+    if (window.syncEngine && typeof window.syncEngine.checkPendingCount === 'function') {
+        var checkBadge = function() {
+            window.syncEngine.checkPendingCount(function(count) {
+                var badge = document.getElementById('bnav-sync-badge');
+                var label = document.getElementById('bnav-sync-label');
+                if (badge) {
+                    if (count > 0) {
+                        badge.textContent = count > 99 ? '99+' : count;
+                        badge.classList.add('visible');
+                        if (label) label.textContent = count + ' pend.';
+                    } else {
+                        badge.classList.remove('visible');
+                        if (label) label.textContent = 'Sync';
+                    }
+                }
+            });
+        };
+        // Aguarda DB inicializar
+        setTimeout(checkBadge, 1200);
+        window.addEventListener('online', function() { setTimeout(checkBadge, 500); });
     }
 });
 </script>

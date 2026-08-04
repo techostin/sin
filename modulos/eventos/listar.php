@@ -62,11 +62,16 @@ try {
 ?>
 <h1 class="mt-4">Eventos</h1>
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span>Lista de Eventos</span>
-        <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-            <a href="<?php echo SITE_URL; ?>/evento/novo" class="btn btn-primary btn-sm">Adicionar Novo Evento</a>
-        <?php endif; ?>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="<?php echo SITE_URL; ?>/eventos/presencas" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-people-fill"></i> Presenças em Eventos
+            </a>
+            <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
+                <a href="<?php echo SITE_URL; ?>/evento/novo" class="btn btn-primary btn-sm">Adicionar Novo Evento</a>
+            <?php endif; ?>
+        </div>
     </div>
     <div class="card-body">
         <table id="eventosTable" class="table table-striped table-bordered" style="width:100%">

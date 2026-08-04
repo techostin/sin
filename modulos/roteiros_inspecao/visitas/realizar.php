@@ -18,7 +18,20 @@ if (!$user->hasPermission(NIVEL_GESTOR)) {
     exit;
 }
 
+// Aceitar tanto id numérico quanto hashid
 $id = $_GET['id'] ?? null;
+$hashid = $_GET['hashid'] ?? null;
+
+if (!$id && $hashid) {
+    $db = Database::getInstance()->getConnection();
+    $stmt = $db->prepare("SELECT id FROM visitas_tecnicas WHERE hashid = ?");
+    $stmt->execute([$hashid]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $id = $row['id'];
+    }
+}
+
 if (!$id || !is_numeric($id)) {
     echo "<div class='alert alert-danger'>ID de visita inválido.</div>";
     require_once __DIR__ . '/../../../includes/footer.php';

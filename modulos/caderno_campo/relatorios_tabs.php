@@ -55,7 +55,12 @@ try {
             'dados' => $reportManager->getPropriedadesReport($filtros),
             'colunas' => ['Nome', 'Cidade', 'Área Total', 'Responsável', 'Total Lavouras'],
             'campos' => ['nome', 'cidade', 'area_total', 'responsavel_nome', 'total_lavouras']
-        ]
+        ],
+        'ocorrencias' => [
+            'titulo' => 'Ocorrências',
+            'dados' => $reportManager->getOcorrenciasReport($filtros),
+            'colunas' => ['Data', 'Tipo', 'Nome Comum', 'Severidade', 'Status', 'Propriedade', 'Produtor'],
+            'campos' => ['data_deteccao', 'tipo', 'nome_comum', 'severidade', 'status', 'propriedade_nome', 'associado_nome']
     ];
     
 } catch (Exception $e) {
@@ -127,11 +132,14 @@ try {
                         aria-controls="<?php echo $chave; ?>" 
                         aria-selected="<?php echo $chave === 'atividades' ? 'true' : 'false'; ?>">
                     <i class="bi <?php 
-                        echo $chave === 'atividades' ? 'bi-calendar-check-fill' : 
-                             ($chave === 'insumos' ? 'bi-box-seam-fill' : 
-                             ($chave === 'lotes' ? 'bi-collection-fill' : 
-                             ($chave === 'producao' ? 'bi-arrow-up-circle-fill' : 
-                             'bi-house-fill'))); 
+                        $icons = [
+                            'atividades' => 'bi-calendar-check-fill',
+                            'insumos' => 'bi-box-seam-fill',
+                            'lotes' => 'bi-collection-fill',
+                            'producao' => 'bi-arrow-up-circle-fill',
+                            'ocorrencias' => 'bi-exclamation-triangle-fill'
+                        ];
+                        echo $icons[$chave] ?? 'bi-house-fill';
                     ?> me-1"></i> 
                     <?php echo $relatorio['titulo']; ?>
                 </button>

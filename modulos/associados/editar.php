@@ -19,6 +19,9 @@ exit;
 $id = intval($_GET['id']);
 $mensagem = '';
 
+// Determinar se é modo visualização (gestor ou view=1)
+$isViewMode = ($_SESSION['user_nivel'] != NIVEL_ADMIN) || isset($_GET['view']);
+
 // Buscar associado
 $associado = $associadoModel->getById($id);
 
@@ -38,7 +41,7 @@ exit;
 // Olhando o final do arquivo original... não parece ser usado no formulário de edição,
 // pois o formulário usa SELECT options baseados nos IDs.
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (!$isViewMode && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Validar CSRF
 if (!CSRFProtection::validatePostRequest()) {
@@ -93,184 +96,178 @@ $mensagem = '<div class="alert alert-danger">' . $resultado . '</div>';
 }
 }
 ?>
-<h1 class="mt-4">Editar Associado</h1>
+<?php if ($isViewMode): ?>
+    <h1 class="mt-4">Visualizar Associado</h1>
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle-fill me-1"></i> Modo de visualização. Apenas administradores podem editar os dados dos associados.
+    </div>
+<?php else: ?>
+    <h1 class="mt-4">Editar Associado</h1>
+<?php endif; ?>
 <?php if ($mensagem)
     echo $mensagem; ?>
 <div class="card">
     <div class="card-body">
         <form method="post" action="<?php echo SITE_URL; ?>/associado/<?php echo $id; ?>/editar" enctype="multipart/form-data">
-            <?php echo CSRFProtection::getTokenField(); ?>
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="mb-3">
-                        <label for="nome" class="form-label">Nome</label>
-                        <input type="text" class="form-control" id="nome" name="nome"
-                            value="<?php echo htmlspecialchars($associado['nome']); ?>" required>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="foto" class="form-label">Foto 3x4</label>
-                        <?php if (!empty($associado['foto_url']) && file_exists('uploads/associados/' . $associado['foto_url'])): ?>
-                            <div class="mb-2">
-                                <img src="<?php echo SITE_URL; ?>/uploads/associados/<?php echo htmlspecialchars($associado['foto_url']); ?>"
-                                    class="img-thumbnail" style="max-width: 120px; max-height: 160px; object-fit: cover;"
-                                    alt="Foto do associado" id="foto_atual">
-                                <div class="mt-1">
-                                    <small class="text-muted">Foto atual</small>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                        <input type="file" class="form-control" id="foto" name="foto" accept="image/*">
-                        <div class="form-text">
-                            <small>Formatos: JPG, PNG, WEBP. Máximo: 2MB. Dimensões recomendadas: 3x4
-                                (300x400px)</small>
-                        </div>
-                        <div id="preview_foto" class="mt-2"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email"
-                            value="<?php echo htmlspecialchars($associado['email']); ?>" required>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="cpf" class="form-label">CPF</label>
-                        <input type="text" class="form-control mask-cpf" id="cpf" name="cpf"
-                            value="<?php echo htmlspecialchars($associado['cpf']); ?>" placeholder="000.000.000-00">
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="telefone" class="form-label">Telefone</label>
-                        <input type="text" class="form-control mask-telefone" id="telefone" name="telefone"
-                            value="<?php echo htmlspecialchars($associado['telefone']); ?>"
-                            placeholder="(00) 00000-0000">
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="cep" class="form-label">CEP</label>
-                        <input type="text" class="form-control mask-cep" id="cep" name="cep"
-                            value="<?php echo htmlspecialchars($associado['cep']); ?>" placeholder="00000-000">
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="endereco" class="form-label">Endereço</label>
-                        <input type="text" class="form-control" id="endereco" name="endereco"
-                            value="<?php echo htmlspecialchars($associado['endereco']); ?>">
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="mb-3">
-                        <label for="estado" class="form-label">Estado</label>
-                        <select class="form-select" id="estado" name="estado" required>
-                            <option value="">Selecione um estado</option>
-                            <?php foreach ($estados as $estado): ?>
-                                <option value="<?php echo $estado['id']; ?>" <?php echo ($associado['estado'] == $estado['id']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($estado['nome'] . ' (' . $estado['uf'] . ')'); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="mb-3">
-                        <label for="cidade" class="form-label">Cidade</label>
-                        <select class="form-select" id="cidade" name="cidade" required disabled>
-                            <option value="">Selecione um Estado Primeiro</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Campo Status - Apenas para Administradores -->
-            <?php if (isset($_SESSION['user_tipo']) && $_SESSION['user_tipo'] === 'Admin'): ?>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="status" class="form-label">Status <span class="text-muted">(Apenas
-                                    Administradores)</span></label>
-                            <select class="form-select" id="status" name="status" required>
-                                <option value="ativo" <?php echo ($associado['status'] === 'ativo') ? 'selected' : ''; ?>>
-                                    Ativo</option>
-                                <option value="inativo" <?php echo ($associado['status'] === 'inativo') ? 'selected' : ''; ?>>
-                                    Inativo</option>
-                                <option value="pendente" <?php echo ($associado['status'] === 'pendente') ? 'selected' : ''; ?>>Pendente</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Status Atual</label>
-                            <div class="form-control-plaintext">
-                                <span class="badge bg-<?php
-                                switch ($associado['status']) {
-                                    case 'ativo':
-                                        echo 'success';
-                                        break;
-                                    case 'inativo':
-                                        echo 'danger';
-                                        break;
-                                    case 'pendente':
-                                        echo 'warning';
-                                        break;
-                                    default:
-                                        echo 'secondary';
-                                }
-                                ?>"><?php echo ucfirst(htmlspecialchars($associado['status'])); ?></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php else: ?>
-                <!-- Para usuários não-administradores, apenas exibir o status atual -->
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <div class="form-control-plaintext">
-                                <span class="badge bg-<?php
-                                switch ($associado['status']) {
-                                    case 'ativo':
-                                        echo 'success';
-                                        break;
-                                    case 'inativo':
-                                        echo 'danger';
-                                        break;
-                                    case 'pendente':
-                                        echo 'warning';
-                                        break;
-                                    default:
-                                        echo 'secondary';
-                                }
-                                ?>"><?php echo ucfirst(htmlspecialchars($associado['status'])); ?></span>
-                                <small class="text-muted d-block mt-1">Apenas administradores podem alterar o status</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <?php if (!$isViewMode): ?>
+                <?php echo CSRFProtection::getTokenField(); ?>
             <?php endif; ?>
 
-            <button type="submit" class="btn btn-success">Salvar Alterações</button>
-            <a href="<?php echo SITE_URL; ?>/caderno-campo/propriedade/novo?associado_id=<?php echo $id; ?>"
-                class="btn btn-info" target="_blank">
-                <i class="bi bi-house-add"></i> Cadastrar Propriedade para este Associado
-            </a>
-            <a href="<?php echo SITE_URL; ?>/associados" class="btn btn-secondary">Voltar</a>
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="nome" class="form-label">Nome</label>
+                                    <input type="text" class="form-control" id="nome" name="nome"
+                                        value="<?php echo htmlspecialchars($associado['nome']); ?>" required
+                                        <?php echo $isViewMode ? 'disabled' : ''; ?> />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email"
+                                        value="<?php echo htmlspecialchars($associado['email']); ?>" required
+                                        <?php echo $isViewMode ? 'disabled' : ''; ?> />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="cpf" class="form-label">CPF</label>
+                                    <input type="text" class="form-control mask-cpf" id="cpf" name="cpf"
+                                        value="<?php echo htmlspecialchars($associado['cpf']); ?>" placeholder="000.000.000-00"
+                                        <?php echo $isViewMode ? 'disabled' : ''; ?> />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label for="telefone" class="form-label">Telefone</label>
+                                    <input type="text" class="form-control mask-telefone" id="telefone" name="telefone"
+                                        value="<?php echo htmlspecialchars($associado['telefone']); ?>" placeholder="(00) 00000-0000"
+                                        <?php echo $isViewMode ? 'disabled' : ''; ?> />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label for="cep" class="form-label">CEP</label>
+                                    <input type="text" class="form-control mask-cep" id="cep" name="cep"
+                                        value="<?php echo htmlspecialchars($associado['cep']); ?>" placeholder="00000-000"
+                                        <?php echo $isViewMode ? 'disabled' : ''; ?> />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label for="endereco" class="form-label">Endereço</label>
+                                    <input type="text" class="form-control" id="endereco" name="endereco"
+                                        value="<?php echo htmlspecialchars($associado['endereco']); ?>"
+                                        <?php echo $isViewMode ? 'disabled' : ''; ?> />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="estado" class="form-label">Estado</label>
+                                    <select class="form-select" id="estado" name="estado" required
+                                        <?php echo $isViewMode ? 'disabled' : ''; ?>>
+                                        <option value="">Selecione um estado</option>
+                                        <?php foreach ($estados as $estado): ?>
+                                            <option value="<?php echo $estado['id']; ?>" <?php echo ($associado['estado'] == $estado['id']) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($estado['nome'] . ' (' . $estado['uf'] . ')'); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="cidade" class="form-label">Cidade</label>
+                                    <select class="form-select" id="cidade" name="cidade" required disabled>
+                                        <option value="">Selecione um Estado Primeiro</option>
+                                    </select>
+                                </div>
+
+                                <?php if (isset($_SESSION['user_tipo']) && $_SESSION['user_tipo'] === 'Admin' && !$isViewMode): ?>
+                                    <div class="col-md-6">
+                                        <label for="status" class="form-label">Status <span class="text-muted">(Apenas Administradores)</span></label>
+                                        <select class="form-select" id="status" name="status" required>
+                                            <option value="ativo" <?php echo ($associado['status'] === 'ativo') ? 'selected' : ''; ?>>Ativo</option>
+                                            <option value="inativo" <?php echo ($associado['status'] === 'inativo') ? 'selected' : ''; ?>>Inativo</option>
+                                            <option value="pendente" <?php echo ($associado['status'] === 'pendente') ? 'selected' : ''; ?>>Pendente</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <div class="w-100">
+                                            <label class="form-label d-block">Status Atual</label>
+                                            <div class="form-control-plaintext p-0">
+                                                <span class="badge bg-<?php
+                                                    switch ($associado['status']) {
+                                                        case 'ativo': echo 'success'; break;
+                                                        case 'inativo': echo 'danger'; break;
+                                                        case 'pendente': echo 'warning'; break;
+                                                        default: echo 'secondary'; break;
+                                                    }
+                                                ?>"><?php echo ucfirst(htmlspecialchars($associado['status'])); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <div class="w-100">
+                                            <label class="form-label d-block">Status</label>
+                                            <div class="form-control-plaintext p-0">
+                                                <span class="badge bg-<?php
+                                                    switch ($associado['status']) {
+                                                        case 'ativo': echo 'success'; break;
+                                                        case 'inativo': echo 'danger'; break;
+                                                        case 'pendente': echo 'warning'; break;
+                                                        default: echo 'secondary'; break;
+                                                    }
+                                                ?>"><?php echo ucfirst(htmlspecialchars($associado['status'])); ?></span>
+                                            </div>
+                                            <?php if ($isViewMode): ?>
+                                                <small class="text-muted d-block mt-1">Apenas administradores podem alterar o status</small>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="foto" class="form-label">Foto 3x4</label>
+                                <?php if (!empty($associado['foto_url']) && file_exists('uploads/associados/' . $associado['foto_url'])): ?>
+                                    <div class="text-center mb-3">
+                                        <img src="<?php echo SITE_URL; ?>/uploads/associados/<?php echo htmlspecialchars($associado['foto_url']); ?>"
+                                            class="img-fluid rounded border" style="max-height: 260px; object-fit: cover;"
+                                            alt="Foto do associado" id="foto_atual">
+                                        <div class="mt-2">
+                                            <small class="text-muted">Foto atual</small>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                                <input type="file" class="form-control" id="foto" name="foto" accept="image/*"
+                                    <?php echo $isViewMode ? 'disabled' : ''; ?> />
+                                <div class="form-text mt-2">
+                                    <small>Formatos: JPG, PNG, WEBP. Máximo: 2MB. Dimensões recomendadas: 3x4 (300x400px)</small>
+                                </div>
+                                <div id="preview_foto" class="mt-3"></div>
+                            </div>
+
+                            <div class="d-grid gap-2 mt-4">
+                                <?php if (!$isViewMode): ?>
+                                    <button type="submit" class="btn btn-success">Salvar Alterações</button>
+                                    <a href="<?php echo SITE_URL; ?>/caderno-campo/propriedade/novo?associado_id=<?php echo $id; ?>"
+                                        class="btn btn-info" target="_blank">
+                                        <i class="bi bi-house-add"></i> Cadastrar Propriedade
+                                    </a>
+                                <?php endif; ?>
+                                <a href="<?php echo SITE_URL; ?>/associados" class="btn btn-secondary">Voltar</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </form>
     </div>
-</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

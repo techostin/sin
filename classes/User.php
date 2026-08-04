@@ -116,5 +116,70 @@ class User {
         }
         return null;
     }
+
+    /**
+     * Verifica se o perfil do usuario esta completo (campos de perfil preenchidos)
+     * @return bool
+     */
+    public function hasPerfilCompleto() {
+        if (!$this->isLoggedIn()) return false;
+        $currentUser = $this->getCurrentUser();
+        if (!$currentUser) return false;
+
+        $nivel = $_SESSION['user_nivel'] ?? null;
+        
+        // Admin nao precisa preencher perfil extra
+        if ($nivel == NIVEL_ADMIN) return true;
+        
+        // Gestor precisa de orgao, setor, especialidade
+        if ($nivel == NIVEL_GESTOR) {
+            return !empty($currentUser['orgao']) && !empty($currentUser['setor']) && !empty($currentUser['especialidade']);
+        }
+        
+        // Usuario comum precisa de nicho
+        if ($nivel == NIVEL_USUARIO) {
+            return !empty($currentUser['nicho']);
+        }
+        
+        return false;
+    }
+
+    /**
+     * Atualiza os dados de perfil do usuario
+     * @param array $dados Dados a serem atualizados
+     * @return bool
+     */
+    public function updatePerfil($dados) {
+        if (!$this->isLoggedIn()) return false;
+        
+        $table = $_SESSION['user_table'] ?? 'associados';
+        $id = $_SESSION['user_id'];
+        
+        // Campos permitidos para atualizacao
+        $allowed = ['orgao', 'setor', 'especialidade', 'nicho'];
+        $sets = [];
+        $params = [];
+        
+        foreach ($dados as $key => $value) {
+            if (in_array($key, $allowed)) {
+                $sets[] = "{$key} = :{$key}";
+                $params[":{$key}"] = $value;
+                // Guardar na sessao
+                $_SESSION["user_{$key}"] = $value;
+            }
+        }
+        
+        if (empty($sets)) return false;
+        
+        $params[':id'] = $id;
+        $sql = "UPDATE {$table} SET " . implode(', ', $sets) . " WHERE id = :id";
+        
+        try {
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute($params);
+        } catch (PDOException $e) {
+            error_log("Erro ao atualizar perfil: " . $e->getMessage());
+            return false;
+        }
+    }
 }
-?>

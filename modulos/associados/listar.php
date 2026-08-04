@@ -78,8 +78,52 @@ $associados = $associado->getAll();
 
 ?>
 
-<h1 class="mt-4">Associados Cadastrados</h1>
-<p>Abaixo está a lista de todos os associados registrados no sistema.</p>
+<style>
+    .associados-header {
+        gap: 1rem;
+    }
+    .associados-header .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    .dataTables_wrapper .dt-buttons {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_length {
+        float: none !important;
+        text-align: right;
+        margin-top: 0.5rem;
+    }
+    @media (max-width: 767px) {
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_length {
+            text-align: left;
+        }
+    }
+</style>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 associados-header">
+    <div>
+        <h1 class="h3 mb-0">Lista de Associados</h1>
+        <p class="mb-0 text-muted">Abaixo está a lista de todos os associados registrados no sistema.</p>
+    </div>
+    <div class="header-actions">
+        <?php if (in_array($_SESSION['user_nivel'], [NIVEL_ADMIN, NIVEL_GESTOR], true)): ?>
+            <a href="<?php echo SITE_URL; ?>/associado/novo" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> Adicionar Novo
+            </a>
+            <a href="<?php echo SITE_URL; ?>/associados/relatorio" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-pdf"></i> Gerar Relatório
+            </a>
+        <?php endif; ?>
+    </div>
+</div>
 
 <?php if (!empty($mensagem)): ?>
     <div class="alert alert-<?php echo $tipo_mensagem; ?> alert-dismissible fade show" role="alert">
@@ -89,19 +133,6 @@ $associados = $associado->getAll();
 <?php endif; ?>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Lista de Associados</span>
-        <div class="btn-group">
-            <?php if (in_array($_SESSION['user_nivel'], [NIVEL_ADMIN, NIVEL_GESTOR], true)): ?>
-                <a href="<?php echo SITE_URL; ?>/associado/novo" class="btn btn-primary btn-sm me-2">
-                    <i class="bi bi-plus-circle"></i> Adicionar Novo
-                </a>
-                <a href="<?php echo SITE_URL; ?>/associados/relatorio" class="btn btn-success btn-sm">
-                    <i class="bi bi-file-earmark-pdf"></i> Gerar Relatório
-                </a>
-            <?php endif; ?>
-        </div>
-    </div>
     <div class="card-body">
         <div class="table-responsive">
             <table id="associadosTable" class="table table-striped table-hover table-responsive-stack">
@@ -120,20 +151,24 @@ $associados = $associado->getAll();
                 <tbody>
                     <?php if (count($associados) > 0): ?>
                         <?php foreach ($associados as $assoc): ?>
-                            <tr>
+                            <?php 
+                            $foto_url = $assoc['foto_url'] ?? null;
+                            $rowPhotoUrl = ($foto_url && file_exists('uploads/associados/' . $foto_url)) ? SITE_URL . '/uploads/associados/' . htmlspecialchars($foto_url) : '';
+                            $rowNome = htmlspecialchars((isset($assoc['nome']) ? $assoc['nome'] : '') . ' ' . (isset($assoc['sobrenome']) ? $assoc['sobrenome'] : ''));
+                            ?>
+                            <tr <?php echo $rowPhotoUrl ? 'data-full-url="' . $rowPhotoUrl . '" data-nome="' . $rowNome . '"' : ''; ?>>
                                 <td data-label="Foto">
-                                    <?php 
-                                    $foto_url = $assoc['foto_url'] ?? null;
-                                    if ($foto_url && file_exists('uploads/associados/' . $foto_url)): 
-                                    ?>
-                                        <img src="<?php echo SITE_URL; ?>/uploads/associados/<?php echo htmlspecialchars($foto_url); ?>" 
-                                             class="img-thumbnail rounded-circle" 
-                                             style="width: 50px; height: 50px; object-fit: cover;" 
+                                    <?php if ($rowPhotoUrl): ?>
+                                        <img src="<?php echo $rowPhotoUrl; ?>" 
+                                             class="associado-photo img-thumbnail rounded-circle" 
+                                             style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" 
+                                             data-full-url="<?php echo $rowPhotoUrl; ?>"
+                                             data-nome="<?php echo $rowNome; ?>"
                                              alt="Foto do associado"
-                                             title="ID: <?php echo htmlspecialchars($assoc['id'] ?? ''); ?>">
+                                             title="Clique para ampliar">
                                     <?php else: ?>
-                                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mx-md-0" 
-                                             style="width: 50px; height: 50px; font-size: 20px;"
+                                        <div class="associado-photo-placeholder bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mx-md-0" 
+                                             style="width: 50px; height: 50px; font-size: 20px; cursor: default;"
                                              title="ID: <?php echo htmlspecialchars($assoc['id'] ?? ''); ?>">
                                             <i class="bi bi-person"></i>
                                         </div>
@@ -146,11 +181,13 @@ $associados = $associado->getAll();
                                 <td data-label="Status"><span class="badge bg-<?php echo (isset($assoc['status']) && $assoc['status'] == 'ativo') ? 'success' : 'warning'; ?>"><?php echo ucfirst(htmlspecialchars(isset($assoc['status']) ? $assoc['status'] : '')); ?></span></td>
                                 <td data-label="Nível"><?php echo htmlspecialchars(isset($assoc['tipo']) ? $assoc['tipo'] : ''); ?></td>
                                 <td data-label="Ações">
-                                    <a href="<?php echo SITE_URL; ?>/associado/<?php echo $assoc['id']; ?>/editar" class="btn btn-info btn-sm" title="Editar"><i class="bi bi-pencil-fill"></i></a>
                                     <?php if ($_SESSION['user_nivel'] == NIVEL_ADMIN): ?>
+                                        <a href="<?php echo SITE_URL; ?>/associado/<?php echo $assoc['id']; ?>/editar" class="btn btn-info btn-sm" title="Editar"><i class="bi bi-pencil-fill"></i></a>
                                         <button type="button" class="btn btn-danger btn-sm" title="Excluir" onclick="confirmarExclusao(<?php echo $assoc['id']; ?>)">
                                             <i class="bi bi-trash-fill"></i>
                                         </button>
+                                    <?php else: ?>
+                                        <a href="<?php echo SITE_URL; ?>/associado/<?php echo $assoc['id']; ?>/editar?view=1" class="btn btn-secondary btn-sm" title="Visualizar"><i class="bi bi-eye-fill"></i></a>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -166,9 +203,28 @@ $associados = $associado->getAll();
     </div>
 </div>
 
-<?php
-require_once __DIR__ . '/../../includes/footer.php';
-?>
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="photoModalLabel">Foto do Associado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="photoModalImage" src="" alt="Foto ampliada" class="img-fluid rounded">
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
 <script>
 // Função para confirmar a exclusão de um associado
@@ -230,6 +286,33 @@ $(document).ready(function() {
                 },
                 "responsive": true,
                 "autoWidth": false,
+                "dom": '<"row mb-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 text-end"Bf>>rtip',
+                "buttons": [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                        className: 'btn btn-outline-success btn-sm me-1',
+                        exportOptions: {
+                            columns: ':not(:last-child)'
+                        }
+                    },
+                    {
+                        extend: 'pdfHtml5',
+                        text: '<i class="bi bi-file-earmark-pdf"></i> PDF',
+                        className: 'btn btn-outline-danger btn-sm me-1',
+                        exportOptions: {
+                            columns: ':not(:last-child)'
+                        }
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="bi bi-printer"></i> Imprimir',
+                        className: 'btn btn-outline-secondary btn-sm',
+                        exportOptions: {
+                            columns: ':not(:last-child)'
+                        }
+                    }
+                ],
                 "columnDefs": [
                     {
                         "targets": -1, // última coluna (ações)
@@ -240,9 +323,45 @@ $(document).ready(function() {
             });
             
             console.log("DataTable inicializado com sucesso!");
-            
+
+            // Inicializar click para ampliar foto do associado nas imagens
+            document.querySelectorAll('.associado-photo').forEach(function(photo) {
+                photo.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    var imagemUrl = this.dataset.fullUrl || this.src;
+                    var nome = this.dataset.nome || 'Foto do Associado';
+                    document.getElementById('photoModalLabel').textContent = nome;
+                    document.getElementById('photoModalImage').src = imagemUrl;
+                    var photoModal = new bootstrap.Modal(document.getElementById('photoModal'));
+                    photoModal.show();
+                });
+            });
+
+            // Inicializar clique na linha para ampliar a foto, exceto em botões/links
+            document.querySelectorAll('#associadosTable tbody tr[data-full-url]').forEach(function(row) {
+                row.style.cursor = 'pointer';
+                row.addEventListener('click', function(event) {
+                    if (event.target.closest('a, button, input, select, textarea, .btn')) {
+                        return;
+                    }
+                    var imagemUrl = this.dataset.fullUrl;
+                    var nome = this.dataset.nome || 'Foto do Associado';
+                    if (!imagemUrl) {
+                        return;
+                    }
+                    document.getElementById('photoModalLabel').textContent = nome;
+                    document.getElementById('photoModalImage').src = imagemUrl;
+                    var photoModal = new bootstrap.Modal(document.getElementById('photoModal'));
+                    photoModal.show();
+                });
+            });
         } catch (error) {
             console.error("Erro ao inicializar DataTable:", error);
         }
     });
 </script>
+
+<?php
+require_once __DIR__ . '/../../includes/footer.php';
+?>
+</create_file>

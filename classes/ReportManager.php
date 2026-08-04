@@ -338,16 +338,22 @@ class ReportManager {
         
         // Adiciona filtros adicionais
         if (!empty($filtros['tipo'])) {
-            $where .= ' AND tipo = :tipo';
+            $where .= ' AND u.tipo = :tipo';
             $params[':tipo'] = $filtros['tipo'];
         }
         
         if (!empty($filtros['status'])) {
-            $where .= ' AND status = :status';
+            $where .= ' AND u.status = :status';
             $params[':status'] = $filtros['status'];
         }
         
-        $sql = "SELECT * FROM usuarios WHERE $where ORDER BY nome";
+        $sql = "SELECT u.id, u.nome, u.email, u.tipo, u.status, 
+                       u.ultimo_login as ultimo_acesso,
+                       a.cpf, a.rg
+                FROM usuarios u
+                LEFT JOIN associados a ON u.associado_id = a.id
+                WHERE $where 
+                ORDER BY u.nome";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         
@@ -378,9 +384,12 @@ class ReportManager {
             $params[':cidade'] = $filtros['cidade'];
         }
         
-        $sql = "SELECT a.*, ass.nome as associacao_nome 
+        $sql = "SELECT a.id, a.nome, a.sobrenome, a.email, a.telefone, 
+                a.cpf, a.rg, a.status,
+                ci.nome as cidade_nome, es.uf as estado_uf
                 FROM associados a
-                LEFT JOIN associacoes ass ON a.vinculo = ass.id
+                LEFT JOIN cidades ci ON a.cidade = ci.id
+                LEFT JOIN estados es ON ci.estado = es.id
                 WHERE $where 
                 ORDER BY a.nome";
         
@@ -401,8 +410,11 @@ class ReportManager {
         
         $sql = "SELECT a.*, 
                 (SELECT COUNT(*) FROM associados WHERE vinculo = a.id) as total_associados,
-                (SELECT COUNT(*) FROM propriedades p JOIN associados assoc ON p.associado_id = assoc.id WHERE assoc.vinculo = a.id) as total_propriedades
+                (SELECT COUNT(*) FROM propriedades p JOIN associados assoc ON p.associado_id = assoc.id WHERE assoc.vinculo = a.id) as total_propriedades,
+                ci.nome as cidade_nome, es.uf as estado_uf
                 FROM associacoes a
+                LEFT JOIN cidades ci ON a.cidade = ci.id
+                LEFT JOIN estados es ON ci.estado = es.id
                 ORDER BY a.nome";
         
         $stmt = $this->db->prepare($sql);
@@ -434,10 +446,18 @@ class ReportManager {
             $params[':tipo_fornecedor'] = $filtros['tipo_fornecedor'];
         }
         
-        $sql = "SELECT * FROM fornecedores WHERE $where ORDER BY razao_social";
+        // Buscar cidade por nome/ID usando join para retornar nome legível
+        $sql = "SELECT f.id, f.razao_social, f.nome as nome_fantasia, f.cnpj as cnpj_cpf, 
+               ci.nome as cidade_nome, es.uf as estado_uf, f.telefone, f.email
+            FROM fornecedores f
+            LEFT JOIN cidades ci ON f.cidade = ci.id
+            LEFT JOIN estados es ON ci.estado = es.id
+            WHERE $where
+            ORDER BY f.razao_social";
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -545,6 +565,65 @@ class ReportManager {
                 LEFT JOIN produtos pr ON pr.lavoura_id = l.id
                 $where
                 ORDER BY l.nome";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Retorna os dados para o relatório de ocorrências de manejo
+     */
+    public function getOcorrenciasReport($filtros = []) {
+        $where = " WHERE 1=1 ";
+        $params = [];
+        
+        if ($this->user_nivel > NIVEL_GESTOR) {
+            $where .= " AND om.associado_id = :user_id ";
+            $params[':user_id'] = $this->user_id;
+        }
+        
+        if (!empty($filtros['tipo'])) {
+            $where .= ' AND om.tipo = :tipo';
+            $params[':tipo'] = $filtros['tipo'];
+        }
+        
+        if (!empty($filtros['severidade'])) {
+            $where .= ' AND om.severidade = :severidade';
+            $params[':severidade'] = $filtros['severidade'];
+        }
+        
+        if (!empty($filtros['status'])) {
+            $where .= ' AND om.status = :status';
+            $params[':status'] = $filtros['status'];
+        }
+        
+        if (!empty($filtros['propriedade_id'])) {
+            $where .= ' AND om.propriedade_id = :propriedade_id';
+            $params[':propriedade_id'] = $filtros['propriedade_id'];
+        }
+        
+        if (!empty($filtros['data_inicio'])) {
+            $where .= ' AND om.data_deteccao >= :data_inicio';
+            $params[':data_inicio'] = $filtros['data_inicio'];
+        }
+        
+        if (!empty($filtros['data_fim'])) {
+            $where .= ' AND om.data_deteccao <= :data_fim';
+            $params[':data_fim'] = $filtros['data_fim'];
+        }
+        
+        $sql = "SELECT om.*, p.propriedade as propriedade_nome, 
+                l.nome as lavoura_nome, i.nome as insumo_nome,
+                a.nome as associado_nome, a.sobrenome as associado_sobrenome
+                FROM ocorrencias_manejo om
+                LEFT JOIN propriedades p ON om.propriedade_id = p.id
+                LEFT JOIN lavouras l ON om.lavoura_id = l.id
+                LEFT JOIN insumos i ON om.insumo_utilizado_id = i.id
+                LEFT JOIN associados a ON om.associado_id = a.id
+                $where
+                ORDER BY om.data_deteccao DESC, om.created_at DESC";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

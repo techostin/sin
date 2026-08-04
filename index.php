@@ -2,9 +2,16 @@
 require_once 'config/config.php';
 require_once 'classes/AtividadeDiaria.php';
 // --- INÍCIO DO ROTEADOR AMIGÁVEL ---
-if (isset($_GET['url'])) {
-    $url = trim($_GET['url'], '/');
-    $parts = explode('/', $url);
+// Só entra no roteador se a URL não estiver vazia
+$rawUrl = isset($_GET['url']) ? trim($_GET['url'], '/') : '';
+if ($rawUrl !== '') {
+    $parts = explode('/', $rawUrl);
+
+    // ===== ROTA DE LOGIN =====
+    if ($parts[0] === 'login') {
+        require __DIR__ . '/login.php';
+        exit;
+    }
 
     // ===== ROTAS DE RELATÓRIOS =====
 
@@ -531,9 +538,23 @@ if (isset($_GET['url'])) {
         exit;
     }
 
-    // Relatório da Visita (ex: /app/visita-tecnica/123/relatorio)
+    // Realizar Inspeção por hashid (ex: /app/visita-tecnica/abc123/realizar)
+    if ($parts[0] === 'visita-tecnica' && isset($parts[1]) && !is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'realizar') {
+        $_GET['hashid'] = $parts[1];
+        require __DIR__ . '/modulos/roteiros_inspecao/visitas/realizar.php';
+        exit;
+    }
+
+    // Relatório da Visita por ID (ex: /app/visita-tecnica/123/relatorio)
     if ($parts[0] === 'visita-tecnica' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'relatorio') {
         $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/roteiros_inspecao/visitas/relatorio.php';
+        exit;
+    }
+
+    // Relatório da Visita por hashid (ex: /app/visita-tecnica/abc123/relatorio)
+    if ($parts[0] === 'visita-tecnica' && isset($parts[1]) && !is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'relatorio') {
+        $_GET['hashid'] = $parts[1];
         require __DIR__ . '/modulos/roteiros_inspecao/visitas/relatorio.php';
         exit;
     }
@@ -724,17 +745,15 @@ if (isset($_GET['url'])) {
         exit;
     }
 
-    // ===== ROTAS DE AUTENTICAÇÃO =====
-
-    // Login
-    if ($parts[0] === 'login' && !isset($parts[1])) {
-        require __DIR__ . '/login.php';
+    // Logout
+    if ($parts[0] === 'logout') {
+        require __DIR__ . '/logout.php';
         exit;
     }
 
-    // Logout
-    if ($parts[0] === 'logout' && !isset($parts[1])) {
-        require __DIR__ . '/logout.php';
+    // Rota para completar perfil do usuário
+    if ($parts[0] === 'completar-perfil') {
+        require __DIR__ . '/completar_perfil.php';
         exit;
     }
 
@@ -743,6 +762,12 @@ if (isset($_GET['url'])) {
     // API para buscar cidades
     if ($parts[0] === 'api' && isset($parts[1]) && $parts[1] === 'cidades') {
         require __DIR__ . '/api/get_cidades.php';
+        exit;
+    }
+
+    // API de Ocorrências
+    if ($parts[0] === 'api' && $parts[1] === 'ocorrencias') {
+        require __DIR__ . '/api/ocorrencias.php';
         exit;
     }
 

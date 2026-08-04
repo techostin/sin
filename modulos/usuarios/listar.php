@@ -43,9 +43,14 @@ try {
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Lista de Usuários</span>
-        <?php if (in_array($_SESSION['user_nivel'], [NIVEL_ADMIN, NIVEL_GESTOR], true)): ?>
-            <a href="<?php echo SITE_URL; ?>/usuario/novo" class="btn btn-primary btn-sm">Adicionar Novo Usuário</a>
-        <?php endif; ?>
+        <div>
+            <?php if (in_array($_SESSION['user_nivel'], [NIVEL_ADMIN, NIVEL_GESTOR], true)): ?>
+                <a href="<?php echo SITE_URL; ?>/usuario/novo" class="btn btn-primary btn-sm">Adicionar Novo Usuário</a>
+                <a href="<?php echo SITE_URL; ?>/api/relatorios/admin_export.php?tipo=pdf&relatorio=usuarios" target="_blank" class="btn btn-danger btn-sm ms-2">
+                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Gerar PDF
+                </a>
+            <?php endif; ?>
+        </div>
     </div>
     <div class="card-body">
         <table id="usuariosTable" class="table table-striped table-bordered" style="width:100%">

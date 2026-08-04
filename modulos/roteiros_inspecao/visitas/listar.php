@@ -144,12 +144,14 @@ $(document).ready(function() {
             render: row => {
                 let btns = '<div class="btn-group">';
                 if (row.status === 'Agendada' && IS_ADMIN) {
-                    btns += `<a href="${SITE_URL}/visita-tecnica/${row.id}/realizar"
+                    const hid = row.hashid || row.id;
+                    btns += `<a href="${SITE_URL}/visita-tecnica/${hid}/realizar"
                                 class="btn btn-outline-primary btn-sm" title="Realizar Inspeção">
                                 <i class="bi bi-clipboard-check"></i> Realizar</a>`;
                 }
                 if (row.status === 'Realizada') {
-                    btns += `<a href="${SITE_URL}/visita-tecnica/${row.id}/relatorio"
+                    const hid = row.hashid || row.id;
+                    btns += `<a href="${SITE_URL}/visita-tecnica/${hid}/relatorio"
                                 class="btn btn-outline-success btn-sm" title="Ver Detalhes">
                                 <i class="bi bi-eye"></i> Ver</a>`;
                     btns += `<a href="${SITE_URL}/api/roteiros_inspecao.php?action=relatorio&id=${row.id}"
