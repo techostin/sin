@@ -4,8 +4,8 @@
  * e preencher registros existentes com hash únicos
  */
 
-require_once 'config/config.php';
-require_once 'classes/Database.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../classes/Database.php';
 
 $db = Database::getInstance()->getConnection();
 
