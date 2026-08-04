@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 445 445" width="445" height="445">
+  <!-- Fundo branco arredondado (badge shape) -->
+  <rect x="10" y="80" width="425" height="290" rx="40" ry="40" fill="#ffffff" stroke="#222222" stroke-width="8"/>
+
+  <!-- Folha grande verde escura (esquerda, curvada para cima) -->
+  <path d="M30 340 Q10 220 120 160 Q200 120 240 200 Q200 280 120 310 Z" fill="#1a7a3a"/>
+  <!-- Reflexo folha grande (nervura clara) -->
+  <path d="M60 320 Q50 240 130 185 Q160 165 180 190" fill="none" stroke="#2eaa55" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Folha verde clara (direita, posição inferior) -->
+  <path d="M160 370 Q180 290 310 260 Q390 240 410 310 Q340 360 240 360 Z" fill="#2eaa55"/>
+  <!-- Nervura folha clara -->
+  <path d="M185 360 Q230 310 330 278" fill="none" stroke="#5cd688" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Círculo "O" grande — aro escuro -->
+  <circle cx="165" cy="230" r="90" fill="none" stroke="#222222" stroke-width="38"/>
+  <!-- Interior do "O" — fundo branco para ler texto sobre ele -->
+  <circle cx="165" cy="230" r="71" fill="#ffffff"/>
+
+  <!-- PRODUTO (acima do O) -->
+  <text x="168" y="162" font-family="'Arial','Helvetica',sans-serif" font-size="22" font-weight="900" fill="#222222" text-anchor="middle" letter-spacing="2">PRODUTO</text>
+  <!-- Seta pequena acima do A de PRODUTO -->
+  <polygon points="193,147 198,140 203,147" fill="#222222"/>
+
+  <!-- RGÂNICO (à direita do O, grande) -->
+  <text x="282" y="218" font-family="'Arial','Helvetica',sans-serif" font-size="62" font-weight="900" fill="#222222" text-anchor="start" letter-spacing="-1">RG</text>
+  <text x="282" y="218" font-family="'Arial','Helvetica',sans-serif" font-size="62" font-weight="900" fill="#222222" text-anchor="start" letter-spacing="-1">
+    <tspan>RG</tspan><tspan fill="#1a7a3a">Â</tspan><tspan>NICO</tspan>
+  </text>
+
+  <!-- BRASIL -->
+  <text x="316" y="268" font-family="'Arial','Helvetica',sans-serif" font-size="46" font-weight="900" fill="#222222" text-anchor="middle" letter-spacing="1">BRASIL</text>
+
+  <!-- SISTEMA PARTICIPATIVO -->
+  <text x="342" y="298" font-family="'Arial','Helvetica',sans-serif" font-size="18" font-weight="700" fill="#444444" text-anchor="middle" letter-spacing="0.5">SISTEMA</text>
+  <text x="342" y="320" font-family="'Arial','Helvetica',sans-serif" font-size="18" font-weight="700" fill="#444444" text-anchor="middle" letter-spacing="0.5">PARTICIPATIVO</text>
+</svg>
