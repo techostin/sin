@@ -64,11 +64,10 @@ document.getElementById('formEdit').addEventListener('submit', function(e){
     e.preventDefault();
     const fd = new FormData(this);
     fd.append('_method', 'PUT');
-    // Se não houve upload novo, remove o campo logo para não sobrescrever a atual
     if (!fd.get('logo') || fd.get('logo').size === 0) fd.delete('logo');
-    // Se o usuário não alterou a URL e não enviou arquivo, não envia logo_url vazio
     if (fd.get('logo_url') === '') fd.delete('logo_url');
-    fetch(apiUrl, { method: 'POST', body: fd })
+    fd.append('csrf_token', window.CSRF_TOKEN);
+    fetch(apiUrl, { method: 'POST', headers: window.csrfHeaders(), body: fd })
         .then(r=>r.json()).then(j=>{ if (j.success) { alert('Atualizado'); window.location.href = '<?php echo SITE_URL; ?>/certificadoras_list.php'; } else alert('Erro: ' + JSON.stringify(j)); })
         .catch(err=>{ console.error(err); alert('Erro'); });
 });

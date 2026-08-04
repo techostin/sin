@@ -180,11 +180,11 @@ function confirmarPresencaModal(btn, eventoId) {
     
     fetch(window.SITE_URL + '/api/toggle_presenca.php', {
         method: 'POST',
-        headers: {
+        headers: Object.assign({
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: 'evento_id=' + encodeURIComponent(eventoId)
+        }, window.csrfHeaders()),
+        body: 'evento_id=' + encodeURIComponent(eventoId) + '&csrf_token=' + encodeURIComponent(window.CSRF_TOKEN)
     })
     .then(response => response.json())
     .then(data => {

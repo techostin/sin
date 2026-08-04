@@ -83,6 +83,40 @@ if (!$user->isLoggedIn()) {
     </script>
     <script src="<?php echo SITE_URL; ?>/assets/js/eventos.js"></script>
     <script src="<?php echo SITE_URL; ?>/assets/js/eventos_modal_debug.js"></script>
+    <?php require_once __DIR__ . '/../classes/CSRFProtection.php'; ?>
+    <script>
+        // Token CSRF global para requisições fetch/AJAX
+        window.CSRF_TOKEN = '<?php echo htmlspecialchars(CSRFProtection::getToken(), ENT_QUOTES); ?>';
+        // Helper para obter o header CSRF
+        window.csrfHeaders = function() {
+            return { 'X-CSRF-Token': window.CSRF_TOKEN };
+        };
+        // Wrapper global: injeta o token CSRF em TODAS as requisições fetch
+        // (mesma origem), sem precisar editar cada chamada. Respeita headers
+        // já definidos explicitamente.
+        (function() {
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = function(input, init) {
+                init = init || {};
+                const method = (init.method || (input && input.method) || 'GET').toUpperCase();
+                // Apenas métodos de escrita exigem o token no servidor
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].indexOf(method) !== -1) {
+                    init.headers = init.headers || {};
+                    if (!(init.headers instanceof Headers)) {
+                        const h = {};
+                        if (init.headers) {
+                            for (const k in init.headers) h[k] = init.headers[k];
+                        }
+                        h['X-CSRF-Token'] = window.CSRF_TOKEN;
+                        init.headers = h;
+                    } else if (!init.headers.has('X-CSRF-Token')) {
+                        init.headers.append('X-CSRF-Token', window.CSRF_TOKEN);
+                    }
+                }
+                return originalFetch(input, init);
+            };
+        })();
+    </script>
     <?php if (isset($_SESSION['mostrar_modal_eventos']) && $_SESSION['mostrar_modal_eventos'] === true): ?>
     <script>
         // Definir variável global para o JavaScript saber que deve mostrar o modal

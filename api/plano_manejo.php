@@ -21,6 +21,16 @@ if (!$user->isLoggedIn()) {
 $db = Database::getInstance()->getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Proteção CSRF para métodos de escrita
+if (in_array($method, ['POST', 'PUT', 'DELETE', 'PATCH'], true)) {
+    require_once __DIR__ . '/../classes/CSRFProtection.php';
+    if (!CSRFProtection::validateToken(CSRFProtection::tokenFromRequest())) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Token CSRF inválido ou ausente.']);
+        exit();
+    }
+}
+
 // Roteador de métodos
 switch ($method) {
     case 'GET':

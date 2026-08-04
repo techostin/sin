@@ -19,6 +19,17 @@ if ($method === 'POST' && (($_POST['_method'] ?? '') === 'PUT')) {
     $method = 'PUT';
 }
 
+// Proteção CSRF para métodos de escrita
+if (in_array($method, ['POST', 'PUT', 'DELETE'], true)) {
+    require_once __DIR__ . '/../classes/CSRFProtection.php';
+    $csrfToken = CSRFProtection::tokenFromRequest();
+    if (!CSRFProtection::validateToken($csrfToken)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Token CSRF inválido ou ausente.']);
+        exit;
+    }
+}
+
 $db = Database::getInstance()->getConnection();
 
 switch($method) {

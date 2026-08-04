@@ -48,8 +48,10 @@ document.getElementById('formCertificadora').addEventListener('submit', function
     const fd = new FormData(form);
     if (!fd.get('logo') || fd.get('logo').size === 0) fd.delete('logo');
     if (!fd.get('logo_url')) fd.delete('logo_url');
+    fd.append('csrf_token', window.CSRF_TOKEN);
     fetch('<?php echo SITE_URL; ?>/api/certificadoras.php', {
         method: 'POST',
+        headers: window.csrfHeaders(),
         body: fd
     }).then(r=>r.json()).then(j=>{
         if (j.success) { alert('Criado com sucesso'); window.location.href = '<?php echo SITE_URL; ?>/certificadoras_list.php'; }

@@ -24,6 +24,14 @@ if (!$user->isLoggedIn()) {
     exit;
 }
 
+// Proteção CSRF (reforço além do header X-Requested-With)
+require_once __DIR__ . '/../classes/CSRFProtection.php';
+if (!CSRFProtection::validateToken(CSRFProtection::tokenFromRequest())) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'erro' => 'Token CSRF inválido ou ausente.']);
+    exit;
+}
+
 $evento_id = $_POST['evento_id'] ?? null;
 if (!$evento_id || !is_numeric($evento_id)) {
     http_response_code(400);
