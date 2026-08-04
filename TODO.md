@@ -1,16 +1,21 @@
-# TODO - Menu Produção Orgânica para Admin/Gestor
+# TODO - Substituir sigla SINPORG pela logo e atualizar footer
 
-## Etapas Concluídas
+## Etapas
 
-- [x] 1. Analisar includes/menu.php - estrutura do menu
-- [x] 2. Mover bloco "Produção Orgânica" para imediatamente após "Associações" no menu lateral
-- [x] 3. Alterar condição de NIVEL_ADMIN para NIVEL_GESTOR nos submenus (Roteiros, Novo Plano, Insumos Aprovados)
-- [x] 4. Corrigir index.php (roteador) - rota logout e completar-perfil
-- [x] 5. Adicionar guards de backend NIVEL_GESTOR nos 5 arquivos de backend (validacao.php, insumos.php, listar.php, realizar.php, cadastrar.php)
+- [x] **login.php**
+  - [x] Trocar imagem do selo Orgânico Brasil pela logo `logo_Sinporg-2.png`
+  - [x] Remover o `<h1>SINPORG</h1>` do cabeçalho
+  - [x] Substituir subtítulo por "Sistema Integrado da Produção Orgânica"
+  - [x] Atualizar footer do login com direitos reservados
 
-## Etapas Pendentes
+- [x] **includes/menu.php**
+  - [x] Substituir sigla SINPORG pela logo `logo_Sinporg-2.png` no cabeçalho da sidebar
 
-- [ ] 6. Testar login como admin em https://localhost/app
-- [ ] 7. Verificar se "Produção Orgânica" aparece logo abaixo de "Associações"
-- [ ] 8. Verificar se todos os submenus estão disponíveis para admin e gestor
+- [x] **includes/footer.php**
+  - [x] Adicionar direitos reservados a Edmildon L. Santos no rodapé global
 
+## Verificação
+
+- [x] Confirmar exibição da logo no login
+- [x] Confirmar exibição da logo no menu lateral
+- [x] Confirmar footer em todas as páginas

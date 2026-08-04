@@ -42,18 +42,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     
     if (!empty($dados) && $user->updatePerfil($dados)) {
-        $success_message = "Perfil atualizado com sucesso!";
-        
-        // Redirecionar após atualizar
-        if ($nivel == NIVEL_USUARIO) {
-            header("Location: " . SITE_URL . "/caderno-campo/dashboard-agricultor");
-        } else {
-            header("Location: " . SITE_URL . "/");
-        }
+        // Redirecionar para meu-perfil para completar os dados pessoais
+        header("Location: " . SITE_URL . "/meu-perfil");
         exit;
     } else {
         $error_message = "Erro ao atualizar perfil. Tente novamente.";
     }
+}
+
+// Se acessar /completar-perfil diretamente com perfil já completo, mas redirecionar para /meu-perfil
+if ($user->hasPerfilCompleto()) {
+    header("Location: " . SITE_URL . "/meu-perfil");
+    exit;
 }
 ?>
 <!DOCTYPE html>

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once 'config/config.php';
 require_once 'classes/User.php';
 require_once 'classes/Database.php';
@@ -6,9 +6,8 @@ require_once 'classes/Database.php';
 $user = new User();
 $error_message = '';
 
-// Se o usuÃ¡rio jÃ¡ estiver logado, redireciona para o dashboard apropriado
+// Se o usuário já estiver logado, redireciona para o dashboard apropriado
 if ($user->isLoggedIn()) {
-    // UsuÃ¡rios comuns vÃ£o para o dashboard simplificado do Agricultor
     if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
         header("Location: " . SITE_URL . "/caderno-campo/dashboard-agricultor");
     } else {
@@ -17,43 +16,53 @@ if ($user->isLoggedIn()) {
     exit;
 }
 
-// Etapa 2: Gestor informando Ã³rgÃ£o e especialidade
+// Etapa 2: Gestor informando órgão e especialidade
 if (isset($_POST['etapa']) && $_POST['etapa'] === '2' && isset($_SESSION['login_temp'])) {
     $temp = $_SESSION['login_temp'];
-    $orgao = trim($_POST['orgao'] ?? '');
+    $orgao        = trim($_POST['orgao']        ?? '');
     $especialidade = trim($_POST['especialidade'] ?? '');
-    $setor = trim($_POST['setor'] ?? '');
+    $setor        = trim($_POST['setor']        ?? '');
 
     if (empty($orgao) || empty($especialidade)) {
-        $error_message = "Preencha o Ã³rgÃ£o e a especialidade/cargo.";
+        $error_message = "Preencha o órgão e a especialidade/cargo.";
     } else {
         try {
-            $db = Database::getInstance()->getConnection();
+            $db    = Database::getInstance()->getConnection();
             $table = $temp['user_table'];
-            $id = $temp['user_id'];
-            
+            $id    = $temp['user_id'];
+
             $stmt = $db->prepare("UPDATE {$table} SET orgao = :orgao, setor = :setor, especialidade = :especialidade WHERE id = :id");
             $stmt->execute([
-                ':orgao' => $orgao,
-                ':setor' => $setor,
+                ':orgao'         => $orgao,
+                ':setor'         => $setor,
                 ':especialidade' => $especialidade,
-                ':id' => $id
+                ':id'            => $id,
             ]);
 
-            // Agora sim, efetuar login completo
-            $_SESSION['user_id'] = $temp['user_id'];
-            $_SESSION['user_nivel'] = $temp['user_nivel'];
-            $_SESSION['user_nome'] = $temp['user_nome'];
-            $_SESSION['user_tipo'] = $temp['user_tipo'];
-            $_SESSION['user_table'] = $temp['user_table'];
-            $_SESSION['user_orgao'] = $orgao;
-            $_SESSION['user_setor'] = $setor;
+            $_SESSION['user_id']           = $temp['user_id'];
+            $_SESSION['user_nivel']        = $temp['user_nivel'];
+            $_SESSION['user_nome']         = $temp['user_nome'];
+            $_SESSION['user_tipo']         = $temp['user_tipo'];
+            $_SESSION['user_table']        = $temp['user_table'];
+            $_SESSION['user_orgao']        = $orgao;
+            $_SESSION['user_setor']        = $setor;
             $_SESSION['user_especialidade'] = $especialidade;
             $_SESSION['mostrar_modal_eventos'] = true;
 
+            // Primeiro acesso do gestor: redirecionar para completar perfil
+            $isPrimeiroAcesso = !empty($temp['primeiro_acesso']);
+            if ($isPrimeiroAcesso) {
+                $_SESSION['primeiro_acesso'] = true;
+            }
+
             unset($_SESSION['login_temp']);
 
-            header("Location: " . SITE_URL . "/");
+            // Redirecionar: primeiro acesso vai para /meu-perfil, senão para o dashboard
+            if ($isPrimeiroAcesso) {
+                header("Location: " . SITE_URL . "/meu-perfil");
+            } else {
+                header("Location: " . SITE_URL . "/");
+            }
             exit;
         } catch (Exception $e) {
             $error_message = "Erro ao salvar dados. Tente novamente.";
@@ -63,69 +72,112 @@ if (isset($_POST['etapa']) && $_POST['etapa'] === '2' && isset($_SESSION['login_
 }
 
 // Etapa 1: Credenciais (email + senha)
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['etapa'] !== '2')) {
-    $email = $_POST['email'];
-    $senha = $_POST['senha'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST['etapa'] !== '2')) {
+    $email = trim($_POST['email'] ?? '');
+    $senha = $_POST['senha'] ?? '';
 
-    // Buscar dados do usuÃ¡rio sem finalizar login
-    try {
-        $db = Database::getInstance()->getConnection();
-        
-        // Buscar na tabela associados
-        $stmt = $db->prepare("SELECT * FROM associados WHERE email = :email AND status = 'ativo'");
-        $stmt->execute([':email' => $email]);
-        $userData = $stmt->fetch(PDO::FETCH_ASSOC);
-        $table = 'associados';
+    if (empty($email) || empty($senha)) {
+        $error_message = "Informe o e-mail e a senha.";
+    } else {
+        try {
+            $db = Database::getInstance()->getConnection();
 
-        // Se nÃ£o encontrou, buscar na tabela usuarios
-        if (!$userData) {
-            $stmt = $db->prepare("SELECT * FROM usuarios WHERE email = :email AND status = 'ativo'");
+            // 1. Buscar na tabela associados
+            $stmt = $db->prepare("SELECT * FROM associados WHERE email = :email AND status = 'ativo'");
             $stmt->execute([':email' => $email]);
             $userData = $stmt->fetch(PDO::FETCH_ASSOC);
-            $table = 'usuarios';
-        }
+            $table = 'associados';
 
-        if ($userData && password_verify($senha, $userData['senha'])) {
-            // Se for gestor, solicitar Ã³rgÃ£o/especialidade antes de autenticar completamente
-            if ((int)$userData['nivel'] === NIVEL_GESTOR) {
-                $_SESSION['login_temp'] = [
-                    'user_id' => $userData['id'],
-                    'user_nivel' => $userData['nivel'],
-                    'user_nome' => $userData['nome'],
-                    'user_tipo' => $userData['tipo'],
-                    'user_table' => $table,
-                    'email' => $email
-                ];
-                // Mostrar etapa 2 no formulÃ¡rio
-                $showStep2 = true;
-            } else {
-                // Admin ou usuÃ¡rio comum: login direto
-                $_SESSION['user_id'] = $userData['id'];
-                $_SESSION['user_nivel'] = $userData['nivel'];
-                $_SESSION['user_nome'] = $userData['nome'];
-                $_SESSION['user_tipo'] = $userData['tipo'];
-                $_SESSION['user_table'] = $table;
-                $_SESSION['mostrar_modal_eventos'] = true;
+            // 2. Se não encontrou, buscar na tabela usuarios
+            if (!$userData) {
+                $stmt = $db->prepare("SELECT * FROM usuarios WHERE email = :email AND status = 'ativo'");
+                $stmt->execute([':email' => $email]);
+                $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+                $table = 'usuarios';
+            }
 
-                // Verificar se o perfil estÃ¡ completo
-                $user = new User();
-                if (!$user->hasPerfilCompleto()) {
-                    header("Location: " . SITE_URL . "/completar-perfil");
+            if ($userData && password_verify($senha, $userData['senha'])) {
+                // Gestor: solicitar órgão/especialidade apenas no primeiro acesso
+                if ((int)$userData['nivel'] === NIVEL_GESTOR) {
+                    // Campos de vínculo profissional já preenchidos? => login direto.
+                    $gestorJaPreenchido = !empty($userData['orgao'])
+                        && !empty($userData['especialidade'])
+                        && !empty($userData['setor']);
+
+                    if (!$gestorJaPreenchido) {
+                        // Primeiro acesso: pedir órgão/cargo/setor antes de completar login
+                        $_SESSION['login_temp'] = [
+                            'user_id'    => $userData['id'],
+                            'user_nivel' => $userData['nivel'],
+                            'user_nome'  => $userData['nome'],
+                            'user_tipo'  => 'gestor',
+                            'user_table' => $table,
+                            'email'      => $email,
+                        ];
+                        $_SESSION['login_temp']['primeiro_acesso'] = true;
+                        $showStep2 = true;
+                    } else {
+                        // Login direto do gestor (Órgão/cargo/setor já armazenados)
+                        $_SESSION['user_id']           = $userData['id'];
+                        $_SESSION['user_nivel']        = $userData['nivel'];
+                        $_SESSION['user_nome']         = $userData['nome'];
+                        $_SESSION['user_tipo']         = 'gestor';
+                        $_SESSION['user_table']        = $table;
+                        $_SESSION['user_orgao']        = $userData['orgao'];
+                        $_SESSION['user_setor']        = $userData['setor'];
+                        $_SESSION['user_especialidade'] = $userData['especialidade'];
+                        $_SESSION['mostrar_modal_eventos'] = true;
+
+                        $userCheck = new User();
+                        if (!$userCheck->hasPerfilCompleto()) {
+                            header("Location: " . SITE_URL . "/meu-perfil");
+                            exit;
+                        }
+                        header("Location: " . SITE_URL . "/");
+                        exit;
+                    }
+                } else {
+                    // Admin ou usuário comum: login direto
+                    $_SESSION['user_id']    = $userData['id'];
+                    $_SESSION['user_nivel'] = $userData['nivel'];
+                    $_SESSION['user_nome']  = $userData['nome'];
+                    $_SESSION['user_tipo']  = $userData['tipo'] ?? 'usuario';
+                    $_SESSION['user_table'] = $table;
+                    $_SESSION['mostrar_modal_eventos'] = true;
+
+                    // Detectar primeiro acesso (campos essenciais do perfil vazios)
+                    $isPrimeiroAcesso = empty($userData['telefone']) && empty($userData['cpf']);
+                    if ($isPrimeiroAcesso) {
+                        $_SESSION['primeiro_acesso'] = true;
+                    }
+
+                    // Verificar se o perfil está completo
+                    $userCheck = new User();
+                    if (!$userCheck->hasPerfilCompleto()) {
+                        header("Location: " . SITE_URL . "/meu-perfil");
+                        exit;
+                    }
+
+                    // Primeiro acesso: sempre redirecionar para completar o perfil
+                    if ($isPrimeiroAcesso && (int)$userData['nivel'] !== NIVEL_ADMIN) {
+                        header("Location: " . SITE_URL . "/meu-perfil");
+                        exit;
+                    }
+
+                    if ((int)$userData['nivel'] === NIVEL_USUARIO) {
+                        header("Location: " . SITE_URL . "/caderno-campo/dashboard-agricultor");
+                    } else {
+                        header("Location: " . SITE_URL . "/");
+                    }
                     exit;
                 }
-
-                if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
-                    header("Location: " . SITE_URL . "/caderno-campo/dashboard-agricultor");
-                } else {
-                    header("Location: " . SITE_URL . "/");
-                }
-                exit;
+            } else {
+                $error_message = "E-mail ou senha inválidos!";
             }
-        } else {
-            $error_message = "E-mail ou senha invÃ¡lidos!";
+        } catch (Exception $e) {
+            error_log("Erro login: " . $e->getMessage());
+            $error_message = "Erro ao processar login. Tente novamente.";
         }
-    } catch (Exception $e) {
-        $error_message = "Erro ao processar login. Tente novamente.";
     }
 }
 ?>
@@ -137,51 +189,78 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
     <meta name="theme-color" content="#198754">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="SINPORG - Sistema de GestÃ£o de Agricultura OrgÃ¢nica">
+    <meta name="apple-mobile-web-app-title" content="SINPORG">
+    <meta name="description" content="SINPORG - Sistema de Gestão de Agricultura Orgânica">
     <title>Login - <?php echo SITE_TITLE; ?></title>
     <link rel="manifest" href="<?php echo SITE_URL; ?>/manifest.json">
+    <link rel="apple-touch-icon" href="<?php echo SITE_URL; ?>/assets/img/icon-192.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        /* Fundo: foto do agricultor cobrindo toda a tela */
         body {
-            background: linear-gradient(135deg, #0f2417 0%, #1a4a2e 40%, #198754 100%);
             min-height: 100vh;
             min-height: 100dvh;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
+            background-color: #0f2417;
+            background-image: url('<?php echo SITE_URL; ?>/assets/img/login-bg.jpg');
+            background-size: cover;
+            background-position: center 30%;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
 
+        /* Overlay escuro sobre a foto */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(
+                120deg,
+                rgba(5, 30, 15, 0.18) 0%,
+                rgba(10, 40, 20, 0.10) 45%,
+                rgba(5, 20, 10, 0.05) 100%
+            );
+            z-index: 0;
+        }
+
+        /* Wrapper: card no canto superior direito */
         .login-wrapper {
+            position: relative;
+            z-index: 1;
             min-height: 100vh;
             min-height: 100dvh;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem 1rem;
-            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding: calc(2.5rem + env(safe-area-inset-top, 0px)) max(3rem, env(safe-area-inset-right, 3rem)) calc(2rem + env(safe-area-inset-bottom, 0px)) 1rem;
         }
 
+        /* Card */
         .login-card {
             width: 100%;
-            max-width: 420px;
-            background: rgba(255,255,255,0.97);
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-radius: 20px;
-            box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+            box-shadow: 0 28px 64px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.15);
             overflow: hidden;
-            animation: slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            animation: slideDown 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(32px) scale(0.97); }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-24px) scale(0.97); }
             to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         /* Header do card */
         .login-header {
-            background: linear-gradient(135deg, #198754 0%, #20c997 100%);
-            padding: 2rem 1.5rem 1.5rem;
+            background: linear-gradient(135deg, #0f5132 0%, #198754 60%, #20c997 100%);
+            padding: 1.5rem 1.5rem 1.25rem;
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -190,47 +269,69 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
         .login-header::before {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -30%;
-            width: 200px;
-            height: 200px;
+            top: -40%;
+            right: -20%;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.07);
+            pointer-events: none;
         }
 
         .login-logo {
-            width: 60px;
-            height: 60px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 0.75rem;
-            backdrop-filter: blur(8px);
+            width: 120px;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+            position: relative;
+            z-index: 1;
         }
 
-        .login-logo i {
-            font-size: 2rem;
-            color: #fff;
+        .login-logo img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 10px;
         }
 
         .login-header h1 {
-            font-size: 1.25rem;
+            font-size: 1rem;
             font-weight: 700;
             color: #fff;
-            margin: 0 0 0.25rem;
+            margin: 0 0 0.15rem;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.25);
         }
 
         .login-header p {
-            font-size: 0.8rem;
-            color: rgba(255,255,255,0.75);
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.82);
             margin: 0;
+            position: relative;
+            z-index: 1;
         }
 
         /* Body do card */
         .login-body {
-            padding: 1.75rem 1.5rem 2rem;
+            padding: 1.5rem 1.5rem 1.75rem;
+        }
+
+        /* Responsivo: mobile centra o card */
+        @media (max-width: 600px) {
+            .login-wrapper {
+                align-items: center;
+                justify-content: center;
+                padding: 1.5rem 1rem;
+                padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+            }
+            .login-card { max-width: 100%; }
         }
 
         /* Indicador de etapas */
@@ -256,9 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
             border-radius: 5px;
         }
 
-        .step-dot.done {
-            background: #20c997;
-        }
+        .step-dot.done { background: #20c997; }
 
         /* Labels */
         .form-label {
@@ -268,12 +367,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
             margin-bottom: 0.4rem;
         }
 
-        /* Inputs mobile-friendly */
+        /* Inputs */
         .form-control {
             min-height: 50px;
             border-radius: 10px;
             border: 1.5px solid #e5e7eb;
-            font-size: 1rem; /* previne zoom iOS */
+            font-size: 1rem;
             padding: 0.625rem 1rem;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
@@ -284,35 +383,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
             outline: none;
         }
 
-        /* Input group para senha */
-        .input-password-wrapper {
-            position: relative;
-        }
-
-        .input-password-wrapper .form-control {
-            padding-right: 3rem;
-        }
+        /* Input de senha */
+        .input-password-wrapper { position: relative; }
+        .input-password-wrapper .form-control { padding-right: 3rem; }
 
         .toggle-password {
             position: absolute;
-            right: 0;
-            top: 0;
-            height: 100%;
-            width: 48px;
-            background: none;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #9ca3af;
-            cursor: pointer;
+            right: 0; top: 0;
+            height: 100%; width: 48px;
+            background: none; border: none;
+            display: flex; align-items: center; justify-content: center;
+            color: #9ca3af; cursor: pointer;
             transition: color 0.2s;
             -webkit-tap-highlight-color: transparent;
         }
-
         .toggle-password:hover { color: #198754; }
 
-        /* BotÃ£o principal */
+        /* Botão principal */
         .btn-login {
             width: 100%;
             min-height: 52px;
@@ -331,13 +418,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
             justify-content: center;
             gap: 8px;
         }
-
         .btn-login:active {
             transform: scale(0.97);
             box-shadow: 0 2px 8px rgba(25,135,84,0.25);
         }
 
-        /* Info box de gestor */
+        /* Info box gestor */
         .info-box {
             background: linear-gradient(135deg, #ecfdf5, #d1fae5);
             border-left: 4px solid #198754;
@@ -355,11 +441,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
             font-size: 0.85rem;
             font-weight: 500;
         }
-
-        .login-link:hover {
-            color: #0f5132;
-            text-decoration: underline;
-        }
+        .login-link:hover { color: #0f5132; text-decoration: underline; }
 
         /* Erro */
         .alert-danger {
@@ -371,85 +453,124 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
             font-size: 0.875rem;
         }
 
-        /* Footer do login */
+        /* Footer */
         .login-footer {
             text-align: center;
-            padding: 1rem 1.5rem;
+            padding: 0.75rem 1.5rem;
             border-top: 1px solid #f3f4f6;
         }
 
-        /* Loader no botÃ£o */
+        /* Loader no botão */
         .btn-loader { display: none; }
         .btn-login.loading .btn-text { display: none; }
         .btn-login.loading .btn-loader { display: inline-block; }
 
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .btn-loader i { animation: spin 1s linear infinite; }
+
+        /* ── Abas Login / Primeiro Acesso ── */
+        .login-tabs {
+            display: flex;
+            border-bottom: 2px solid #f3f4f6;
+            margin: -0.25rem -0rem 1.25rem;
+        }
+        .login-tab {
+            flex: 1;
+            padding: 0.65rem 0.5rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #6b7280;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            letter-spacing: 0.02em;
+        }
+        .login-tab.active {
+            color: #198754;
+            border-bottom-color: #198754;
+        }
+        .login-tab:hover:not(.active) { color: #374151; }
+        .login-panel { display: none; }
+        .login-panel.active { display: block; }
+
+        /* Sucesso do cadastro */
+        .cadastro-success {
+            text-align: center;
+            padding: 1rem 0;
+        }
+        .cadastro-success .success-icon {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #198754, #20c997);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.75rem; color: #fff;
+        }
     </style>
 </head>
 <body>
     <div class="login-wrapper">
         <div class="login-card">
 
-            <!-- Header -->
+            <!-- Header com logo centralizada -->
             <div class="login-header">
                 <div class="login-logo">
-                    <i class="bi bi-leaf-fill"></i>
+                    <img src="<?php echo SITE_URL; ?>/img/logo_Sinporg-2.png"
+                         alt="SINPORG - Sistema Integrado da Produção Orgânica">
                 </div>
-                <h1><?php echo SITE_TITLE; ?></h1>
-                <p>Sistema de GestÃ£o OrgÃ¢nica</p>
+                <p>Sistema Integrado da Produção Orgânica</p>
             </div>
 
             <!-- Body -->
             <div class="login-body">
 
                 <?php if (isset($showStep2) && $showStep2): ?>
-                    <!-- Etapa 2: Gestor - Ã“rgÃ£o e Especialidade -->
+                    <!-- Etapa 2: Gestor - Órgão e Especialidade -->
                     <div class="step-track">
                         <span class="step-dot done"></span>
                         <span class="step-dot active"></span>
                     </div>
 
-                    <h5 class="fw-700 mb-1" style="font-size:1.1rem;">Confirmar VÃ­nculo</h5>
+                    <h5 class="fw-bold mb-1" style="font-size:1.05rem;">Confirmar Vínculo</h5>
                     <p class="text-muted small mb-3">Informe seus dados profissionais para acessar.</p>
 
                     <div class="info-box">
                         <i class="bi bi-shield-lock-fill me-1"></i>
                         <strong><?php echo htmlspecialchars($_SESSION['login_temp']['user_nome']); ?></strong>,
-                        confirme seu vÃ­nculo institucional.
+                        confirme seu vínculo institucional.
                     </div>
 
                     <?php if ($error_message): ?>
-                        <div class="alert alert-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i><?php echo $error_message; ?></div>
+                        <div class="alert alert-danger mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i><?php echo htmlspecialchars($error_message); ?>
+                        </div>
                     <?php endif; ?>
 
                     <form action="<?php echo SITE_URL; ?>/login" method="POST" id="form-step2">
                         <input type="hidden" name="etapa" value="2">
 
                         <div class="mb-3">
-                            <label for="orgao" class="form-label">Ã“rgÃ£o <span class="text-danger">*</span></label>
+                            <label for="orgao" class="form-label">Órgão <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="orgao" name="orgao"
                                    placeholder="Ex: MAPA, EMATER, Prefeitura..."
-                                   autocomplete="organization"
-                                   inputmode="text"
-                                   required autofocus>
+                                   autocomplete="organization" inputmode="text" required autofocus>
                         </div>
 
                         <div class="mb-3">
                             <label for="especialidade" class="form-label">Cargo / Especialidade <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="especialidade" name="especialidade"
-                                   placeholder="Ex: Fiscal, TÃ©c. AgrÃ­cola, Eng. AgrÃ´nomo..."
-                                   autocomplete="organization-title"
-                                   inputmode="text"
-                                   required>
+                                   placeholder="Ex: Fiscal, Téc. Agrícola, Eng. Agrônomo..."
+                                   autocomplete="organization-title" inputmode="text" required>
                         </div>
 
                         <div class="mb-4">
                             <label for="setor" class="form-label">Setor <span class="text-muted fw-normal">(opcional)</span></label>
                             <input type="text" class="form-control" id="setor" name="setor"
-                                   placeholder="Ex: Defesa SanitÃ¡ria, CertificaÃ§Ã£o..."
-                                   autocomplete="off"
-                                   inputmode="text">
+                                   placeholder="Ex: Defesa Sanitária, Certificação..."
+                                   autocomplete="off" inputmode="text">
                         </div>
 
                         <button type="submit" class="btn-login" id="btn-step2">
@@ -459,61 +580,174 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
                     </form>
 
                 <?php else: ?>
-                    <!-- Etapa 1: Credenciais -->
-                    <div class="step-track">
-                        <span class="step-dot active"></span>
-                        <span class="step-dot"></span>
+
+                    <!-- ── Abas: Entrar | Primeiro Acesso ── -->
+                    <div class="login-tabs" role="tablist">
+                        <button class="login-tab active" id="tab-login" role="tab"
+                                aria-selected="true" aria-controls="panel-login"
+                                onclick="switchTab('login')">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Entrar
+                        </button>
+                        <button class="login-tab" id="tab-cadastro" role="tab"
+                                aria-selected="false" aria-controls="panel-cadastro"
+                                onclick="switchTab('cadastro')">
+                            <i class="bi bi-person-plus me-1"></i> Primeiro Acesso
+                        </button>
                     </div>
 
-                    <h5 class="fw-bold mb-1" style="font-size:1.1rem;">Bem-vindo de volta</h5>
-                    <p class="text-muted small mb-3">Entre com suas credenciais para continuar.</p>
+                    <!-- ── Painel: Login ── -->
+                    <div class="login-panel active" id="panel-login" role="tabpanel">
 
-                    <?php if ($error_message): ?>
-                        <div class="alert alert-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-1"></i><?php echo $error_message; ?></div>
-                    <?php endif; ?>
+                        <h5 class="fw-bold mb-1" style="font-size:1.05rem;">Bem-vindo de volta</h5>
+                        <p class="text-muted small mb-3">Entre com suas credenciais para continuar.</p>
 
-                    <form action="<?php echo SITE_URL; ?>/login" method="POST" id="form-login">
-
-                        <div class="mb-3">
-                            <label for="email" class="form-label">E-mail</label>
-                            <input type="email" class="form-control" id="email" name="email"
-                                   placeholder="seu@email.com"
-                                   autocomplete="email"
-                                   inputmode="email"
-                                   autocapitalize="none"
-                                   autocorrect="off"
-                                   spellcheck="false"
-                                   required autofocus>
-                        </div>
-
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label for="senha" class="form-label mb-0">Senha</label>
-                                <a href="#" class="login-link">Esqueceu?</a>
+                        <?php if ($error_message): ?>
+                            <div class="alert alert-danger mb-3">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i><?php echo htmlspecialchars($error_message); ?>
                             </div>
-                            <div class="input-password-wrapper">
-                                <input type="password" class="form-control" id="senha" name="senha"
-                                       placeholder="Sua senha"
-                                       autocomplete="current-password"
-                                       required>
-                                <button type="button" class="toggle-password" id="toggle-senha" aria-label="Mostrar senha">
-                                    <i class="bi bi-eye" id="toggle-senha-icon"></i>
+                        <?php endif; ?>
+
+                        <form action="<?php echo SITE_URL; ?>/login" method="POST" id="form-login">
+
+                            <div class="mb-3">
+                                <label for="email" class="form-label">E-mail</label>
+                                <input type="email" class="form-control" id="email" name="email"
+                                       placeholder="seu@email.com"
+                                       autocomplete="email" inputmode="email"
+                                       autocapitalize="none" autocorrect="off" spellcheck="false"
+                                       value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>"
+                                       required autofocus>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label for="senha" class="form-label mb-0">Senha</label>
+                                    <a href="#" class="login-link">Esqueceu?</a>
+                                </div>
+                                <div class="input-password-wrapper">
+                                    <input type="password" class="form-control" id="senha" name="senha"
+                                           placeholder="Sua senha"
+                                           autocomplete="current-password" required>
+                                    <button type="button" class="toggle-password" id="toggle-senha" aria-label="Mostrar senha">
+                                        <i class="bi bi-eye" id="toggle-senha-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-login" id="btn-entrar">
+                                <span class="btn-text"><i class="bi bi-box-arrow-in-right me-1"></i> Entrar</span>
+                                <span class="btn-loader"><i class="bi bi-arrow-repeat"></i> Verificando...</span>
+                            </button>
+
+                        </form>
+                    </div><!-- /panel-login -->
+
+                    <!-- ── Painel: Primeiro Acesso (Pré-cadastro) ── -->
+                    <div class="login-panel" id="panel-cadastro" role="tabpanel">
+
+                        <!-- Estado: formulário -->
+                        <div id="cadastro-form-area">
+                            <h5 class="fw-bold mb-1" style="font-size:1.05rem;">Criar minha conta</h5>
+                            <p class="text-muted small mb-3">
+                                Preencha os dados abaixo. Após o cadastro, um administrador irá ativar seu acesso.
+                            </p>
+
+                            <div id="cadastro-error" class="alert alert-danger mb-3" style="display:none;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                <span id="cadastro-error-text"></span>
+                            </div>
+
+                            <form id="form-cadastro" novalidate>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label for="c-nome" class="form-label">Nome <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="c-nome" name="nome"
+                                               placeholder="Seu nome"
+                                               autocomplete="given-name" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="c-sobrenome" class="form-label">Sobrenome <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="c-sobrenome" name="sobrenome"
+                                               placeholder="Sobrenome"
+                                               autocomplete="family-name" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="c-email" class="form-label">E-mail <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="c-email" name="email"
+                                           placeholder="seu@email.com"
+                                           autocomplete="email" inputmode="email"
+                                           autocapitalize="none" autocorrect="off" required>
+                                </div>
+
+<div class="mb-3">
+                                    <label for="c-senha" class="form-label">Senha <span class="text-danger">*</span></label>
+                                    <div class="input-password-wrapper">
+                                        <input type="password" class="form-control" id="c-senha" name="senha"
+                                               placeholder="Mínimo 6 caracteres"
+                                               autocomplete="new-password" required>
+                                        <button type="button" class="toggle-password" id="toggle-c-senha" aria-label="Mostrar senha">
+                                            <i class="bi bi-eye" id="toggle-c-senha-icon"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="c-confirma" class="form-label">Confirmar senha <span class="text-danger">*</span></label>
+                                    <input type="password" class="form-control" id="c-confirma" name="confirma_senha"
+                                           placeholder="Repita a senha"
+                                           autocomplete="new-password" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="c-tipo" class="form-label">Tipo de Usuário <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="c-tipo" name="tipo_usuario" required>
+                                        <option value="">Selecione seu perfil...</option>
+                                        <option value="usuario">Usuário / Agricultor</option>
+                                        <option value="gestor">Gestor / Fiscal</option>
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle"></i>
+                                        Gestores e fiscais são <strong>aprovados pelo administrador</strong> antes de acessarem o sistema.
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn-login" id="btn-cadastrar">
+                                    <span class="btn-text"><i class="bi bi-person-plus me-1"></i> Solicitar Cadastro</span>
+                                    <span class="btn-loader"><i class="bi bi-arrow-repeat"></i> Enviando...</span>
                                 </button>
+
+                            </form>
+                        </div><!-- /cadastro-form-area -->
+
+                        <!-- Estado: sucesso -->
+                        <div id="cadastro-success-area" style="display:none;" class="cadastro-success">
+                            <div class="success-icon">
+                                <i class="bi bi-check-lg"></i>
                             </div>
-                        </div>
+                            <h5 class="fw-bold mb-2">Cadastro enviado!</h5>
+                            <p class="text-muted small mb-3">
+                                Seu cadastro foi recebido com sucesso.<br>
+                                <strong>Aguarde a ativação por um administrador</strong> para poder fazer login.
+                            </p>
+                            <p class="text-muted small mb-4">
+                                Você receberá um aviso assim que sua conta for ativada.
+                            </p>
+                            <button class="btn-login" onclick="switchTab('login')" style="max-width:200px;margin:0 auto;">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Ir para Login
+                            </button>
+                        </div><!-- /cadastro-success-area -->
 
-                        <button type="submit" class="btn-login" id="btn-entrar">
-                            <span class="btn-text"><i class="bi bi-box-arrow-in-right me-1"></i> Entrar</span>
-                            <span class="btn-loader"><i class="bi bi-arrow-repeat"></i> Verificando...</span>
-                        </button>
+                    </div><!-- /panel-cadastro -->
 
-                    </form>
                 <?php endif; ?>
             </div>
 
             <!-- Footer -->
             <div class="login-footer">
-                <small class="text-muted"><?php echo SITE_TITLE; ?> &mdash; Agricultura OrgÃ¢nica</small>
+                <small class="text-muted"><?php echo SITE_TITLE; ?> &mdash; Agricultura Orgânica<br>&copy; <?php echo date('Y'); ?> Edmildon L. Santos. Todos os direitos reservados.</small>
             </div>
 
         </div>
@@ -521,11 +755,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Toggle de senha
-        var toggleBtn = document.getElementById('toggle-senha');
+        var SITE_URL = '<?php echo SITE_URL; ?>';
+
+        // ── Toggle visibilidade senha (login) ──
+        var toggleBtn  = document.getElementById('toggle-senha');
         var senhaInput = document.getElementById('senha');
         var toggleIcon = document.getElementById('toggle-senha-icon');
-
         if (toggleBtn && senhaInput) {
             toggleBtn.addEventListener('click', function() {
                 var isPass = senhaInput.type === 'password';
@@ -535,7 +770,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
             });
         }
 
-        // Loading state ao submeter
+        // ── Toggle visibilidade senha (cadastro) ──
+        var toggleCBtn  = document.getElementById('toggle-c-senha');
+        var cSenhaInput = document.getElementById('c-senha');
+        var toggleCIcon = document.getElementById('toggle-c-senha-icon');
+        if (toggleCBtn && cSenhaInput) {
+            toggleCBtn.addEventListener('click', function() {
+                var isPass = cSenhaInput.type === 'password';
+                cSenhaInput.type = isPass ? 'text' : 'password';
+                toggleCIcon.className = isPass ? 'bi bi-eye-slash' : 'bi bi-eye';
+                toggleCBtn.setAttribute('aria-label', isPass ? 'Ocultar senha' : 'Mostrar senha');
+            });
+        }
+
+        // ── Loading ao submeter login/step2 ──
         ['form-login', 'form-step2'].forEach(function(id) {
             var form = document.getElementById(id);
             if (!form) return;
@@ -544,7 +792,85 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (!isset($_POST['etapa']) || $_POST['
                 if (btn) btn.classList.add('loading');
             });
         });
+
+        // ── Troca de abas ──
+        function switchTab(tab) {
+            document.querySelectorAll('.login-tab').forEach(function(t) {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            document.querySelectorAll('.login-panel').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            var activeTab   = document.getElementById('tab-' + tab);
+            var activePanel = document.getElementById('panel-' + tab);
+            if (activeTab)   { activeTab.classList.add('active'); activeTab.setAttribute('aria-selected', 'true'); }
+            if (activePanel) activePanel.classList.add('active');
+        }
+
+        // ── Submit do formulário de pré-cadastro (AJAX) ──
+        var formCadastro = document.getElementById('form-cadastro');
+        if (formCadastro) {
+            formCadastro.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // Ocultar erro anterior
+                document.getElementById('cadastro-error').style.display = 'none';
+
+                // Validação client-side rápida
+                var nome     = document.getElementById('c-nome').value.trim();
+                var sobrenom = document.getElementById('c-sobrenome').value.trim();
+                var email    = document.getElementById('c-email').value.trim();
+                var senha    = document.getElementById('c-senha').value;
+                var confirma = document.getElementById('c-confirma').value;
+                var tipoUser = document.getElementById('c-tipo').value;
+
+                if (!nome || !sobrenom || !email || !senha || !confirma || !tipoUser) {
+                    mostrarErroCadastro('Preencha todos os campos obrigatórios.');
+                    return;
+                }
+                if (senha.length < 6) {
+                    mostrarErroCadastro('A senha deve ter pelo menos 6 caracteres.');
+                    return;
+                }
+                if (senha !== confirma) {
+                    mostrarErroCadastro('As senhas não coincidem.');
+                    return;
+                }
+
+                // Loading
+                var btn = formCadastro.querySelector('.btn-login');
+                btn.classList.add('loading');
+
+                var data = new FormData(formCadastro);
+                fetch(SITE_URL + '/api/pre_cadastro.php', {
+                    method: 'POST',
+                    body: data
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(resp) {
+                    btn.classList.remove('loading');
+                    if (resp.success) {
+                        // Mostrar tela de sucesso
+                        document.getElementById('cadastro-form-area').style.display   = 'none';
+                        document.getElementById('cadastro-success-area').style.display = 'block';
+                    } else {
+                        mostrarErroCadastro(resp.error || 'Erro desconhecido. Tente novamente.');
+                    }
+                })
+                .catch(function() {
+                    btn.classList.remove('loading');
+                    mostrarErroCadastro('Erro de comunicação. Verifique sua conexão e tente novamente.');
+                });
+            });
+        }
+
+        function mostrarErroCadastro(msg) {
+            var el = document.getElementById('cadastro-error');
+            document.getElementById('cadastro-error-text').textContent = msg;
+            el.style.display = 'block';
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     </script>
 </body>
 </html>
-

@@ -66,6 +66,8 @@ if (!in_array($_SESSION['user_nivel'], [NIVEL_ADMIN, NIVEL_GESTOR], true)) {
 
 // Define o título da página
 $page_title = "Listar Associados";
+$fab_action = SITE_URL . '/associado/novo';
+$fab_label  = 'Novo Associado';
 
 // Inclui os arquivos necessários
 require_once __DIR__ . '/../../includes/header.php';

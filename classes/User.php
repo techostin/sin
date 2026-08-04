@@ -182,4 +182,63 @@ class User {
             return false;
         }
     }
+
+    /**
+     * Atualiza os dados pessoais do usuário logado na tabela correta
+     * (associados ou usuarios) baseado em $_SESSION['user_table'].
+     *
+     * Apenas os campos que EXISTEM na tabela do usuário são atualizados.
+     * Isso evita erros como "Unknown column 'sobrenome'" quando a tabela
+     * 'usuarios' não possui colunas que existem na tabela 'associados'.
+     *
+     * @param array $dados Dados a serem atualizados (campos pessoais)
+     * @return bool|string true em caso de sucesso, ou string de erro
+     */
+    public function updateCurrentUser($dados) {
+        if (!$this->isLoggedIn()) return false;
+
+        $table = $_SESSION['user_table'] ?? 'associados';
+        $id = $_SESSION['user_id'];
+
+        // Campos que NUNCA devem ser atualizados via este método (segurança)
+        $blocked = ['id', 'senha', 'created_at', 'updated_at', 'data_criacao', 'data_atualizacao', 'ultimo_login', 'user_id'];
+
+        // Buscar as colunas reais da tabela do usuário
+        try {
+            $stmt = $this->db->prepare("SHOW COLUMNS FROM {$table}");
+            $stmt->execute();
+            $colunas = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (PDOException $e) {
+            error_log("Erro ao buscar colunas da tabela {$table}: " . $e->getMessage());
+            return "Erro de banco de dados ao atualizar: " . $e->getMessage();
+        }
+
+        if (empty($colunas)) {
+            return "Erro de banco de dados ao atualizar: tabela {$table} não encontrada.";
+        }
+
+        $sets = [];
+        $params = [];
+
+        foreach ($dados as $key => $value) {
+            // Só atualiza campos que existem na tabela e não estão bloqueados
+            if (in_array($key, $colunas) && !in_array($key, $blocked)) {
+                $sets[] = "{$key} = :{$key}";
+                $params[":{$key}"] = $value;
+            }
+        }
+
+        if (empty($sets)) return true;
+
+        $params[':id'] = $id;
+        $sql = "UPDATE {$table} SET " . implode(', ', $sets) . " WHERE id = :id";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute($params);
+        } catch (PDOException $e) {
+            error_log("Erro ao atualizar usuário atual: " . $e->getMessage());
+            return "Erro de banco de dados ao atualizar: " . $e->getMessage();
+        }
+    }
 }

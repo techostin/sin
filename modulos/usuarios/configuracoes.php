@@ -49,8 +49,8 @@ $config = $_SESSION['user_config'] ?? [
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="<?php echo SITE_URL; ?>/usuario/perfil" class="btn btn-outline-primary">
-                        <i class="bi bi-person-circle"></i> Editar Perfil
+                    <a href="<?php echo SITE_URL; ?>/meu-perfil" class="btn btn-outline-primary">
+                        <i class="bi bi-person-circle"></i> Editar Meu Perfil
                     </a>
                     <button class="btn btn-outline-secondary" disabled>
                         <i class="bi bi-download"></i> Exportar Dados
