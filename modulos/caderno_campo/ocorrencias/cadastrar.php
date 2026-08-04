@@ -46,7 +46,7 @@ try {
 } catch (PDOException $e) {
 }
 
-    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!CSRFProtection::validatePostRequest()) {
         $message = 'Requisição inválida. Por favor, tente novamente.';
         $message_type = 'danger';
@@ -54,25 +54,8 @@ try {
         $ocorrencia = new Ocorrencia();
 
         $dados = $_POST;
-        
-        // Determinar o associado_id correto:
-        // - Se for gestor, buscar a partir da propriedade selecionada
-        // - Se for agricultor, usar o próprio associado_id
-        if ($user->hasPermission(NIVEL_GESTOR) && !empty($dados['propriedade_id'])) {
-            // Gestor: buscar o associado dono da propriedade
-            try {
-                $db_prop = Database::getInstance()->getConnection();
-                $stmt_prop = $db_prop->prepare("SELECT associado_id FROM propriedades WHERE id = ?");
-                $stmt_prop->execute([(int)$dados['propriedade_id']]);
-                $prop_data = $stmt_prop->fetch(PDO::FETCH_ASSOC);
-                $dados['associado_id'] = $prop_data ? (int)$prop_data['associado_id'] : -1;
-            } catch (Exception $e) {
-                $dados['associado_id'] = -1;
-            }
-        } else {
-            $dados['associado_id'] = $user->getAssociadoId();
-            if (!$dados['associado_id']) $dados['associado_id'] = -1;
-        }
+        $dados['associado_id'] = $user->getAssociadoId();
+        if (!$dados['associado_id']) $dados['associado_id'] = -1;
 
         $foto_url = '';
         if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {

@@ -215,6 +215,18 @@ $estados = $associado_helper->getEstados();
 ?>
 
 <h1 class="mt-4">Cadastrar Nova Propriedade</h1>
+
+<?php if (!empty($_SESSION['success_message'])): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i>
+        <?php
+        echo htmlspecialchars($_SESSION['success_message']);
+        unset($_SESSION['success_message']);
+        ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+<?php endif; ?>
+
 <?php if ($associado_nome): ?>
     <div class="alert alert-info">
         <i class="bi bi-info-circle me-2"></i>

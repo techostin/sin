@@ -1,5 +1,7 @@
 <?php
 $page_title = "Ocorrências de Manejo";
+$fab_action = SITE_URL . '/caderno-campo/ocorrencia/novo';
+$fab_label  = 'Nova Ocorrência';
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/menu.php';
 
@@ -267,9 +269,19 @@ $(document).ready(function() {
         language: {
             url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
         },
+        responsive: true,
         order: [[0, 'desc']],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        columnDefs: [
+            { responsivePriority: 1, targets: -1 },  // Ações — nunca ocultar
+            { responsivePriority: 2, targets: 2 },   // Tipo
+            { responsivePriority: 3, targets: 7 },   // Status
+            { responsivePriority: 4, targets: 6 },   // Severidade
+            { responsivePriority: 10, targets: 0 },  // ID — ocultar primeiro
+            { responsivePriority: 10, targets: 4 },  // Propriedade
+            { responsivePriority: 11, targets: 5 }   // Lavoura
+        ],
         drawCallback: function() {
             const info = this.api().page.info();
             $('#totalRegistros').text('Total: ' + info.recordsTotal + ' registros');

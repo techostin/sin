@@ -267,6 +267,16 @@ require_once __DIR__ . '/../../includes/footer.php';
                             </button>
                         `;
 
+                        // Certificado gerado (preview/PDF)
+                        html += `
+                            <a href="<?php echo SITE_URL; ?>/certificacao/${row.id}/certificado?format=html"
+                               class="btn btn-outline-success btn-sm"
+                               target="_blank"
+                               title="Visualizar Certificado">
+                                <i class="bi bi-award"></i>
+                            </a>
+                        `;
+
                         // Download (Somente se assinado)
                         if (row.is_signed && row.documento_url) {
                             html += `
@@ -395,9 +405,10 @@ require_once __DIR__ . '/../../includes/footer.php';
                             <i class="bi bi-file-earmark-pdf"></i> Baixar Certificado Assinado
                         </a>
                     ` : `
-                        <span class="badge bg-secondary">
-                            <i class="bi bi-info-circle"></i> Disponível após assinatura
-                        </span>
+                        <a href="<?php echo SITE_URL; ?>/certificacao/${data.id}/certificado?format=html"
+                           class="btn btn-success btn-sm" target="_blank">
+                            <i class="bi bi-award"></i> Ver Certificado
+                        </a>
                     `}
                 </div>
                 ${data.nome_grupo ? `<p class="mt-2 text-muted small"><strong>Grupo:</strong> ${data.nome_grupo}</p>` : ''}

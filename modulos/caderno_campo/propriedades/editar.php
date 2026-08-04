@@ -134,8 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="col-md-6">
         <label for="cidade" class="form-label">Cidade</label>
-        <input type="text" class="form-control" id="cidade" name="cidade" value="<?php echo htmlspecialchars($dados_propriedade['cidade'] ?? ''); ?>">
-    </div>
+        <input type="text" class="form-control" id="cidade" name="cidade" value="<?php echo htmlspecialchars($dados_propriedade['cidade_nome'] ?? $dados_propriedade['cidade'] ?? ''); ?>">
 
     <div class="col-md-6">
         <label for="estado" class="form-label">Estado</label>

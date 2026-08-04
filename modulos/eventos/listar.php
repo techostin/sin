@@ -1,5 +1,7 @@
 <?php
 $page_title = "Listar Eventos";
+$fab_action = SITE_URL . '/evento/novo';
+$fab_label  = 'Novo Evento';
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
 
@@ -74,7 +76,7 @@ try {
         </div>
     </div>
     <div class="card-body">
-        <table id="eventosTable" class="table table-striped table-bordered" style="width:100%">
+        <table id="eventosTable" class="table table-striped table-bordered table-responsive-stack" style="width:100%">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -89,10 +91,10 @@ try {
                 <?php if (count($eventos) > 0): ?>
                     <?php foreach ($eventos as $evento): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($evento['id']); ?></td>
-                            <td><?php echo htmlspecialchars($evento['nome']); ?></td>
-                            <td><?php echo date('d/m/Y H:i', strtotime($evento['data_evento'])); ?></td>
-                            <td><?php echo htmlspecialchars($evento['local']); ?></td>
+                            <td data-label="ID"><?php echo htmlspecialchars($evento['id']); ?></td>
+                            <td data-label="Nome"><?php echo htmlspecialchars($evento['nome']); ?></td>
+                            <td data-label="Data"><?php echo date('d/m/Y H:i', strtotime($evento['data_evento'])); ?></td>
+                            <td data-label="Local"><?php echo htmlspecialchars($evento['local']); ?></td>
                             <td>
                                 <?php 
                                 $status_class = '';
@@ -114,7 +116,7 @@ try {
                                     <?php echo htmlspecialchars($evento['status']); ?>
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Status">
                                 <button type="button" class="btn btn-secondary btn-sm" title="Visualizar" onclick="visualizarEvento(<?php echo $evento['id']; ?>)">
                                     <i class="bi bi-eye-fill"></i>
                                 </button>
@@ -174,7 +176,16 @@ $(document).ready(function() {
     $('#eventosTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json"
-        }
+        },
+        "responsive": true,
+        "columnDefs": [
+            { responsivePriority: 1, targets: -1 }, // Ações — nunca ocultar
+            { responsivePriority: 2, targets: 1 },  // Nome
+            { responsivePriority: 3, targets: 4 },  // Status
+            { responsivePriority: 4, targets: 2 },  // Data
+            { responsivePriority: 10, targets: 0 }, // ID — ocultar primeiro
+            { responsivePriority: 10, targets: 3 }  // Local
+        ]
     });
 });
 

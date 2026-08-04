@@ -1,5 +1,7 @@
 <?php
 $page_title = "Visitas Técnicas / Inspeções";
+$fab_action = SITE_URL . '/visita-tecnica/agendar';
+$fab_label  = 'Agendar Visita';
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/menu.php';
 
@@ -33,7 +35,7 @@ $associadoIdLogado = $isUsuarioComum ? ($_SESSION['user_id'] ?? null) : null;
             <?php echo $isAdmin ? 'Cronograma de Inspeções (Todos os Associados)' : 'Minhas Visitas Técnicas'; ?>
         </div>
         <div class="card-body">
-            <table id="visitasTable" class="table table-striped">
+            <table id="visitasTable" class="table table-striped table-responsive-stack">
                 <thead>
                     <tr>
                         <th>Data</th>
@@ -171,6 +173,14 @@ $(document).ready(function() {
             dataSrc: 'data'
         },
         columns: columns,
+        responsive: true,
+        columnDefs: [
+            { responsivePriority: 1, targets: -1 }, // Ações — nunca ocultar
+            { responsivePriority: 2, targets: 0 },  // Data
+            { responsivePriority: 3, targets: 4 },  // Status
+            { responsivePriority: 10, targets: 3 }, // Roteiro — ocultar primeiro
+            { responsivePriority: 11, targets: 5 }  // Conformidade
+        ],
         language: { url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' }
     });
 
