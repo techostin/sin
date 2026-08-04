@@ -99,6 +99,19 @@ if ($rawUrl !== '') {
         exit;
     }
 
+    // Certificado de Conformidade Orgânica (PDF ou HTML)
+    if ($parts[0] === 'certificacao' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'certificado') {
+        $_GET['id'] = $parts[1];
+        require __DIR__ . '/modulos/certificacao/certificado.php';
+        exit;
+    }
+
+    // Pré-visualização do certificado a partir do formulário
+    if ($parts[0] === 'certificacao' && isset($parts[1]) && $parts[1] === 'certificado-preview') {
+        require __DIR__ . '/modulos/certificacao/certificado.php';
+        exit;
+    }
+
     // Planos de Manejo
     if ($parts[0] === 'planos-manejo' && !isset($parts[1])) {
         require __DIR__ . '/modulos/plano_manejo/listar.php';
@@ -590,12 +603,22 @@ if ($rawUrl !== '') {
         require __DIR__ . '/modulos/associados/listar.php';
         exit;
     }
+    if ($parts[0] === 'associados' && isset($parts[1]) && $parts[1] === 'pendentes') {
+        require __DIR__ . '/modulos/associados/pendentes.php';
+        exit;
+    }
     if ($parts[0] === 'associados' && isset($parts[1]) && $parts[1] === 'relatorio') {
         require __DIR__ . '/modulos/associados/form_relatorio.php';
         exit;
     }
     if ($parts[0] === 'associado' && isset($parts[1]) && $parts[1] === 'novo') {
         require __DIR__ . '/modulos/associados/cadastrar.php';
+        exit;
+    }
+
+    // Rota: /meu-perfil — edição dos próprios dados (sem expor ID na URL)
+    if ($parts[0] === 'meu-perfil' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/associados/meu_perfil.php';
         exit;
     }
     if ($parts[0] === 'associado' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'editar') {
@@ -782,7 +805,7 @@ if ($rawUrl !== '') {
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (isset($_SESSION['user_tipo']) && strtolower((string) $_SESSION['user_tipo']) === 'usuario') {
+if (isset($_SESSION['user_nivel']) && (int)$_SESSION['user_nivel'] === NIVEL_USUARIO) {
     header('Location: ' . SITE_URL . '/caderno-campo/dashboard-agricultor');
     exit;
 }
@@ -795,10 +818,36 @@ require_once 'classes/Evento.php';
 $evento = new Evento();
 $eventos = $evento->getAllEventos();
 $presencas = $evento->getPresencaEventos();
+
+// Contar pendentes para widget (apenas admin/gestor)
+$total_pendentes = 0;
+if ($user->hasPermission(NIVEL_GESTOR)) {
+    try {
+        $db_dash = Database::getInstance()->getConnection();
+        $stmt_p  = $db_dash->query("SELECT COUNT(*) FROM associados WHERE status = 'pendente'");
+        $total_pendentes = (int)$stmt_p->fetchColumn();
+    } catch (Exception $e) { /* silently ignore */ }
+}
 ?>
 
 <h1 class="mt-4">Sistema Integrado de Produção Orgânica</h1>
 <p>Selecione uma opção no menu ao lado para começar a gerenciar as informações.</p>
+
+<?php if ($user->hasPermission(NIVEL_GESTOR) && $total_pendentes > 0): ?>
+<!-- ── Widget: Cadastros Pendentes de Ativação ── -->
+<div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-person-fill-exclamation fs-4"></i>
+        <div>
+            <strong><?php echo $total_pendentes; ?> cadastro(s) pendente(s)</strong> aguardam ativação.
+            <span class="text-muted small d-block d-sm-inline ms-sm-1">Novos usuários registrados pelo primeiro acesso.</span>
+        </div>
+    </div>
+    <a href="<?php echo SITE_URL; ?>/associados/pendentes" class="btn btn-warning btn-sm fw-semibold">
+        <i class="bi bi-check2-circle me-1"></i> Revisar agora
+    </a>
+</div>
+<?php endif; ?>
 
 <div class="row">
     <div class="col-md-4" style="width: 30%; margin-right: 2.5%;">
@@ -908,7 +957,7 @@ $presencas = $evento->getPresencaEventos();
                                         onclick="visualizarEvento(<?php echo $evt['id']; ?>)">
                                         <i class="bi bi-eye"></i>
                                     </button>
-                                    <?php if (!isset($_SESSION['user_tipo']) || $_SESSION['user_tipo'] !== 'usuario'): ?>
+<?php if (!isset($_SESSION['user_nivel']) || (int)$_SESSION['user_nivel'] !== NIVEL_USUARIO): ?>
                                         <a href="<?php echo SITE_URL; ?>/evento/<?php echo $evt['id']; ?>/editar"
                                             class="btn btn-info btn-sm" title="Editar"><i class="bi bi-pencil-fill"></i></a>
                                         <?php require_once __DIR__ . '/classes/CSRFProtection.php'; ?>

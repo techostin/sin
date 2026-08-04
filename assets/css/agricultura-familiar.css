@@ -4,13 +4,33 @@
  * Focado em acessibilidade no campo, contraste elevado e alvos de toque grandes.
  */
 
+/* Previne zoom automático em inputs no iOS */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 :root {
+    /* Cores orgânicas */
     --organic-green: #198754;
     --organic-green-light: #20c997;
     --organic-earth: #6d4c41;
     --organic-sun: #ffc107;
     --organic-sky: #e3f2fd;
+
+    /* Alvos de toque */
     --touch-target: 48px;
+
+    /* Safe area insets (iOS notch / home indicator) */
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+
+    /* Dimensões de layout */
+    --bottom-nav-height: 64px;
+    --top-bar-height: 56px;
+    --sidebar-width: 280px;
 }
 
 body {
@@ -174,30 +194,62 @@ body {
     h1 { font-size: 1.75rem; }
     .card-body { padding: 1rem; }
 
-    /* Botões ficam full-width, mas NÃO em grupos do bottom nav */
-    .btn:not(.bottom-nav-item):not(.btn-icon) {
+    /* Botões ficam full-width, mas NÃO em grupos do bottom nav,
+       nem em células de tabela, nem botões de ícone */
+    .btn:not(.bottom-nav-item):not(.btn-icon):not(td .btn):not(.actions-cell .btn):not(.btn-group .btn) {
         width: 100%;
         margin-bottom: 0.5rem;
     }
 
-    .btn-group {
+    /* Exceto botões em células de tabela */
+    td .btn,
+    .actions-cell .btn {
+        width: auto !important;
+        margin-bottom: 2px;
+        min-height: 36px;
+    }
+
+    /* Grupo de botões vira coluna */
+    .btn-group:not(.btn-group-inline) {
         display: flex;
         flex-direction: column;
         width: 100%;
     }
 
-    .btn-group .btn {
+    .btn-group:not(.btn-group-inline) .btn {
         border-radius: 8px !important;
         margin-bottom: 4px;
         width: 100%;
     }
+}
 
-    /* Tabela de ações: botões menores ficam inline */
-    td .btn-sm,
-    .actions-cell .btn {
-        width: auto !important;
-        margin-bottom: 2px;
+/* =============================================
+   Formulários — layout vertical em mobile
+   ============================================= */
+@media (max-width: 991.98px) {
+    /* Garantir que labels fiquem acima dos campos */
+    .form-label,
+    label.col-form-label {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.25rem;
     }
+
+    /* Colunas de formulário viram linha única */
+    .row.g-3 > [class*="col-"],
+    .row.g-2 > [class*="col-"] {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Botões de submit/cancel full-width em formulários */
+    .form-actions .btn,
+    .form-footer .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Espaçamento maior entre grupos de campos */
+    .mb-3 { margin-bottom: 1rem !important; }
 }
 
 /* =============================================
@@ -229,5 +281,46 @@ body {
 @media (max-width: 768px) {
     .page-content-inner {
         position: relative;
+    }
+}
+
+/* =============================================
+   FAB Global — Botão de Ação Flutuante
+   (usado pelo footer.php em páginas de listagem)
+   ============================================= */
+#fab-global-trigger {
+    display: none; /* escondido em desktop */
+    position: fixed;
+    bottom: calc(var(--bottom-nav-height) + var(--sab) + 1rem);
+    right: 1.5rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--organic-green), var(--organic-green-light));
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 20px rgba(25, 135, 84, 0.45);
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#fab-global-trigger:hover {
+    transform: scale(1.08);
+    box-shadow: 0 8px 28px rgba(25, 135, 84, 0.55);
+}
+
+#fab-global-trigger:active {
+    transform: scale(0.95);
+}
+
+/* Mostrar FAB apenas em mobile */
+@media (max-width: 991.98px) {
+    #fab-global-trigger {
+        display: flex;
     }
 }

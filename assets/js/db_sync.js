@@ -47,6 +47,14 @@ class OfflineSyncEngine {
         document.addEventListener('DOMContentLoaded', () => {
             this.updateOnlineStatus(navigator.onLine);
         });
+        // Receber sinal do Service Worker (Background Sync)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', event => {
+                if (event.data && event.data.type === 'TRIGGER_SYNC') {
+                    this.syncQueuedData();
+                }
+            });
+        }
     }
 
     updateOnlineStatus(isOnline) {
@@ -133,7 +141,13 @@ class OfflineSyncEngine {
         const request = store.add(record);
 
         request.onsuccess = () => {
-            this.showNotification('Sucesso', 'Sem conexão com a internet. Os dados foram salvos no dispositivo e serão sincronizados automaticamente assim que você estiver online.', 'warning');
+            this.showNotification('Salvo offline', 'Sem conexão. Os dados serão enviados automaticamente quando você estiver online.', 'warning');
+            // Registrar Background Sync para envio automático ao voltar online
+            if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                navigator.serviceWorker.ready
+                    .then(sw => sw.sync.register('sync-forms'))
+                    .catch(() => { /* fallback: syncQueuedData ao voltar online já resolve */ });
+            }
             form.reset();
             // Restaurar valores readonly/default se necessário
             const estq = document.getElementById('quantidade_estoque');
@@ -244,17 +258,40 @@ class OfflineSyncEngine {
     }
 
     showNotification(title, text, type) {
-        // Criar um Toast ou Alert dinâmico do Bootstrap
-        const container = document.querySelector('.container-fluid') || document.body;
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
-        alertDiv.role = 'alert';
-        alertDiv.style.zIndex = '99999';
-        alertDiv.innerHTML = `
-            <strong>${title}:</strong> ${text}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        `;
-        container.insertBefore(alertDiv, container.firstChild);
+        // Toast Bootstrap 5 via #toast-container (inserido pelo footer.php)
+        const container = document.getElementById('toast-container');
+        if (container && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+            const toastId = 'sync-toast-' + Date.now();
+            const bgMap = { success: 'bg-success', warning: 'bg-warning text-dark', danger: 'bg-danger', info: 'bg-info text-dark' };
+            const toastEl = document.createElement('div');
+            toastEl.id = toastId;
+            toastEl.className = `toast align-items-center ${bgMap[type] || 'bg-secondary'} border-0`;
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body fw-semibold">
+                        <strong>${title}:</strong> ${text}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                            data-bs-dismiss="toast" aria-label="Fechar"></button>
+                </div>`;
+            container.appendChild(toastEl);
+            const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+            toast.show();
+            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        } else {
+            // Fallback: alert div (Bootstrap não carregado ainda)
+            const fallback = document.querySelector('.container-fluid') || document.body;
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+            alertDiv.role = 'alert';
+            alertDiv.style.zIndex = '99999';
+            alertDiv.innerHTML = `<strong>${title}:</strong> ${text}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>`;
+            fallback.insertBefore(alertDiv, fallback.firstChild);
+        }
     }
 
     checkPendingCount(callback) {

@@ -41,6 +41,20 @@ self.addEventListener('activate', event => {
   );
 });
 
+// ---- Background Sync: enviar formulários salvos offline ----
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-forms') {
+    event.waitUntil(
+      self.clients.matchAll().then(clients => {
+        // Notificar todos os clientes abertos para executar a sincronização
+        clients.forEach(client => {
+          client.postMessage({ type: 'TRIGGER_SYNC' });
+        });
+      })
+    );
+  }
+});
+
 // ---- Fetch: estratégias diferenciadas por tipo de recurso ----
 self.addEventListener('fetch', event => {
   const { request } = event;

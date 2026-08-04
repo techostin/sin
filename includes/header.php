@@ -22,6 +22,11 @@ if (!$user->isLoggedIn()) {
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/style.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/agricultura-familiar.css">
     <link rel="manifest" href="<?php echo SITE_URL; ?>/manifest.json">
+    <meta name="theme-color" content="#198754">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SINPORG">
+    <link rel="apple-touch-icon" href="<?php echo SITE_URL; ?>/assets/img/icon-192.png">
     <style>
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -64,6 +69,17 @@ if (!$user->isLoggedIn()) {
     <script>
         // Definir a URL base do site globalmente
         window.SITE_URL = '<?php echo SITE_URL; ?>';
+        // Exportar nível do usuário para JS (bottom nav, FAB contextual)
+        window.USER_NIVEL = '<?php echo htmlspecialchars($_SESSION['nivel'] ?? '', ENT_QUOTES); ?>';
+        // Classe de modo no body (mobile/desktop via resize)
+        (function() {
+            function applyMode() {
+                document.body.classList.toggle('is-mobile', window.innerWidth < 992);
+                document.body.classList.toggle('is-desktop', window.innerWidth >= 992);
+            }
+            document.addEventListener('DOMContentLoaded', applyMode);
+            window.addEventListener('resize', applyMode);
+        })();
     </script>
     <script src="<?php echo SITE_URL; ?>/assets/js/eventos.js"></script>
     <script src="<?php echo SITE_URL; ?>/assets/js/eventos_modal_debug.js"></script>

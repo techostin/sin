@@ -3,52 +3,71 @@
 
 <!-- Sidebar -->
 <div class="bg-dark border-right" id="sidebar-wrapper">
-    <div class="sidebar-heading text-white"><b><?php echo SITE_TITLE; ?></b></div>
+    <div class="sidebar-heading text-white" style="display:flex; justify-content:center; align-items:stretch; padding:0; background:#fff; margin:0; border-bottom:1px solid rgba(0,0,0,0.1);">
+        <img src="<?php echo SITE_URL; ?>/img/logo_Sinporg-2.png" alt="<?php echo SITE_TITLE; ?>" style="width:100%; height:auto; display:block; object-fit:cover; border-radius:0;">
+    </div>
     <div class="list-group list-group-flush">
         <?php
-        $inicioUrl = SITE_URL . '/';
-        if (isset($_SESSION['user_tipo']) && strtolower((string) $_SESSION['user_tipo']) === 'usuario') {
+$inicioUrl = SITE_URL . '/';
+        if (isset($_SESSION['user_nivel']) && (int)$_SESSION['user_nivel'] === NIVEL_USUARIO) {
             $inicioUrl = SITE_URL . '/caderno-campo/dashboard-agricultor';
         }
         ?>
-        <a href="<?php echo $inicioUrl; ?>" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-house-door-fill"></i> Início</a>
+        <a href="<?php echo $inicioUrl; ?>" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-house-door-fill text-info me-1"></i> Início</a>
         
         <!-- Menu Associados (Apenas Gestores/Admin) -->
-        <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="<?php echo SITE_URL; ?>/associados" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-people-fill"></i> Associados</a>
+        <?php if ($user->hasPermission(NIVEL_GESTOR)):
+            // Contar pendentes para badge no menu
+            $menu_pendentes = 0;
+            try {
+                $menu_db   = Database::getInstance()->getConnection();
+                $menu_stmt = $menu_db->query("SELECT COUNT(*) FROM associados WHERE status = 'pendente'");
+                $menu_pendentes = (int)$menu_stmt->fetchColumn();
+            } catch (Exception $e) {}
+        ?>
+        <a href="<?php echo SITE_URL; ?>/associados" class="list-group-item list-group-item-action bg-dark text-white">
+            <i class="bi bi-people-fill text-primary me-1"></i> Associados
+        </a>
+        <a href="<?php echo SITE_URL; ?>/associados/pendentes"
+           class="list-group-item list-group-item-action bg-dark text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-person-fill-exclamation text-warning me-1"></i> Pendentes de Ativação</span>
+            <?php if ($menu_pendentes > 0): ?>
+            <span class="badge bg-warning text-dark rounded-pill"><?php echo $menu_pendentes; ?></span>
+            <?php endif; ?>
+        </a>
         <?php endif; ?>
 
         <!-- Menu Associações -->
-        <a href="<?php echo SITE_URL; ?>/associacoes" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-building-fill"></i> Associações</a>
+        <a href="<?php echo SITE_URL; ?>/associacoes" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-building-fill text-primary me-1"></i> Associações</a>
 
         <!-- Menu Produção Orgânica — Versão Agricultor (itens de consulta pessoal) -->
         <?php if (!$user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="#organicoSubmenuAgricultor" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-patch-check-fill text-success"></i> Produção Orgânica</a>
+        <a href="#organicoSubmenuAgricultor" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-patch-check-fill text-success me-1"></i> Produção Orgânica</a>
         <div class="collapse" id="organicoSubmenuAgricultor">
-            <a href="<?php echo SITE_URL; ?>/certificacoes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-award me-1"></i> Minhas Certificações</a>
-            <a href="<?php echo SITE_URL; ?>/plano-manejo/novo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-plus-circle me-1"></i> Novo Plano de Manejo</a>
-            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-journal-text me-1"></i> Meu Plano de Manejo</a>
+            <a href="<?php echo SITE_URL; ?>/certificacoes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-award text-warning me-1"></i> Minhas Certificações</a>
+            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-journal-text text-info me-1"></i> Meu Plano de Manejo</a>
         </div>
         <?php endif; ?>
 
         <!-- Bloco Fiscalização & Conformidade (Apenas Admin/Gestor) -->
         <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
         <a href="#fiscalizacaoSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white">
-            <i class="bi bi-shield-lock-fill text-warning"></i> Fiscalização & Conformidade
+            <i class="bi bi-shield-lock-fill text-warning me-1"></i> Fiscalização & Conformidade
         </a>
         <div class="collapse" id="fiscalizacaoSubmenu">
             <!-- Certificação & Autorização -->
             <div class="list-group-item bg-dark text-white-50 ps-5 py-1" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;">Certificação &amp; Autorização</div>
-            <a href="<?php echo SITE_URL; ?>/certificacoes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-award me-1"></i> Certificações (SPG/OCS)</a>
-            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-journal-text me-1"></i> Planos de Manejo — Análise</a>
-            <a href="<?php echo SITE_URL; ?>/insumos-aprovados" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-shield-check me-1"></i> Insumos Aprovados (Portaria 52)</a>
+            <a href="<?php echo SITE_URL; ?>/certificacoes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-award text-warning me-1"></i> Certificações (SPG/OCS)</a>
+            <a href="<?php echo SITE_URL; ?>/certificadoras_list.php" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-building me-1"></i> Certificadoras</a>
+            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-journal-text text-info me-1"></i> Planos de Manejo — Análise</a>
+            <a href="<?php echo SITE_URL; ?>/insumos-aprovados" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-shield-check text-success me-1"></i> Insumos Aprovados (Portaria 52)</a>
 
             <!-- Inspeção de Campo -->
             <div class="list-group-item bg-dark text-white-50 ps-5 py-1" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;">Inspeção de Campo</div>
-            <a href="<?php echo SITE_URL; ?>/visitas-tecnicas" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-clipboard-check me-1"></i> Visitas e Inspeções</a>
-            <a href="<?php echo SITE_URL; ?>/visita-tecnica/agendar" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-calendar-plus me-1"></i> Agendar Visita</a>
-            <a href="<?php echo SITE_URL; ?>/roteiros-inspecao" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-card-checklist me-1"></i> Roteiros (Templates)</a>
-            <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-exclamation-triangle me-1"></i> Não Conformidades</a>
+            <a href="<?php echo SITE_URL; ?>/visitas-tecnicas" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-clipboard-check text-success me-1"></i> Visitas e Inspeções</a>
+            <a href="<?php echo SITE_URL; ?>/visita-tecnica/agendar" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-calendar-plus text-info me-1"></i> Agendar Visita</a>
+            <a href="<?php echo SITE_URL; ?>/roteiros-inspecao" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-card-checklist text-primary me-1"></i> Roteiros (Templates)</a>
+            <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-exclamation-triangle text-danger me-1"></i> Não Conformidades</a>
 
             <!-- Conformidade Operacional -->
             <div class="list-group-item bg-dark text-white-50 ps-5 py-1" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;">Conformidade Operacional</div>
@@ -56,22 +75,22 @@
 
             <!-- Relatórios -->
             <div class="list-group-item bg-dark text-white-50 ps-5 py-1" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;">Relatórios</div>
-            <a href="<?php echo SITE_URL; ?>/relatorios-admin" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-file-earmark-bar-graph me-1"></i> Relatórios Administrativos</a>
+            <a href="<?php echo SITE_URL; ?>/relatorios-admin" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-file-earmark-bar-graph text-info me-1"></i> Relatórios Administrativos</a>
         </div>
         <?php endif; ?>
 
         <!-- Menu Caderno de Campo -->
-        <a href="#cadernoSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-book-fill"></i> Caderno de Campo</a>
+        <a href="#cadernoSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-book-fill text-success me-1"></i> Caderno de Campo</a>
         <div class="collapse" id="cadernoSubmenu">
             <!-- Visão Geral -->
-            <a href="<?php echo SITE_URL; ?>/caderno-campo/dashboard" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+            <a href="<?php echo SITE_URL; ?>/caderno-campo/dashboard" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-speedometer2 text-info me-1"></i> Dashboard</a>
             <a href="<?php echo SITE_URL; ?>/caderno-campo/dashboard-agricultor" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-person-workspace text-success me-1"></i> Painel do Agricultor</a>
 
             <!-- Registro Diário -->
             <div class="list-group-item bg-dark text-white-50 ps-5 py-1" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;">Registro Diário</div>
-            <a href="<?php echo SITE_URL; ?>/propriedades" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-house-door me-1"></i> Propriedades</a>
-            <a href="<?php echo SITE_URL; ?>/lavouras" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-tree me-1"></i> Lavouras</a>
-            <a href="<?php echo SITE_URL; ?>/atividades-diarias" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-calendar-check me-1"></i> Atividades Diárias</a>
+            <a href="<?php echo SITE_URL; ?>/propriedades" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-house-door text-warning me-1"></i> Propriedades</a>
+            <a href="<?php echo SITE_URL; ?>/lavouras" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-tree text-success me-1"></i> Lavouras</a>
+            <a href="<?php echo SITE_URL; ?>/atividades-diarias" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-calendar-check text-primary me-1"></i> Atividades Diárias</a>
             <a href="#ocorrenciasSubmenu" data-bs-toggle="collapse" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Ocorrências</a>
             <div class="collapse" id="ocorrenciasSubmenu">
                 <a href="<?php echo SITE_URL; ?>/caderno-campo/ocorrencias" class="list-group-item list-group-item-action bg-dark text-white ps-5" style="padding-left:3.5rem!important">↳ Listar</a>
@@ -86,9 +105,9 @@
                 <a href="<?php echo SITE_URL; ?>/insumo/novo" class="list-group-item list-group-item-action bg-dark text-white ps-5" style="padding-left:3.5rem!important">↳ Cadastrar</a>
                 <a href="<?php echo SITE_URL; ?>/caderno-campo/insumos/validacao" class="list-group-item list-group-item-action bg-dark text-white ps-5" style="padding-left:3.5rem!important"><i class="bi bi-shield-check text-success me-1"></i> Validação Orgânica</a>
             </div>
-            <a href="<?php echo SITE_URL; ?>/produtos" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-box-seam me-1"></i> Produtos</a>
-            <a href="<?php echo SITE_URL; ?>/lotes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-layers me-1"></i> Lotes de Produção</a>
-            <a href="<?php echo SITE_URL; ?>/categorias-atividades" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-tags me-1"></i> Categorias</a>
+            <a href="<?php echo SITE_URL; ?>/produtos" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-box-seam text-warning me-1"></i> Produtos</a>
+            <a href="<?php echo SITE_URL; ?>/lotes" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-layers text-info me-1"></i> Lotes de Produção</a>
+            <a href="<?php echo SITE_URL; ?>/categorias-atividades" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-tags text-primary me-1"></i> Categorias</a>
 
             <!-- Minha Conformidade (apenas Agricultor — Gestor usa o bloco Fiscalização) -->
             <?php if (!$user->hasPermission(NIVEL_GESTOR)): ?>
@@ -116,9 +135,9 @@
 
             <!-- Ferramentas -->
             <div class="list-group-item bg-dark text-white-50 ps-5 py-1" style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;">Ferramentas</div>
-            <a href="<?php echo SITE_URL; ?>/rastreabilidade" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-search me-1"></i> Rastreabilidade</a>
+            <a href="<?php echo SITE_URL; ?>/rastreabilidade" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-search text-info me-1"></i> Rastreabilidade</a>
             <a href="<?php echo SITE_URL; ?>/caderno-campo/sincronizacao" class="list-group-item list-group-item-action bg-secondary text-white ps-5 position-relative"><i class="bi bi-arrow-repeat text-warning me-1"></i> Sincronização <span id="sync-badge-count" class="badge bg-danger rounded-pill ms-1" style="display:none; font-size:0.65rem;">0</span></a>
-            <a href="<?php echo SITE_URL; ?>/relatorios" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-file-earmark-bar-graph me-1"></i> Relatórios</a>
+            <a href="<?php echo SITE_URL; ?>/relatorios" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-file-earmark-bar-graph text-info me-1"></i> Relatórios</a>
 
             <!-- Ações Rápidas -->
             <div class="p-2 mx-3 my-2 rounded" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);">
@@ -131,25 +150,35 @@
         </div>
 
         <!-- Menu Fornecedores -->
-        <a href="<?php echo SITE_URL; ?>/fornecedor" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-truck"></i> Fornecedores</a>
+        <a href="<?php echo SITE_URL; ?>/fornecedor" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-truck text-warning me-1"></i> Fornecedores</a>
 
         <!-- Menu Contas (Apenas Gestores/Admin) -->
         <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="<?php echo SITE_URL; ?>/contas" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-cash-stack"></i> Contas</a>
+        <a href="<?php echo SITE_URL; ?>/contas" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-cash-stack text-success me-1"></i> Contas</a>
         <?php endif; ?>
 
         <!-- Menu Eventos -->
-        <a href="<?php echo SITE_URL; ?>/eventos" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-calendar-event-fill"></i> Eventos</a>
+        <a href="<?php echo SITE_URL; ?>/eventos" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-calendar-event-fill text-primary me-1"></i> Eventos</a>
         
         <!-- Menu Usuários (Apenas Gestores/Admin) -->
         <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>
-        <a href="<?php echo SITE_URL; ?>/usuarios" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-person-badge-fill"></i> Usuários</a>
+        <a href="<?php echo SITE_URL; ?>/usuarios" class="list-group-item list-group-item-action bg-dark text-white"><i class="bi bi-person-badge-fill text-info me-1"></i> Usuários</a>
         <?php endif; ?>
 
-        <a href="<?php echo SITE_URL; ?>/logout" class="list-group-item list-group-item-action bg-danger text-white"><i class="bi bi-box-arrow-right"></i> Sair</a>
+        <!-- Meu Perfil (todos os usuários) -->
+        <a href="<?php echo SITE_URL; ?>/meu-perfil" class="list-group-item list-group-item-action bg-dark text-white">
+            <i class="bi bi-person-circle text-info me-1"></i> Meu Perfil
+        </a>
+
+        <a href="<?php echo SITE_URL; ?>/logout" class="list-group-item list-group-item-action bg-danger text-white"><i class="bi bi-box-arrow-right text-white me-1"></i> Sair</a>
     </div>
 </div>
 
+<?php
+// Guardar dados do bottom nav para renderizar no footer.php (fora do #wrapper)
+$bnav_inicio_url  = $inicioUrl;
+$bnav_is_gestor   = $user->hasPermission(NIVEL_GESTOR);
+?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -198,40 +227,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ── Bottom Nav: marcar item ativo pela URL ──
-    var path = window.location.pathname;
-    var bnavItems = document.querySelectorAll('.bottom-nav-item[data-page]');
-    bnavItems.forEach(function(item) {
-        var page = item.dataset.page;
-        var isActive = false;
-        if (page === 'home' && (path === '/' || path.includes('dashboard'))) isActive = true;
-        if (page === 'campo' && path.includes('atividade')) isActive = true;
-        if (page === 'sync' && path.includes('sincronizacao')) isActive = true;
-        if (isActive) item.classList.add('active');
-    });
-
-    // ── Bottom Nav: sync badge count ──
-    if (window.syncEngine && typeof window.syncEngine.checkPendingCount === 'function') {
-        var checkBadge = function() {
-            window.syncEngine.checkPendingCount(function(count) {
-                var badge = document.getElementById('bnav-sync-badge');
-                var label = document.getElementById('bnav-sync-label');
-                if (badge) {
-                    if (count > 0) {
-                        badge.textContent = count > 99 ? '99+' : count;
-                        badge.classList.add('visible');
-                        if (label) label.textContent = count + ' pend.';
-                    } else {
-                        badge.classList.remove('visible');
-                        if (label) label.textContent = 'Sync';
-                    }
-                }
-            });
-        };
-        // Aguarda DB inicializar
-        setTimeout(checkBadge, 1200);
-        window.addEventListener('online', function() { setTimeout(checkBadge, 500); });
-    }
 });
 </script>
 <!-- /#sidebar-wrapper -->
@@ -249,10 +244,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="bi bi-person-circle"></i> <?php echo $_SESSION['user_nome']; ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                            <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/usuario/perfil">Perfil</a></li>
-                            <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/usuario/configuracoes">Configurações</a></li>
+                            <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/meu-perfil"><i class="bi bi-person-circle me-1"></i> Meu Perfil</a></li>
+                            <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/usuario/configuracoes"><i class="bi bi-gear me-1"></i> Configurações</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/logout">Sair</a></li>
+                            <li><a class="dropdown-item text-danger" href="<?php echo SITE_URL; ?>/logout"><i class="bi bi-box-arrow-right me-1"></i> Sair</a></li>
                         </ul>
                     </li>
                 </ul>
