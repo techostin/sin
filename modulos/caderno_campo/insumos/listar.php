@@ -33,7 +33,7 @@ if ($user_nivel == NIVEL_ADMIN || $user_nivel == NIVEL_GESTOR) {
         <span>Lista de Insumos</span>
         <div>
             <a href="<?php echo SITE_URL; ?>/caderno-campo/insumo/novo" class="btn btn-primary btn-sm">Adicionar Novo Insumo</a>
-            <a href="<?php echo SITE_URL; ?>/caderno-campo/dashboard" class="btn btn-secondary btn-sm ms-2"><i class="bi bi-arrow-left"></i> Voltar ao Dashboard</a>
+            <a href="<?php echo dashboard_destino(); ?>" class="btn btn-secondary btn-sm ms-2"><i class="bi bi-arrow-left"></i> Voltar ao Dashboard</a>
         </div>
     </div>
     <div class="card-body">

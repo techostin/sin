@@ -41,6 +41,7 @@ try {
     </style>
 
     <div class="header">
+        <img src="' . SINPORG_LOGO_PATH . '" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="height:58px; margin-bottom:6px;" />
         <div class="title">Relatório de Propriedades Rurais</div>
         <div class="subtitle">Emissão: ' . date('d/m/Y H:i') . '</div>
     </div>

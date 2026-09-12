@@ -73,6 +73,7 @@ $fab_label  = 'Novo Associado';
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
 require_once __DIR__ . '/../../classes/Associado.php';
+require_once __DIR__ . '/../../classes/FichaAdesao.php';
 require_once __DIR__ . '/../../classes/CSRFProtection.php';
 
 $associado = new Associado();
@@ -152,11 +153,21 @@ $associados = $associado->getAll();
                 </thead>
                 <tbody>
                     <?php if (count($associados) > 0): ?>
+                        <?php 
+                        // Instanciar FichaAdesao para verificar fichas
+                        $fichaModel = new FichaAdesao();
+                        ?>
                         <?php foreach ($associados as $assoc): ?>
                             <?php 
                             $foto_url = $assoc['foto_url'] ?? null;
                             $rowPhotoUrl = ($foto_url && file_exists('uploads/associados/' . $foto_url)) ? SITE_URL . '/uploads/associados/' . htmlspecialchars($foto_url) : '';
                             $rowNome = htmlspecialchars((isset($assoc['nome']) ? $assoc['nome'] : '') . ' ' . (isset($assoc['sobrenome']) ? $assoc['sobrenome'] : ''));
+                            
+                            // Verificar se o associado tem ficha de adesão
+                            $ficha = $fichaModel->getByAssociadoId($assoc['id']);
+                            $temFicha = $ficha !== null;
+                            $fichaStatus = $temFicha ? $ficha['status'] : null;
+                            $fichaId = $temFicha ? $ficha['id'] : null;
                             ?>
                             <tr <?php echo $rowPhotoUrl ? 'data-full-url="' . $rowPhotoUrl . '" data-nome="' . $rowNome . '"' : ''; ?>>
                                 <td data-label="Foto">
@@ -190,6 +201,39 @@ $associados = $associado->getAll();
                                         </button>
                                     <?php else: ?>
                                         <a href="<?php echo SITE_URL; ?>/associado/<?php echo $assoc['id']; ?>/editar?view=1" class="btn btn-secondary btn-sm" title="Visualizar"><i class="bi bi-eye-fill"></i></a>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($temFicha): ?>
+                                        <?php
+                                        // Determinar cor do botão conforme status da ficha
+                                        $btnClass = match($fichaStatus) {
+                                            'aprovada' => 'btn-success',
+                                            'pendente' => 'btn-warning text-dark',
+                                            'recusada' => 'btn-danger',
+                                            'rascunho' => 'btn-secondary',
+                                            default => 'btn-outline-primary'
+                                        };
+                                        $btnTitle = match($fichaStatus) {
+                                            'aprovada' => 'Ficha Aprovada',
+                                            'pendente' => 'Ficha Pendente de Análise',
+                                            'recusada' => 'Ficha Recusada',
+                                            'rascunho' => 'Ficha em Rascunho',
+                                            default => 'Ficha de Adesão'
+                                        };
+                                        ?>
+                                        <a href="javascript:void(0);" 
+                                           onclick="abrirFichaModal(<?php echo $fichaId; ?>)"
+                                           class="btn <?php echo $btnClass; ?> btn-sm" 
+                                           title="<?php echo $btnTitle; ?>">
+                                            <i class="bi bi-file-earmark-person"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="javascript:void(0);" 
+                                           onclick="abrirFichaModal(<?php echo $assoc['id']; ?>)"
+                                           class="btn btn-outline-primary btn-sm" 
+                                           title="Criar Ficha de Adesão">
+                                            <i class="bi bi-file-earmark-plus"></i>
+                                        </a>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -361,6 +405,71 @@ $(document).ready(function() {
             console.error("Erro ao inicializar DataTable:", error);
         }
     });
+</script>
+
+<!-- Modal para visualização da ficha de adesão -->
+<div class="modal fade" id="modalFichaVisualizacao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-person-vcard-fill me-2"></i>Ficha de Adesão</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Conteúdo carregado via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * Abre a ficha de adesão do associado em modal via AJAX
+ */
+function abrirFichaModal(fichaId) {
+    const modalEl = document.getElementById('modalFichaVisualizacao');
+    if (!modalEl || !window.bootstrap) return;
+    
+    const modal = new bootstrap.Modal(modalEl);
+    const modalBody = modalEl.querySelector('.modal-body');
+    
+    // Mostrar loading
+    modalBody.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2 text-muted">Carregando ficha de adesão...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // Carregar via AJAX
+    fetch('<?php echo SITE_URL; ?>/cadastro-ficha/visualizar?id=' + fichaId + '&modal=1', {
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        modalBody.innerHTML = html;
+        
+        // Re-inicializar tooltips se necessário
+        if (window.bootstrap && bootstrap.Tooltip) {
+            const tooltips = modalEl.querySelectorAll('[data-bs-toggle="tooltip"]');
+            tooltips.forEach(el => new bootstrap.Tooltip(el));
+        }
+    })
+    .catch(err => {
+        modalBody.innerHTML = `
+            <div class="alert alert-danger text-center p-4">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                Erro ao carregar a ficha. Tente novamente.
+            </div>
+        `;
+    });
+}
 </script>
 
 <?php

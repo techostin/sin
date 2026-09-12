@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../classes/Database.php';
 require_once __DIR__ . '/../../../classes/CSRFProtection.php';
 
 require_once __DIR__ . '/../../../classes/User.php';
+require_once __DIR__ . '/../../../classes/AuditLog.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -25,8 +26,9 @@ $loteId = (int)$id;
 
 try {
     $db = Database::getInstance()->getConnection();
-    $stmt = $db->prepare('DELETE FROM lotes_producao WHERE id = ?');
+    $stmt = $db->prepare('UPDATE lotes_producao SET excluido = 1 WHERE id = ?');
     $stmt->execute([$loteId]);
+    AuditLog::registrar('LOTE_EXCLUIDO', 'lotes_producao', $loteId, 'Soft delete de lote de produção');
     header('Location: ' . SITE_URL . '/lotes?msg=excluido');
     exit;
 } catch (PDOException $e) {

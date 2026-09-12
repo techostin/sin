@@ -6,24 +6,41 @@ body {
     color: #333;
 }
 
+/* CSS Variables para consistência */
+:root {
+    --sidebar-width: 280px;
+    --sidebar-width-collapsed: 70px;
+    --top-bar-height: 70px;
+    --bottom-nav-height: 64px;
+}
+
 /* Estilos do Wrapper do Dashboard */
 #wrapper {
     display: flex;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 100vh;
 }
 
 #sidebar-wrapper {
     min-height: 100vh;
-    width: 280px;
-    margin-left: -280px;
-    background: linear-gradient(180deg, #212529 0%, #343a40 100%);
-    box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+    height: 100vh;
+    height: 100dvh;
+    width: var(--sidebar-width);
+    margin-left: calc(-1 * var(--sidebar-width));
+    background:
+        radial-gradient(600px 260px at 100% 0%, rgba(78, 222, 148, 0.16), transparent 60%),
+        radial-gradient(500px 220px at 0% 100%, rgba(43, 157, 143, 0.14), transparent 55%),
+        linear-gradient(180deg, #1b7a4d 0%, #125c38 45%, #0b3d26 100%);
+    box-shadow: 4px 0 10px rgba(0,0,0,0.15);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
     display: flex;
     flex-direction: column;
+    align-self: stretch;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.28) rgba(255,255,255,0.06);
 }
 
 #sidebar-wrapper::-webkit-scrollbar {
@@ -31,16 +48,21 @@ body {
 }
 
 #sidebar-wrapper::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
 }
 
 #sidebar-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.2);
-    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0.18));
+    border-radius: 8px;
 }
 
 #sidebar-wrapper::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.4);
+}
+
+#sidebar-wrapper.collapsed {
+    width: 70px;
 }
 
 #wrapper.toggled #sidebar-wrapper {
@@ -50,9 +72,20 @@ body {
 #page-content-wrapper {
     width: 100%;
     background-color: #f4f7f6;
+    flex: 1;
+    min-width: 0;
 }
 
-/* Ajuste para telas maiores */
+/* Sidebar collapsed state */
+#wrapper.sidebar-collapsed #sidebar-wrapper {
+    width: 70px;
+}
+
+#wrapper.sidebar-collapsed #page-content-wrapper {
+    margin-left: 70px;
+}
+
+/* Desktop: sidebar sempre visível */
 @media (min-width: 992px) {
     #sidebar-wrapper {
         margin-left: 0;
@@ -64,7 +97,33 @@ body {
     }
 
     #wrapper.toggled #sidebar-wrapper {
-        margin-left: -280px;
+        margin-left: calc(-1 * var(--sidebar-width));
+    }
+
+    /* Estado collapsed no desktop */
+    #wrapper.sidebar-collapsed #sidebar-wrapper {
+        width: 70px;
+    }
+    
+    #wrapper.sidebar-collapsed #page-content-wrapper {
+        margin-left: 70px;
+    }
+}
+
+/* Mobile: sidebar overlay */
+@media (max-width: 991.98px) {
+    #sidebar-wrapper {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    #sidebar-wrapper.active {
+        transform: translateX(0);
+    }
+    
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: 0;
+        transform: translateX(0);
     }
 }
 
@@ -85,6 +144,93 @@ body {
     color: #fff !important;
     padding-left: 1.5rem;
 }
+
+/* ── Menu lateral com gradiente verde ───────────────────────
+   Os itens usam bg-dark/bg-secondary do Bootstrap; tornamos
+   transparentes para deixar o gradiente visível.             */
+#sidebar-wrapper .list-group-item {
+    background: transparent !important;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.92) !important;
+}
+
+#sidebar-wrapper .list-group-item:hover,
+#sidebar-wrapper .list-group-item.active {
+    background: rgba(255,255,255,0.10) !important;
+    color: #fff !important;
+}
+
+#sidebar-wrapper .list-group-item .text-white-50 {
+      color: rgba(255,255,255,0.62) !important;
+  }
+
+  /* Menu/submenus Agroindústria — destaque com gradiente azul-ciano (mesma cor do card Certificações Ativas) */
+  #sidebar-wrapper .list-group-item.agro-menu-toggle,
+  #sidebar-wrapper #agroindustriaTop .list-group-item {
+      background: linear-gradient(135deg, #2f9e44 0%, #2b8a3e 55%, #1b5e20 100%) !important;
+      border-bottom: 1px solid rgba(255,255,255,0.16) !important;
+      color: #fff !important;
+  }
+  #sidebar-wrapper .list-group-item.agro-menu-toggle:hover,
+  #sidebar-wrapper #agroindustriaTop .list-group-item:hover {
+      background: linear-gradient(135deg, #69db7c 0%, #37b24d 55%, #2b8a3e 100%) !important;
+  }
+  #sidebar-wrapper #agroindustriaTop .list-group-item.text-white-50 {
+      color: rgba(255,255,255,0.85) !important;
+      font-weight: 600;
+  }
+
+  /* Menu/submenus Produção Animal — destaque com gradiente cinza opaco */
+  #sidebar-wrapper .list-group-item.animal-menu-toggle,
+  #sidebar-wrapper #producaoAnimalTop .list-group-item {
+      background: linear-gradient(135deg, #9aa4ae 0%, #5c636a 55%, #343a40 100%) !important;
+      border-bottom: 1px solid rgba(255,255,255,0.14) !important;
+      color: #fff !important;
+  }
+  #sidebar-wrapper .list-group-item.animal-menu-toggle:hover,
+  #sidebar-wrapper #producaoAnimalTop .list-group-item:hover {
+      background: linear-gradient(135deg, #c5ccd4 0%, #7b858e 55%, #495057 100%) !important;
+  }
+  #sidebar-wrapper #producaoAnimalTop .list-group-item.text-white-50 {
+      color: rgba(255,255,255,0.75) !important;
+      font-weight: 600;
+      background: linear-gradient(180deg, rgba(90,98,107,0.9) 0%, rgba(70,76,84,0.9) 100%) !important;
+  }
+
+  /* Menu/submenus Produção Vegetal — destaque com gradiente verde */
+  #sidebar-wrapper .list-group-item.vegetal-menu-toggle,
+  #sidebar-wrapper #producaoVegetalTop .list-group-item {
+      background: linear-gradient(135deg, #2f9e44 0%, #2b8a3e 55%, #1b5e20 100%) !important;
+      border-bottom: 1px solid rgba(255,255,255,0.16) !important;
+      color: #fff !important;
+  }
+  #sidebar-wrapper .list-group-item.vegetal-menu-toggle:hover,
+  #sidebar-wrapper #producaoVegetalTop .list-group-item:hover {
+      background: linear-gradient(135deg, #69db7c 0%, #37b24d 55%, #2b8a3e 100%) !important;
+  }
+  #sidebar-wrapper #producaoVegetalTop .list-group-item.text-white-50 {
+      color: rgba(255,255,255,0.8) !important;
+      font-weight: 600;
+      background: linear-gradient(180deg, rgba(43,138,62,0.95) 0%, rgba(27,94,32,0.95) 100%) !important;
+  }
+
+  /* Menu/submenus Associação — destaque com gradiente cinza (mesma cor de Produção Animal) */
+  #sidebar-wrapper .list-group-item.assoc-menu-toggle,
+  #sidebar-wrapper #associacaoTop .list-group-item {
+      background: linear-gradient(135deg, #9aa4ae 0%, #5c636a 55%, #343a40 100%) !important;
+      border-bottom: 1px solid rgba(255,255,255,0.14) !important;
+      color: #fff !important;
+  }
+  #sidebar-wrapper .list-group-item.assoc-menu-toggle:hover,
+  #sidebar-wrapper #associacaoTop .list-group-item:hover {
+      background: linear-gradient(135deg, #c5ccd4 0%, #7b858e 55%, #495057 100%) !important;
+  }
+  #sidebar-wrapper #associacaoTop .list-group-item.text-white-50 {
+      color: rgba(255,255,255,0.75) !important;
+      font-weight: 600;
+      background: linear-gradient(180deg, rgba(90,98,107,0.9) 0%, rgba(70,76,84,0.9) 100%) !important;
+  }
 
 /* Premium Cards */
 .card {
@@ -149,3 +295,152 @@ body {
 .table-technical table {
     min-width: 800px; /* Força scroll em telas pequenas */
 }
+
+/* =============================================
+   Bottom Navigation Bar — Mobile-First (< 992px)
+   Exibição fixa no rodapé mobile, oculto no desktop (>= 992px)
+   ============================================= */
+#bottom-nav,
+.bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 1040 !important;
+    height: 64px !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    background: #ffffff !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    margin: 0 !important;
+}
+
+.bottom-nav-item {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    color: #6c757d !important;
+    text-decoration: none !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 4px 0 !important;
+    margin: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+.bottom-nav-item i {
+    font-size: 1.35rem !important;
+    line-height: 1 !important;
+    display: inline-block !important;
+    margin-bottom: 2px !important;
+    transition: color 0.15s ease, transform 0.15s ease !important;
+}
+
+.bottom-nav-item span {
+    display: block !important;
+    font-size: 0.7rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+.bottom-nav-item.active {
+    color: #198754 !important;
+}
+
+.bottom-nav-item.active i {
+    color: #198754 !important;
+    transform: scale(1.1) !important;
+}
+
+/* Botão Central FAB elevado */
+.bottom-nav-item.fab {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+.bottom-nav-item.fab .fab-circle {
+    width: 52px !important;
+    height: 52px !important;
+    margin-top: -26px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #198754, #20c997) !important;
+    box-shadow: 0 6px 16px rgba(25, 135, 84, 0.4) !important;
+    border: 4px solid #ffffff !important;
+    transition: transform 0.15s ease !important;
+}
+
+.bottom-nav-item.fab .fab-circle i {
+    font-size: 1.5rem !important;
+    color: #ffffff !important;
+    margin-bottom: 0 !important;
+}
+
+.bottom-nav-item.fab span {
+    margin-top: 2px !important;
+    font-size: 0.68rem !important;
+}
+
+.bottom-nav-item.fab:active .fab-circle {
+    transform: scale(0.95) !important;
+}
+
+/* Badge de sincronização pendente */
+.bottom-nav-badge {
+    display: none;
+    position: absolute !important;
+    top: 4px !important;
+    right: calc(50% - 20px) !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    padding: 0 5px !important;
+    border-radius: 999px !important;
+    background: #dc3545 !important;
+    color: #ffffff !important;
+    font-size: 0.62rem !important;
+    font-weight: 700 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 2 !important;
+}
+
+.bottom-nav-badge.visible {
+    display: inline-flex !important;
+}
+
+@media (max-width: 991.98px) {
+    body {
+        padding-bottom: 70px !important;
+    }
+}
+
+/* Ocultar no modo Desktop / Web (>= 992px) */
+@media (min-width: 992px) {
+    #bottom-nav,
+    .bottom-nav {
+        display: none !important;
+    }
+    body {
+        padding-bottom: 0 !important;
+    }
+}
+
+

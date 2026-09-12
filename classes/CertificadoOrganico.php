@@ -25,6 +25,7 @@ class CertificadoOrganico
                        a.sobrenome AS associado_sobrenome,
                        a.cpf,
                        a.registro_cnpo,
+                       a.certificadora_id,
                        a.endereco,
                        a.numero,
                        a.complemento,
@@ -59,6 +60,7 @@ class CertificadoOrganico
         }
 
         $stmt = $this->db->prepare("SELECT id, nome, sobrenome, cpf, registro_cnpo,
+                                           certificadora_id,
                                            endereco, numero, complemento, bairro,
                                            cidade, estado, cep, email, telefone
                                     FROM associados WHERE id = ?");
@@ -141,6 +143,60 @@ class CertificadoOrganico
     }
 
     /**
+     * Busca a certificadora vinculada ao associado do certificado.
+     * Prioridade:
+     *   1. associados.certificadora_id (vínculo direto do associado)
+     *   2. códigos de certificadoras pelo organismo_certificador (sigla)
+     *   3. certificadora do usuário logado (fallback)
+     */
+    public function buscarCertificadoraDoAssociado(?int $associadoId, ?string $organismoCertificador = null): ?array
+    {
+        try {
+            // 1. Via associados.certificadora_id
+            if ($associadoId) {
+                $stmt = $this->db->prepare(
+                    "SELECT c.* FROM certificadoras c
+                     INNER JOIN associados a ON a.certificadora_id = c.id
+                     WHERE a.id = ? LIMIT 1"
+                );
+                $stmt->execute([$associadoId]);
+                $cert = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($cert) {
+                    return $cert;
+                }
+            }
+
+            // 2. Match pelo organismo_certificador (sigla da certificadora)
+            if (!empty($organismoCertificador)) {
+                $stmt2 = $this->db->prepare(
+                    "SELECT * FROM certificadoras WHERE sigla = ? LIMIT 1"
+                );
+                $stmt2->execute([$organismoCertificador]);
+                $cert2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+                if ($cert2) {
+                    return $cert2;
+                }
+
+                // Match parcial (ex: "OPAC COCEARGS")
+                $stmt3 = $this->db->prepare(
+                    "SELECT * FROM certificadoras WHERE nome LIKE ? OR sigla LIKE ? LIMIT 1"
+                );
+                $like = '%' . $organismoCertificador . '%';
+                $stmt3->execute([$like, $like]);
+                $cert3 = $stmt3->fetch(PDO::FETCH_ASSOC);
+                if ($cert3) {
+                    return $cert3;
+                }
+            }
+        } catch (PDOException $e) {
+            error_log('Erro ao buscar certificadora do associado: ' . $e->getMessage());
+        }
+
+        // 3. Fallback: certificadora do usuário logado
+        return $this->buscarCertificadoraDoUsuario();
+    }
+
+    /**
      * Resolve o caminho da logo da certificadora (arquivo físico ou URL pública).
      * @return string|null Caminho absoluto para PDF ou URL para HTML
      */
@@ -197,8 +253,11 @@ class CertificadoOrganico
 
         $propriedades = $this->buscarPropriedades((int) $row['associado_id']);
 
-        // Busca certificadora do usuário logado para uso no certificado
-        $certificadora = $this->buscarCertificadoraDoUsuario();
+        // Busca certificadora vinculada ao associado para uso no certificado
+        $certificadora = $this->buscarCertificadoraDoAssociado(
+            (int) ($row['associado_id'] ?? 0),
+            $row['organismo_certificador'] ?? null
+        );
 
         return [
             'id' => $row['id'] ?? null,
@@ -376,56 +435,59 @@ class CertificadoOrganico
 
         return <<<HTML
 <style>
+    @page { margin: 10mm; }
     .cert-page { font-family: 'DejaVu Sans', Arial, sans-serif; color: #1a1a1a; font-size: 10pt; }
-    .cert-border { border: 3px double #2d6a2d; padding: 18px 22px; min-height: 960px; position: relative; }
-    .cert-inner { border: 1px solid #8fbc8f; padding: 16px 20px; }
-    .cert-header { display: table; width: 100%; margin-bottom: 14px; border-bottom: 2px solid #2d6a2d; padding-bottom: 10px; }
-    .cert-header .logo-left { display: table-cell; width: 25%; vertical-align: middle; text-align: left; }
-    .cert-header .logo-right { display: table-cell; width: 25%; vertical-align: middle; text-align: right; }
-    .cert-header .header-center { display: table-cell; width: 50%; vertical-align: middle; text-align: center; }
-    .cert-header img { height: 52px; margin-bottom: 6px; }
+    .cert-border { border: 3px double #2d6a2d; padding: 10px 14px; }
+    .cert-inner { border: 1px solid #8fbc8f; padding: 10px 14px; }
+    .cert-header { width: 100%; border-collapse: collapse; margin-bottom: 8px; border-bottom: 2px solid #2d6a2d; }
+    .cert-header .logo-left { width: 25%; text-align: left; vertical-align: middle; padding-bottom: 8px; }
+    .cert-header .logo-right { width: 25%; text-align: right; vertical-align: middle; padding-bottom: 8px; }
+    .cert-header .header-center { width: 50%; text-align: center; vertical-align: middle; padding-bottom: 8px; }
+    .cert-header img { margin: 0; padding: 0; }
     .cert-org { font-size: 11pt; font-weight: bold; color: #2d6a2d; letter-spacing: 0.5px; }
-    .cert-suborg { font-size: 8.5pt; color: #555; margin-top: 2px; }
-    .cert-title { text-align: center; margin: 16px 0 6px; }
-    .cert-title h1 { font-size: 16pt; color: #2d6a2d; margin: 0; letter-spacing: 1px; text-transform: uppercase; }
+    .cert-suborg { font-size: 8pt; color: #555; margin-top: 2px; }
+    .cert-title { text-align: center; margin: 8px 0 2px; }
+    .cert-title h1 { font-size: 13pt; color: #2d6a2d; margin: 0; letter-spacing: 1px; text-transform: uppercase; }
     .cert-title h2 { font-size: 10pt; color: #444; margin: 4px 0 0; font-weight: normal; }
-    .cert-number { text-align: center; font-size: 11pt; font-weight: bold; color: #1a1a1a; margin: 10px 0 16px; }
+    .cert-number { text-align: center; font-size: 10pt; font-weight: bold; color: #1a1a1a; margin: 6px 0 8px; }
     .cert-number span { background: #f0f7f0; padding: 4px 14px; border: 1px solid #2d6a2d; }
-    .cert-body { line-height: 1.55; text-align: justify; margin-bottom: 12px; }
+    .cert-body { line-height: 1.3; text-align: justify; margin-bottom: 12px; }
     .info-table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; }
-    .info-table td { padding: 4px 6px; vertical-align: top; font-size: 9.5pt; }
+    .info-table td { padding: 2px 5px; vertical-align: top; font-size: 9.5pt; }
     .info-table .label { font-weight: bold; width: 28%; color: #2d6a2d; white-space: nowrap; }
-    .products-title { font-size: 10pt; font-weight: bold; color: #2d6a2d; margin: 14px 0 6px; text-transform: uppercase; }
+    .products-title { font-size: 9pt; font-weight: bold; color: #2d6a2d; margin: 8px 0 4px; text-transform: uppercase; }
     .products-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-    .products-table th { background: #2d6a2d; color: #fff; padding: 6px 8px; font-size: 8.5pt; text-align: left; }
-    .products-table td { border: 1px solid #ccc; padding: 5px 8px; font-size: 9pt; }
+    .products-table th { background: #2d6a2d; color: #fff; padding: 3px 6px; font-size: 8.5pt; text-align: left; }
+    .products-table td { border: 1px solid #ccc; padding: 2px 6px; font-size: 9pt; }
     .products-table .center { text-align: center; }
     .products-table .muted { color: #888; font-style: italic; }
-    .validity-box { background: #f0f7f0; border: 1px solid #2d6a2d; padding: 10px 14px; margin: 14px 0; text-align: center; }
+    .validity-box { background: #f0f7f0; border: 1px solid #2d6a2d; padding: 5px 12px; margin: 6px 0; text-align: center; }
     .validity-box strong { color: #2d6a2d; }
-    .legal { font-size: 7.5pt; color: #666; text-align: justify; margin-top: 14px; line-height: 1.4; border-top: 1px solid #ddd; padding-top: 10px; }
-    .signatures { margin-top: 30px; display: table; width: 100%; }
-    .sig-box { display: table-cell; width: 48%; text-align: center; vertical-align: bottom; }
-    .sig-line { border-top: 1px solid #333; margin: 40px 20px 4px; padding-top: 4px; font-size: 8.5pt; }
-    .grupo { font-size: 9pt; margin: 6px 0; }
-    .obs { font-size: 8.5pt; margin-top: 8px; color: #555; }
+    .legal { font-size: 6.5pt; color: #666; text-align: justify; margin-top: 2px; line-height: 1.25; border-top: 1px solid #ddd; padding-top: 6px; }
+    .signatures { margin-top: 8px; width: 100%; border-collapse: collapse; }
+    .sig-box { width: 48%; text-align: center; vertical-align: bottom; }
+    .sig-line { border-top: 1px solid #333; margin: 8px 20px 2px; padding-top: 4px; font-size: 8.5pt; }
+    .grupo { font-size: 8.5pt; margin: 4px 0; }
+    .obs { font-size: 8pt; margin-top: 2px; color: #555; }
     .badge-status { display: inline-block; background: #2d6a2d; color: #fff; padding: 2px 10px; font-size: 9pt; border-radius: 3px; }
 </style>
 <div class="cert-page">
 <div class="cert-border">
 <div class="cert-inner">
-    <div class="cert-header">
-        <div class="logo-left">
-            <img src="{$logoCertSrc}" alt="Logo Certificadora">
-        </div>
-        <div class="header-center">
-            <div class="cert-org">{$organismo}</div>
-            <div class="cert-suborg">Certificação Orgânica — Portaria MAPA nº 52/2021</div>
-        </div>
-        <div class="logo-right">
-            <img src="{$seloSrc}" alt="Selo SisOrg Brasil">
-        </div>
-    </div>
+    <table class="cert-header">
+        <tr>
+            <td class="logo-left">
+                <img src="{$logoCertSrc}" alt="Logo Certificadora" width="80" height="80">
+            </td>
+            <td class="header-center">
+                <div class="cert-org">{$organismo}</div>
+                <div class="cert-suborg">Certificação Orgânica — Portaria MAPA nº 52/2021</div>
+            </td>
+            <td class="logo-right">
+                <img src="{$seloSrc}" alt="Selo SisOrg Brasil" width="150" height="66">
+            </td>
+        </tr>
+    </table>
 
     <div class="cert-title">
         <h1>Certificado de Conformidade Orgânica</h1>
@@ -484,14 +546,16 @@ class CertificadoOrganico
         devem exibir o selo Brasil Orgânico/SisOrg conforme legislação vigente.
     </div>
 
-    <div class="signatures">
-        <div class="sig-box">
-            <div class="sig-line">Responsável pelo SPG/OCS<br><em>Organismo Certificador</em></div>
-        </div>
-        <div class="sig-box">
-            <div class="sig-line">Produtor(a) Certificado(a)<br><em>{$produtor}</em></div>
-        </div>
-    </div>
+    <table class="signatures">
+        <tr>
+            <td class="sig-box">
+                <div class="sig-line">Responsável pelo SPG/OCS<br><em>Organismo Certificador</em></div>
+            </td>
+            <td class="sig-box">
+                <div class="sig-line">Produtor(a) Certificado(a)<br><em>{$produtor}</em></div>
+            </td>
+        </tr>
+    </table>
 </div>
 </div>
 </div>
@@ -507,7 +571,7 @@ HTML;
 
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
-            'format' => 'A4',
+            'format' => 'A4-L',
             'margin_left' => 12,
             'margin_right' => 12,
             'margin_top' => 12,

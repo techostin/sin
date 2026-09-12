@@ -61,7 +61,7 @@ function carregarEventosModal() {
             console.log('Resposta da API:', data);
             
             // Inicializar o modal
-            const eventosModal = new bootstrap.Modal(document.getElementById('eventosModal'));
+            const eventosModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('eventosModal'));
             
             if (data.success && data.eventos && data.eventos.length > 0) {
                 const tbody = document.getElementById('tabelaEventos');
@@ -133,7 +133,7 @@ function carregarEventosModal() {
                     </td>
                 </tr>`;
             // Mostrar o modal mesmo com erro para informar o usuário
-            const eventosModal = new bootstrap.Modal(document.getElementById('eventosModal'));
+            const eventosModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('eventosModal'));
             eventosModal.show();
         });
 }

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../classes/Database.php';
 require_once __DIR__ . '/../../../classes/CSRFProtection.php';
 require_once __DIR__ . '/../../../classes/User.php';
 require_once __DIR__ . '/../../../classes/Ocorrencia.php';
+require_once __DIR__ . '/../../../classes/AuditLog.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -36,6 +37,7 @@ try {
     
     // Excluir
     $ocorrencia_obj->delete((int)$id, $dados_ocorrencia['associado_id']);
+    AuditLog::registrar('OCORRENCIA_EXCLUIDA', 'ocorrencias_manejo', (int)$id, 'Soft delete de ocorrência');
     
     header('Location: ' . SITE_URL . '/caderno-campo/ocorrencias?msg=excluido');
     exit;

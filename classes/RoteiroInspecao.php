@@ -98,4 +98,12 @@ class RoteiroInspecao {
             $data['id']
         ]);
     }
+
+    /**
+     * Exclui um roteiro de inspeção
+     */
+    public function delete($id) {
+        $stmt = $this->db->prepare("DELETE FROM roteiros_inspecao WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
 }

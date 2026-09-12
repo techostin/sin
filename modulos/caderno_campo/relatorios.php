@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $page_title = "Dashboard de Relatórios - Caderno de Campo";
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
@@ -39,7 +39,7 @@ try {
     $db = Database::getInstance()->getConnection();
     
     // Condição WHERE para filtrar por associado (apenas para usuários comuns)
-    $where_atividades = $is_admin_gestor ? "" : "WHERE associado_id = :associado_id";
+    $where_atividades = $is_admin_gestor ? "WHERE excluido = 0" : "WHERE associado_id = :associado_id AND excluido = 0";
     $where_propriedades = $is_admin_gestor ? "" : "WHERE associado_id = :associado_id";
     $where_lavouras = $is_admin_gestor ? "" : "WHERE l.associado_id = :associado_id";
     $params = $is_admin_gestor ? [] : [':associado_id' => $associado_id];
@@ -75,9 +75,9 @@ try {
     
     // Total de insumos (filtrar por associado)
     if ($is_admin_gestor) {
-        $stmt = $db->query("SELECT COUNT(*) as total FROM insumos");
+        $stmt = $db->query("SELECT COUNT(*) as total FROM insumos WHERE excluido = 0");
     } else {
-        $stmt = $db->prepare("SELECT COUNT(*) as total FROM insumos WHERE associado_id = :associado_id");
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM insumos WHERE associado_id = :associado_id AND excluido = 0");
         $stmt->execute([':associado_id' => $associado_id]);
     }
     $stats['total_insumos'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
@@ -86,16 +86,52 @@ try {
     if ($is_admin_gestor) {
         $stmt = $db->query("SELECT COUNT(*) as total FROM produtos");
     } else {
-        $stmt = $db->prepare("SELECT COUNT(*) as total FROM produtos WHERE associado_id = :associado_id");
-        $stmt->execute([':associado_id' => $associado_id]);
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM produtos WHERE id IN (
+            SELECT pr.id FROM produtos pr
+            WHERE pr.associado_id = :assoc
+               OR (pr.unidade_tipo = 'propriedade' AND pr.unidade_id IN (
+                    SELECT p.id FROM propriedades p
+                    WHERE p.associado_id = :assoc OR EXISTS (
+                        SELECT 1 FROM propriedade_membros pm
+                        WHERE pm.propriedade_id = p.id AND pm.associado_id = :assoc AND pm.excluido = 0
+                    )
+                ))
+               OR (pr.unidade_tipo = 'agroindustria' AND pr.unidade_id IN (
+                    SELECT ag.id FROM agroindustrias ag
+                    WHERE ag.excluido = 0 AND (
+                        ag.associado_id = :assoc OR EXISTS (
+                            SELECT 1 FROM agroindustria_membros am
+                            WHERE am.agroindustria_id = ag.id AND am.associado_id = :assoc AND am.excluido = 0
+                        )
+                    )
+                ))
+               OR (pr.unidade_tipo = 'animal' AND pr.unidade_id IN (
+                    SELECT amb.id FROM ambiente_criacao_animal amb
+                    WHERE amb.excluido = 0 AND (
+                        amb.associado_id = :assoc OR EXISTS (
+                            SELECT 1 FROM ambiente_criacao_membros em
+                            WHERE em.ambiente_id = amb.id AND em.associado_id = :assoc AND em.excluido = 0
+                        )
+                    )
+                ))
+               OR (pr.lavoura_id IS NOT NULL AND pr.lavoura_id IN (
+                    SELECT l.id FROM lavouras l
+                    JOIN propriedades p ON l.propriedade_id = p.id
+                    WHERE p.associado_id = :assoc OR EXISTS (
+                        SELECT 1 FROM propriedade_membros pm
+                        WHERE pm.propriedade_id = p.id AND pm.associado_id = :assoc AND pm.excluido = 0
+                    )
+                ))
+        )");
+        $stmt->execute([':assoc' => $associado_id]);
     }
     $stats['total_produtos'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Total de lotes
     if ($is_admin_gestor) {
-        $stmt = $db->query("SELECT COUNT(*) as total FROM lotes_producao");
+        $stmt = $db->query("SELECT COUNT(*) as total FROM lotes_producao WHERE excluido = 0");
     } else {
-        $stmt = $db->prepare("SELECT COUNT(*) as total FROM lotes_producao WHERE associado_id = :associado_id");
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM lotes_producao WHERE associado_id = :associado_id AND excluido = 0");
         $stmt->execute([':associado_id' => $associado_id]);
     }
     $stats['total_lotes'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
@@ -108,8 +144,8 @@ try {
     
     // Atividades dos últimos 30 dias
     $sql = "SELECT COUNT(*) as total FROM atividades_diarias " . 
-           ($is_admin_gestor ? "WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)" : 
-            "WHERE associado_id = :associado_id AND data_atividade >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
+           ($is_admin_gestor ? "WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND excluido = 0" : 
+            "WHERE associado_id = :associado_id AND data_atividade >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND excluido = 0");
     $stmt = $db->prepare($sql);
     if (!$is_admin_gestor) {
         $stmt->execute([':associado_id' => $associado_id]);
@@ -123,8 +159,8 @@ try {
         DATE_FORMAT(data_atividade, '%Y-%m') as mes,
         COUNT(*) as total 
         FROM atividades_diarias " .
-        ($is_admin_gestor ? "WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)" : 
-         "WHERE associado_id = :associado_id AND data_atividade >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)") .
+        ($is_admin_gestor ? "WHERE data_atividade >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) AND excluido = 0" : 
+         "WHERE associado_id = :associado_id AND data_atividade >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH) AND excluido = 0") .
         " GROUP BY DATE_FORMAT(data_atividade, '%Y-%m')
         ORDER BY mes DESC";
     $stmt = $db->prepare($sql);
@@ -141,7 +177,7 @@ try {
             p.propriedade,
             COUNT(ad.id) as total_atividades
             FROM propriedades p
-            LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id
+            LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id AND ad.excluido = 0
             GROUP BY p.id, p.propriedade
             ORDER BY total_atividades DESC
             LIMIT 5");
@@ -150,7 +186,7 @@ try {
             p.propriedade,
             COUNT(ad.id) as total_atividades
             FROM propriedades p
-            LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id
+            LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id AND ad.excluido = 0
             WHERE p.associado_id = :associado_id
             GROUP BY p.id, p.propriedade
             ORDER BY total_atividades DESC
@@ -166,7 +202,7 @@ try {
             l.tipo_cultura as cultura,
             COUNT(ad.id) as total_atividades
             FROM lavouras l
-            LEFT JOIN atividades_diarias ad ON l.id = ad.lavoura_id
+            LEFT JOIN atividades_diarias ad ON l.id = ad.lavoura_id AND ad.excluido = 0
             GROUP BY l.id, l.nome, l.tipo_cultura
             ORDER BY total_atividades DESC
             LIMIT 5");
@@ -177,7 +213,7 @@ try {
             COUNT(ad.id) as total_atividades
             FROM lavouras l
             LEFT JOIN propriedades p ON l.propriedade_id = p.id
-            LEFT JOIN atividades_diarias ad ON l.id = ad.lavoura_id
+            LEFT JOIN atividades_diarias ad ON l.id = ad.lavoura_id AND ad.excluido = 0
             WHERE p.associado_id = :associado_id
             GROUP BY l.id, l.nome, l.tipo_cultura
             ORDER BY total_atividades DESC
@@ -192,7 +228,7 @@ try {
             insumo_utilisado,
             COUNT(*) as total_uso
             FROM atividades_diarias 
-            WHERE insumo_utilisado IS NOT NULL AND insumo_utilisado != ''
+            WHERE excluido = 0 AND insumo_utilisado IS NOT NULL AND insumo_utilisado != ''
             GROUP BY insumo_utilisado
             ORDER BY total_uso DESC
             LIMIT 10");
@@ -201,7 +237,7 @@ try {
             insumo_utilisado,
             COUNT(*) as total_uso
             FROM atividades_diarias 
-            WHERE associado_id = :associado_id AND insumo_utilisado IS NOT NULL AND insumo_utilisado != ''
+            WHERE associado_id = :associado_id AND insumo_utilisado IS NOT NULL AND insumo_utilisado != '' AND excluido = 0
             GROUP BY insumo_utilisado
             ORDER BY total_uso DESC
             LIMIT 10");

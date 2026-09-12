@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Função para visualizar detalhes do evento
 function visualizarEvento(eventoId) {
     // Mostrar loading no modal
-    const modal = new bootstrap.Modal(document.getElementById('modalEvento'));
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEvento'));
     const modalBody = document.getElementById('modalEventoBody');
     const modalTitle = document.getElementById('modalEventoTitle');
     

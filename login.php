@@ -593,6 +593,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                                 onclick="switchTab('cadastro')">
                             <i class="bi bi-person-plus me-1"></i> Primeiro Acesso
                         </button>
+                        <button class="login-tab" id="tab-perfil" role="tab"
+                                aria-selected="false" aria-controls="panel-perfil"
+                                onclick="switchTab('perfil')">
+                            <i class="bi bi-flower1 me-1"></i> Perfil de Acesso
+                        </button>
                     </div>
 
                     <!-- ── Painel: Login ── -->
@@ -642,14 +647,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                         </form>
                     </div><!-- /panel-login -->
 
-                    <!-- ── Painel: Primeiro Acesso (Pré-cadastro) ── -->
-                    <div class="login-panel" id="panel-cadastro" role="tabpanel">
+                    <!-- ── Painel: Primeiro Acesso + Perfil (form único) ── -->
+                    <form id="form-cadastro" novalidate>
 
-                        <!-- Estado: formulário -->
-                        <div id="cadastro-form-area">
+                        <!-- ── Passo 1: Dados pessoais ── -->
+                        <div class="login-panel" id="panel-cadastro" role="tabpanel">
                             <h5 class="fw-bold mb-1" style="font-size:1.05rem;">Criar minha conta</h5>
                             <p class="text-muted small mb-3">
-                                Preencha os dados abaixo. Após o cadastro, um administrador irá ativar seu acesso.
+                                Preencha seus dados abaixo e continue para escolher o <strong>Perfil de Acesso</strong>.
                             </p>
 
                             <div id="cadastro-error" class="alert alert-danger mb-3" style="display:none;">
@@ -657,90 +662,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                                 <span id="cadastro-error-text"></span>
                             </div>
 
-                            <form id="form-cadastro" novalidate>
-
-                                <div class="row g-2 mb-3">
-                                    <div class="col-6">
-                                        <label for="c-nome" class="form-label">Nome <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="c-nome" name="nome"
-                                               placeholder="Seu nome"
-                                               autocomplete="given-name" required>
-                                    </div>
-                                    <div class="col-6">
-                                        <label for="c-sobrenome" class="form-label">Sobrenome <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="c-sobrenome" name="sobrenome"
-                                               placeholder="Sobrenome"
-                                               autocomplete="family-name" required>
-                                    </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label for="c-nome" class="form-label">Nome <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="c-nome" name="nome"
+                                           placeholder="Seu nome"
+                                           autocomplete="given-name" required>
                                 </div>
-
-                                <div class="mb-3">
-                                    <label for="c-email" class="form-label">E-mail <span class="text-danger">*</span></label>
-                                    <input type="email" class="form-control" id="c-email" name="email"
-                                           placeholder="seu@email.com"
-                                           autocomplete="email" inputmode="email"
-                                           autocapitalize="none" autocorrect="off" required>
+                                <div class="col-6">
+                                    <label for="c-sobrenome" class="form-label">Sobrenome <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="c-sobrenome" name="sobrenome"
+                                           placeholder="Sobrenome"
+                                           autocomplete="family-name" required>
                                 </div>
+                            </div>
 
-<div class="mb-3">
-                                    <label for="c-senha" class="form-label">Senha <span class="text-danger">*</span></label>
-                                    <div class="input-password-wrapper">
-                                        <input type="password" class="form-control" id="c-senha" name="senha"
-                                               placeholder="Mínimo 6 caracteres"
-                                               autocomplete="new-password" required>
-                                        <button type="button" class="toggle-password" id="toggle-c-senha" aria-label="Mostrar senha">
-                                            <i class="bi bi-eye" id="toggle-c-senha-icon"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                            <div class="mb-3">
+                                <label for="c-email" class="form-label">E-mail <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="c-email" name="email"
+                                       placeholder="seu@email.com"
+                                       autocomplete="email" inputmode="email"
+                                       autocapitalize="none" autocorrect="off" required>
+                            </div>
 
-                                <div class="mb-3">
-                                    <label for="c-confirma" class="form-label">Confirmar senha <span class="text-danger">*</span></label>
-                                    <input type="password" class="form-control" id="c-confirma" name="confirma_senha"
-                                           placeholder="Repita a senha"
+                            <div class="mb-3">
+                                <label for="c-senha" class="form-label">Senha <span class="text-danger">*</span></label>
+                                <div class="input-password-wrapper">
+                                    <input type="password" class="form-control" id="c-senha" name="senha"
+                                           placeholder="Mínimo 6 caracteres"
                                            autocomplete="new-password" required>
+                                    <button type="button" class="toggle-password" id="toggle-c-senha" aria-label="Mostrar senha">
+                                        <i class="bi bi-eye" id="toggle-c-senha-icon"></i>
+                                    </button>
                                 </div>
+                            </div>
 
-                                <div class="mb-4">
-                                    <label for="c-tipo" class="form-label">Tipo de Usuário <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="c-tipo" name="tipo_usuario" required>
-                                        <option value="">Selecione seu perfil...</option>
-                                        <option value="usuario">Usuário / Agricultor</option>
-                                        <option value="gestor">Gestor / Fiscal</option>
-                                    </select>
-                                    <div class="form-text">
-                                        <i class="bi bi-info-circle"></i>
-                                        Gestores e fiscais são <strong>aprovados pelo administrador</strong> antes de acessarem o sistema.
-                                    </div>
+                            <div class="mb-4">
+                                <label for="c-confirma" class="form-label">Confirmar senha <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="c-confirma" name="confirma_senha"
+                                       placeholder="Repita a senha"
+                                       autocomplete="new-password" required>
+                            </div>
+
+                            <button type="button" class="btn-login" id="btn-cadastrar-proximo">
+                                <span class="btn-text"><i class="bi bi-arrow-right-circle me-1"></i> Continuar</span>
+                                <span class="btn-loader"><i class="bi bi-arrow-repeat"></i> Enviando...</span>
+                            </button>
+                        </div><!-- /panel-cadastro -->
+
+                        <!-- ── Passo 2: Perfil de Acesso ── -->
+                        <div class="login-panel" id="panel-perfil" role="tabpanel">
+                            <h5 class="fw-bold mb-1" style="font-size:1.05rem;">Perfil de Acesso</h5>
+                            <p class="text-muted small mb-3">
+                                Conforme o perfil escolhido, os módulos do menu lateral serão disponibilizados para você.
+                            </p>
+
+                            <div id="perfil-error" class="alert alert-danger mb-3" style="display:none;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                <span>Selecione um perfil de acesso.</span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Escolha seu perfil <span class="text-danger">*</span></label>
+
+                                <div class="form-check form-check-inline w-100 p-2 border rounded mb-2" style="border-color:#e5e7eb!important;">
+                                    <input class="form-check-input" type="radio" name="perfil" value="vegetal" id="p-vegetal">
+                                    <label class="form-check-label w-100" for="p-vegetal">
+                                        <i class="bi bi-tree text-success me-1"></i> <strong>Vegetal</strong>
+                                        <span class="text-muted small d-block">Lavouras, produtos, atividades, insumos e rastreabilidade.</span>
+                                    </label>
                                 </div>
+                                <div class="form-check form-check-inline w-100 p-2 border rounded mb-2" style="border-color:#e5e7eb!important;">
+                                    <input class="form-check-input" type="radio" name="perfil" value="animal" id="p-animal">
+                                    <label class="form-check-label w-100" for="p-animal">
+                                        <i class="bi bi-egg-fill text-secondary me-1"></i> <strong>Animal</strong>
+                                        <span class="text-muted small d-block">Rebanho, lotes, alimentação, sanidade, reprodução e ambientes.</span>
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline w-100 p-2 border rounded mb-2" style="border-color:#e5e7eb!important;">
+                                    <input class="form-check-input" type="radio" name="perfil" value="agroindustria" id="p-agro">
+                                    <label class="form-check-label w-100" for="p-agro">
+                                        <i class="bi bi-buildings text-primary me-1"></i> <strong>Agroindústria</strong>
+                                        <span class="text-muted small d-block">Beneficiamento, receitas, ordens de produção e rastreabilidade.</span>
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline w-100 p-2 border rounded mb-2" style="border-color:#e5e7eb!important;">
+                                    <input class="form-check-input" type="radio" name="perfil" value="mista" id="p-mista">
+                                    <label class="form-check-label w-100" for="p-mista">
+                                        <i class="bi bi-collection text-warning me-1"></i> <strong>Mista</strong>
+                                        <span class="text-muted small d-block">Produção diversificada: animal, vegetal e/ou agroindústria.</span>
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline w-100 p-2 border rounded mb-2" style="border-color:#e5e7eb!important;">
+                                    <input class="form-check-input" type="radio" name="perfil" value="gestor" id="p-gestor">
+                                    <label class="form-check-label w-100" for="p-gestor">
+                                        <i class="bi bi-shield-lock text-danger me-1"></i> <strong>Gestor / Fiscal</strong>
+                                        <span class="text-muted small d-block">Órgãos e fiscalização. Acesso aprovado pelo administrador.</span>
+                                    </label>
+                                </div>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle"></i>
+                                    Gestores e fiscais são <strong>aprovados pelo administrador</strong> antes de acessarem o sistema.
+                                </div>
+                            </div>
 
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn-login" id="btn-cadastrar-voltar" style="flex:0 0 auto; background:linear-gradient(135deg,#6c757d 0%,#adb5bd 100%); box-shadow:none; max-width:120px;">
+                                    <i class="bi bi-arrow-left me-1"></i> Voltar
+                                </button>
                                 <button type="submit" class="btn-login" id="btn-cadastrar">
-                                    <span class="btn-text"><i class="bi bi-person-plus me-1"></i> Solicitar Cadastro</span>
+                                    <span class="btn-text"><i class="bi bi-person-plus me-1"></i> Solicitar Acesso</span>
                                     <span class="btn-loader"><i class="bi bi-arrow-repeat"></i> Enviando...</span>
                                 </button>
-
-                            </form>
-                        </div><!-- /cadastro-form-area -->
-
-                        <!-- Estado: sucesso -->
-                        <div id="cadastro-success-area" style="display:none;" class="cadastro-success">
-                            <div class="success-icon">
-                                <i class="bi bi-check-lg"></i>
                             </div>
-                            <h5 class="fw-bold mb-2">Cadastro enviado!</h5>
-                            <p class="text-muted small mb-3">
-                                Seu cadastro foi recebido com sucesso.<br>
-                                <strong>Aguarde a ativação por um administrador</strong> para poder fazer login.
-                            </p>
-                            <p class="text-muted small mb-4">
-                                Você receberá um aviso assim que sua conta for ativada.
-                            </p>
-                            <button class="btn-login" onclick="switchTab('login')" style="max-width:200px;margin:0 auto;">
-                                <i class="bi bi-box-arrow-in-right me-1"></i> Ir para Login
-                            </button>
-                        </div><!-- /cadastro-success-area -->
+                        </div><!-- /panel-perfil -->
 
-                    </div><!-- /panel-cadastro -->
+                    </form>
+
+                    <!-- Estado: sucesso -->
+                    <div id="cadastro-success-area" style="display:none;" class="cadastro-success">
+                        <div class="success-icon">
+                            <i class="bi bi-check-lg"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2">Cadastro enviado!</h5>
+                        <p class="text-muted small mb-3">
+                            Seu cadastro foi recebido com sucesso.<br>
+                            <strong>Aguarde a ativação por um administrador</strong> para poder fazer login.
+                        </p>
+                        <p class="text-muted small mb-4">
+                            Você receberá um aviso assim que sua conta for ativada.
+                        </p>
+                        <button class="btn-login" onclick="switchTab('login')" style="max-width:200px;margin:0 auto;">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Ir para Login
+                        </button>
+                    </div><!-- /cadastro-success-area -->
 
                 <?php endif; ?>
             </div>
@@ -808,38 +863,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
             if (activePanel) activePanel.classList.add('active');
         }
 
-        // ── Submit do formulário de pré-cadastro (AJAX) ──
-        var formCadastro = document.getElementById('form-cadastro');
+        // ── Submit do formulário de pré-cadastro (2 passos: dados → perfil) ──
+        var formCadastro  = document.getElementById('form-cadastro');
+        var btnProximo    = document.getElementById('btn-cadastrar-proximo');
+        var btnVoltar     = document.getElementById('btn-cadastrar-voltar');
+
+        function validarDadosCadastro() {
+            var nome     = document.getElementById('c-nome').value.trim();
+            var sobrenom = document.getElementById('c-sobrenome').value.trim();
+            var email    = document.getElementById('c-email').value.trim();
+            var senha    = document.getElementById('c-senha').value;
+            var confirma = document.getElementById('c-confirma').value;
+
+            if (!nome || !sobrenom || !email || !senha || !confirma) {
+                mostrarErroCadastro('Preencha todos os campos obrigatórios.');
+                return false;
+            }
+            if (senha.length < 6) {
+                mostrarErroCadastro('A senha deve ter pelo menos 6 caracteres.');
+                return false;
+            }
+            if (senha !== confirma) {
+                mostrarErroCadastro('As senhas não coincidem.');
+                return false;
+            }
+            return true;
+        }
+
+        if (btnProximo) {
+            btnProximo.addEventListener('click', function() {
+                document.getElementById('cadastro-error').style.display = 'none';
+                if (validarDadosCadastro()) {
+                    switchTab('perfil');
+                }
+            });
+        }
+
+        if (btnVoltar) {
+            btnVoltar.addEventListener('click', function() {
+                switchTab('cadastro');
+            });
+        }
+
         if (formCadastro) {
             formCadastro.addEventListener('submit', function(e) {
                 e.preventDefault();
 
-                // Ocultar erro anterior
                 document.getElementById('cadastro-error').style.display = 'none';
+                document.getElementById('perfil-error').style.display   = 'none';
 
-                // Validação client-side rápida
-                var nome     = document.getElementById('c-nome').value.trim();
-                var sobrenom = document.getElementById('c-sobrenome').value.trim();
-                var email    = document.getElementById('c-email').value.trim();
-                var senha    = document.getElementById('c-senha').value;
-                var confirma = document.getElementById('c-confirma').value;
-                var tipoUser = document.getElementById('c-tipo').value;
+                if (!validarDadosCadastro()) return;
 
-                if (!nome || !sobrenom || !email || !senha || !confirma || !tipoUser) {
-                    mostrarErroCadastro('Preencha todos os campos obrigatórios.');
-                    return;
-                }
-                if (senha.length < 6) {
-                    mostrarErroCadastro('A senha deve ter pelo menos 6 caracteres.');
-                    return;
-                }
-                if (senha !== confirma) {
-                    mostrarErroCadastro('As senhas não coincidem.');
+                var perfil = formCadastro.querySelector('input[name="perfil"]:checked');
+                if (!perfil) {
+                    document.getElementById('perfil-error').style.display = 'block';
+                    formCadastro.querySelector('#btn-cadastrar').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     return;
                 }
 
-                // Loading
-                var btn = formCadastro.querySelector('.btn-login');
+                var btn = document.getElementById('btn-cadastrar');
                 btn.classList.add('loading');
 
                 var data = new FormData(formCadastro);
@@ -851,16 +933,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                 .then(function(resp) {
                     btn.classList.remove('loading');
                     if (resp.success) {
-                        // Mostrar tela de sucesso
-                        document.getElementById('cadastro-form-area').style.display   = 'none';
+                        formCadastro.style.display = 'none';
                         document.getElementById('cadastro-success-area').style.display = 'block';
                     } else {
                         mostrarErroCadastro(resp.error || 'Erro desconhecido. Tente novamente.');
+                        switchTab('cadastro');
                     }
                 })
                 .catch(function() {
                     btn.classList.remove('loading');
                     mostrarErroCadastro('Erro de comunicação. Verifique sua conexão e tente novamente.');
+                    switchTab('cadastro');
                 });
             });
         }

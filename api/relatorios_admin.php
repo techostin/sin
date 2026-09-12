@@ -31,7 +31,7 @@ $responsavel_tipo = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
 
 // Buscar assinatura digital do usuário na tabela associados/usuarios
 $db = Database::getInstance()->getConnection();
-$tabela = $_SESSION['user_table'] ?? 'usuarios';
+$tabela = User::tabelaUsuarioSegura(null, 'usuarios'); // B-01: whitelist de tabelas
 $assinatura = null;
 try {
     $stmt = $db->prepare("SELECT assinatura FROM {$tabela} WHERE id = ?");
@@ -290,6 +290,21 @@ function gerarExcelRelatorio($dados, $colunas, $campos, $titulo, $responsavel_no
         $drawing2->setWorksheet($sheet);
     }
 
+    // Logo SINPORG centralizada no topo
+    $logoSinporg = realpath(__DIR__ . '/../img/logo_Sinporg-2.png');
+    if ($logoSinporg && is_file($logoSinporg)) {
+        $drawing3 = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+        $drawing3->setName('SINPORG');
+        $drawing3->setPath($logoSinporg);
+        $drawing3->setHeight(50);
+        $deslocamento = $totalColunas > 2 ? floor(($totalColunas - 1) / 2) : 0;
+        $colCentral = chr(65 + $deslocamento);
+        $drawing3->setCoordinates($colCentral . '1');
+        $drawing3->setOffsetX(30);
+        $drawing3->setOffsetY(5);
+        $drawing3->setWorksheet($sheet);
+    }
+
     // Linha 2: Responsável
     $sheet->setCellValue('A2', "Responsável: {$responsavel_nome}");
     $sheet->mergeCells('A2:' . $ultimaLetra . '2');
@@ -414,8 +429,9 @@ function gerarPDFRelatorio($dados, $colunas, $campos, $titulo, $responsavel_nome
     $html = '
     <style>
         body { font-family: Arial, sans-serif; font-size: 9pt; color: #333; }
-        .header { text-align: center; border-bottom: 3px solid #1B5E20; padding-bottom: 10px; margin-bottom: 15px; }
+        .header { text-align: center; border-bottom: 3px solid #1B5E20; padding-bottom: 10px; margin-bottom: 15px; background: #ffffff; }
         .header-logos { overflow: hidden; margin-bottom: 8px; }
+        .sinporg-logo { height: 56px; margin-bottom: 6px; }
         .title { font-size: 18pt; font-weight: bold; color: #1B5E20; }
         .subtitle { font-size: 10pt; color: #666; margin-top: 3px; }
         .responsavel { font-size: 10pt; color: #333; margin-top: 5px; font-style: italic; }
@@ -433,6 +449,7 @@ function gerarPDFRelatorio($dados, $colunas, $campos, $titulo, $responsavel_nome
 
     <div class="header">
         <div class="header-logos">' . $imgLogo . $imgSelo . '</div>
+        <img class="sinporg-logo" src="' . __DIR__ . '/../img/logo_Sinporg-2.png" alt="SINPORG - Sistema Integrado da Produção Orgânica" />
         <div class="title">' . htmlspecialchars($titulo) . '</div>
         <div class="subtitle">Sistema Integrado de Produção Orgânica</div>
         <div class="responsavel">Responsável: ' . htmlspecialchars($responsavel_nome) . '</div>

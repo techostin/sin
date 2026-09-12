@@ -30,19 +30,19 @@ try {
             'titulo' => 'Atividades',
             'dados' => $reportManager->getAtividadesReport($filtros),
             'colunas' => ['Data', 'Atividade', 'Propriedade', 'Lavoura', 'Status', 'Responsável'],
-            'campos' => ['data_atividade', 'descricao', 'propriedade', 'lavoura_nome', 'status', 'usuario_nome']
+            'campos' => ['data_atividade', 'descricao', 'propriedade_nome', 'lavoura_nome', 'status', 'associado_nome']
         ],
         'insumos' => [
             'titulo' => 'Insumos',
             'dados' => $reportManager->getInsumosReport($filtros),
-            'colunas' => ['Nome', 'Categoria', 'Quantidade', 'Unidade', 'Fornecedor', 'Valor Unitário'],
-            'campos' => ['nome', 'categoria_nome', 'quantidade', 'unidade', 'fornecedor', 'valor_unitario']
+            'colunas' => ['Nome', 'Tipo', 'Estoque', 'Fornecedor', 'Certificação', 'Validade'],
+            'campos' => ['nome', 'tipo_insumo', 'quantidade_estoque', 'fornecedor_nome', 'certificacao_insumo', 'data_validade']
         ],
         'lotes' => [
             'titulo' => 'Lotes de Produção',
             'dados' => $reportManager->getLotesReport($filtros),
-            'colunas' => ['Código', 'Produto', 'Data Início', 'Status', 'Responsável', 'Total Produzido'],
-            'campos' => ['codigo', 'produto_nome', 'data_inicio', 'status', 'responsavel_nome', 'total_producoes']
+            'colunas' => ['Lote', 'Produto', 'Data Produção', 'Quantidade', 'Unidade', 'Responsável'],
+            'campos' => ['nome_lote', 'produto_nome', 'data_producao', 'quantidade', 'unidade_medida', 'responsavel_nome']
         ],
         'producao' => [
             'titulo' => 'Produção',
@@ -54,13 +54,14 @@ try {
             'titulo' => 'Propriedades',
             'dados' => $reportManager->getPropriedadesReport($filtros),
             'colunas' => ['Nome', 'Cidade', 'Área Total', 'Responsável', 'Total Lavouras'],
-            'campos' => ['nome', 'cidade', 'area_total', 'responsavel_nome', 'total_lavouras']
+            'campos' => ['propriedade', 'cidade_nome', 'area_total', 'responsavel_nome', 'total_lavouras']
         ],
         'ocorrencias' => [
             'titulo' => 'Ocorrências',
             'dados' => $reportManager->getOcorrenciasReport($filtros),
             'colunas' => ['Data', 'Tipo', 'Nome Comum', 'Severidade', 'Status', 'Propriedade', 'Produtor'],
             'campos' => ['data_deteccao', 'tipo', 'nome_comum', 'severidade', 'status', 'propriedade_nome', 'associado_nome']
+        ]
     ];
     
 } catch (Exception $e) {

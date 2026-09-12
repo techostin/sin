@@ -21,7 +21,7 @@ function visualizarEvento(eventoId) {
     modalTitle.innerHTML = '<i class="bi bi-hourglass-split"></i> Carregando...';
     modalBody.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p class="mt-2">Carregando detalhes do evento...</p></div>';
     
-    const bootstrapModal = new bootstrap.Modal(modal);
+    const bootstrapModal = bootstrap.Modal.getOrCreateInstance(modal);
     bootstrapModal.show();
     
     // URL da requisição

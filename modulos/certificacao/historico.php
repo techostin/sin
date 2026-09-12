@@ -33,16 +33,24 @@ $stmt->execute([$associado_id]);
 $historico = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mt-4">
-    <h1>Histórico de Certificações</h1>
-    <a href="<?php echo SITE_URL; ?>/certificacoes" class="btn btn-secondary btn-sm">
-        <i class="bi bi-arrow-left"></i> Voltar à Lista
-    </a>
-</div>
-<p class="lead"><?php echo $associado['nome'] . ' ' . $associado['sobrenome']; ?></p>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1">Histórico de Certificações</h1>
+                <p class="mb-0"><?php echo $associado['nome'] . ' ' . $associado['sobrenome']; ?></p>
+            </div>
+            <a href="<?php echo SITE_URL; ?>/certificacoes" class="btn btn-assoc-ghost btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Voltar à Lista
+            </a>
+        </div>
+    </div>
+
+    <div class="gm-card mb-4">
+        <div class="p-4">
         <?php if (empty($historico)): ?>
             <div class="alert alert-info">Nenhum registro de certificação encontrado para este associado.</div>
         <?php else: ?>
@@ -80,22 +88,25 @@ $historico = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </table>
             </div>
         <?php endif; ?>
+        </div>
     </div>
-</div>
 
-<div class="mt-4">
-    <h3>Linha do Tempo de Conformidade</h3>
-    <div class="timeline-v2 mt-3">
-        <?php foreach ($historico as $cert): ?>
-            <div class="border-start border-3 border-success ps-4 pb-4 position-relative">
-                <div class="position-absolute start-0 translate-middle-x bg-success rounded-circle" style="width: 12px; height: 12px; margin-left: -1.5px; top: 0;"></div>
-                <div class="fw-bold"><?php echo $cert['data_emissao'] ? date('M/Y', strtotime($cert['data_emissao'])) : 'Sem data'; ?></div>
-                <div class="text-muted small"><?php echo $cert['tipo_certificacao']; ?> - <?php echo $cert['status']; ?></div>
-                <div>Certificado: <?php echo $cert['numero_certificado'] ?: 'N/A'; ?></div>
-            </div>
-        <?php endforeach; ?>
+    <div class="mt-4">
+        <h3>Linha do Tempo de Conformidade</h3>
+        <div class="timeline-v2 mt-3">
+            <?php foreach ($historico as $cert): ?>
+                <div class="border-start border-3 border-success ps-4 pb-4 position-relative">
+                    <div class="position-absolute start-0 translate-middle-x bg-success rounded-circle" style="width: 12px; height: 12px; margin-left: -1.5px; top: 0;"></div>
+                    <div class="fw-bold"><?php echo $cert['data_emissao'] ? date('M/Y', strtotime($cert['data_emissao'])) : 'Sem data'; ?></div>
+                    <div class="text-muted small"><?php echo $cert['tipo_certificacao']; ?> - <?php echo $cert['status']; ?></div>
+                    <div>Certificado: <?php echo $cert['numero_certificado'] ?: 'N/A'; ?></div>
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <style>
 .timeline-v2 {

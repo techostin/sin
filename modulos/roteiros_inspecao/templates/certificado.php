@@ -46,6 +46,8 @@ if (!isset($produtos)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Certificado - <?php echo htmlspecialchars($dados_produtor['nome']); ?></title>
     <style>
+        @page { size: A4 landscape; margin: 12mm; }
+
         :root {
             --primary-color: #1b5e20;
             --secondary-color: #f57f17;

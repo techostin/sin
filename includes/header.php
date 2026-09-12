@@ -6,7 +6,7 @@ $user = new User();
 
 // Proteção de página: se não estiver logado, redireciona para o login
 if (!$user->isLoggedIn()) {
-    header("Location: login.php");
+    header("Location: " . SITE_URL . "/login");
     exit;
 }
 ?>
@@ -19,6 +19,9 @@ if (!$user->isLoggedIn()) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/style.css">
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/agricultura-familiar.css">
     <link rel="manifest" href="<?php echo SITE_URL; ?>/manifest.json">
@@ -137,5 +140,10 @@ if (!$user->isLoggedIn()) {
 // Incluir lembretes apenas se o usuário estiver logado
 if ($user->isLoggedIn()) {
     require_once __DIR__ . '/lembretes.php';
+}
+
+// Modal da Ficha de Adesão ao Quadro Associativo (primeiro acesso).
+if ($user->isLoggedIn()) {
+    require_once __DIR__ . '/ficha_adesao_modal.php';
 }
 ?>

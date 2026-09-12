@@ -3,10 +3,8 @@
 // Variáveis esperadas: $dados (array), $filtros (array), $assetsUrl (string), $titulo (string)
 ?>
 <div style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #333;">
-    <div style="text-align:center; border-bottom:3px solid #1B5E20; padding-bottom:10px; margin-bottom:15px;">
-        <?php if (!empty($assetsUrl)): ?>
-            <img src="<?php echo htmlspecialchars($assetsUrl . '/img/logo.png'); ?>" alt="logo" style="height:50px; margin-bottom:6px;" />
-        <?php endif; ?>
+    <div style="text-align:center; border-bottom:3px solid #1B5E20; padding-bottom:10px; margin-bottom:15px; background:#ffffff;">
+        <img src="<?php echo htmlspecialchars(($logoPath ?? '') ?: ((defined('SITE_URL') ? SITE_URL : '/app') . '/img/logo_Sinporg-2.png')); ?>" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="height:60px; margin-bottom:6px;" />
         <div style="font-size:16pt; font-weight:bold; color:#1B5E20; margin-top:6px;"><?php echo htmlspecialchars($titulo); ?></div>
         <div style="font-size:9pt; color:#666; margin-top:4px;">Sistema Integrado de Produção Orgânica</div>
         <div style="font-size:9pt; color:#666; margin-top:2px;">Emissão: <?php echo date('d/m/Y H:i:s'); ?></div>

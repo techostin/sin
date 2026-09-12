@@ -26,24 +26,32 @@ if (!$id) {
 }
 ?>
 
-<!-- Vue App — Sem container extra; o layout já provê o wrapper -->
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+<!-- Vue App -->
 <div id="vue-relatorio">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <div>
-            <h1 class="h3">Resumo da Visita Técnica</h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/visitas-tecnicas">Visitas</a></li>
-                    <li class="breadcrumb-item active">Detalhes #{{ visita ? visita.id : '...' }}</li>
-                </ol>
-            </nav>
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1"><i class="bi bi-file-earmark-text me-2" style="color:var(--gm-primary);"></i>Resumo da Visita Técnica</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/visitas-tecnicas">Visitas</a></li>
+                        <li class="breadcrumb-item active">Detalhes #{{ visita ? visita.id : '...' }}</li>
+                    </ol>
+                </nav>
+            </div>
         </div>
-        <div class="btn-group" v-if="visita">
+    </div>
+    <div class="text-end mb-3" v-if="visita">
+        <div class="btn-group">
             <a :href="'<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=relatorio&id=' + visita.id"
-               target="_blank" class="btn btn-danger">
+               target="_blank" class="btn btn-assoc-danger">
                 <i class="bi bi-file-earmark-pdf"></i> Download PDF
             </a>
-            <a href="<?php echo SITE_URL; ?>/visitas-tecnicas" class="btn btn-outline-secondary">Voltar</a>
+            <a href="<?php echo SITE_URL; ?>/visitas-tecnicas" class="btn btn-assoc-ghost">Voltar</a>
         </div>
     </div>
 
@@ -162,6 +170,9 @@ if (!$id) {
     </div>
 </div>
 
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
+
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 
 <!-- Vue após o footer para garantir que o DOM está pronto -->
@@ -171,6 +182,15 @@ if (!$id) {
     const { createApp } = Vue;
     const VISITA_ID = <?php echo (int)$id; ?>;
     const API_BASE  = '<?php echo SITE_URL; ?>/api/roteiros_inspecao.php';
+    // Checklist padrão injetado para resolução de nomes (produção/processamento orgânico)
+    const Window_ChecklistPadrao = <?php
+        require_once __DIR__ . '/../../../classes/ChecklistPadrao.php';
+        $padraoJson = [];
+        foreach (ChecklistPadrao::itens() as $p) {
+            $padraoJson[$p['id']] = ['item' => $p['item'], 'categoria' => $p['categoria']];
+        }
+        echo json_encode($padraoJson);
+    ?>;
 
     createApp({
         data() {
@@ -204,7 +224,11 @@ if (!$id) {
             },
             getItemName(id) {
                 const item = this.template.find(i => String(i.id) === String(id));
-                return item ? (item.item || item.pergunta || `Item #${id}`) : `Item #${id}`;
+                if (item) return (item.item || item.pergunta || `Item #${id}`);
+                // Fallback: itens do checklist padrão (produção/processamento orgânico)
+                const padrao = Window_ChecklistPadrao || {};
+                if (padrao[id]) return padrao[id].item;
+                return `Item #${id}`;
             }
         }
     }).mount('#vue-relatorio');

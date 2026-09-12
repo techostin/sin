@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Redirecionar de volta
             $redirect_url = SITE_URL . '/caderno-campo/propriedades';
             if ($associado_id_via_get) {
-                $redirect_url = SITE_URL . '/associado/' . $associado_id_via_get . '/editar';
+                $redirect_url = SITE_URL . '/associado/' . encodeId($associado_id_via_get) . '/editar';
             }
             header('Location: ' . $redirect_url);
             exit();

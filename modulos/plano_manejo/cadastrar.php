@@ -54,17 +54,24 @@ if ($is_usuario_comum) {
 }
 ?>
 
-<div class="container-fluid px-4">
-    <h1 class="mt-4">Plano de Manejo Orgânico</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/planos-manejo">Planos de Manejo</a></li>
-        <li class="breadcrumb-item active">Novo Plano</li>
-    </ol>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <h1 class="mb-1"><i class="bi bi-journal-text me-2" style="color:var(--gm-primary);"></i>Plano de Manejo Orgânico</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/planos-manejo">Planos de Manejo</a></li>
+                <li class="breadcrumb-item active">Novo Plano</li>
+            </ol>
+        </nav>
+    </div>
 
     <!-- Wizard Header -->
-    <div class="card mb-4">
-        <div class="card-body">
+    <div class="gm-card mb-4">
+        <div class="p-4">
             <div id="wizard-steps" class="d-flex justify-content-between mb-4">
                 <div class="step-item active" data-step="1">
                     <div class="step-circle">1</div>
@@ -282,18 +289,18 @@ if ($is_usuario_comum) {
                             </div>
                         </div>
                         <div class="col-md-4 text-end">
-                            <button type="button" class="btn btn-warning btn-sm" onclick="gerarPreview()">
+                            <button type="button" class="btn btn-assoc-ghost btn-sm" onclick="gerarPreview()">
                                 <i class="bi bi-arrow-clockwise"></i> Atualizar Preview
                             </button>
                         </div>
                     </div>
                     
                     <!-- Preview Geral -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="mb-0"><i class="bi bi-card-text me-2"></i>Resumo do Plano</h6>
+                    <div class="gm-card mb-4">
+                        <div class="card-head">
+                            <h6 class="mb-0"><i class="bi bi-card-text me-2" style="color:var(--gm-primary);"></i>Resumo do Plano</h6>
                         </div>
-                        <div class="card-body">
+                        <div class="p-4">
                             <div class="row">
                                 <div class="col-md-3"><strong>Safra:</strong> <span id="preview-safra">-</span></div>
                                 <div class="col-md-3"><strong>Título:</strong> <span id="preview-titulo">-</span></div>
@@ -310,12 +317,12 @@ if ($is_usuario_comum) {
                     </div>
 
                     <!-- DataTable Cultivos -->
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-table me-2"></i>Lista de Cultivos Planejados</h6>
+                    <div class="gm-card mb-4">
+                        <div class="card-head d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-table me-2" style="color:var(--gm-primary);"></i>Lista de Cultivos Planejados</h6>
                             <span class="badge bg-info" id="total-cultivos">0 cultivos</span>
                         </div>
-                        <div class="card-body p-0">
+                        <div class="p-0">
                             <div class="table-responsive">
                                 <table id="previewCultivosTable" class="table table-sm mb-0">
                                     <thead class="table-light">
@@ -340,14 +347,16 @@ if ($is_usuario_comum) {
 
                 <!-- Botões de Navegação -->
                 <div class="mt-4 pt-3 border-top d-flex justify-content-between">
-                    <button type="button" class="btn btn-secondary" id="prev-btn" disabled>Anterior</button>
-                    <button type="button" class="btn btn-primary" id="next-btn">Próximo</button>
-                    <button type="submit" class="btn btn-success d-none" id="submit-btn">Concluir Plano</button>
+                    <button type="button" class="btn btn-assoc-ghost" id="prev-btn" disabled>Anterior</button>
+                    <button type="button" class="btn btn-assoc-primary" id="next-btn">Próximo</button>
+                    <button type="submit" class="btn btn-assoc-success d-none" id="submit-btn">Concluir Plano</button>
                 </div>
             </form>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <style>
 .step-item { text-align: center; flex: 1; position: relative; }

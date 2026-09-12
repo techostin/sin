@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $page_title = "Dashboard - Caderno de Campo";
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
@@ -19,7 +19,7 @@ try {
     $stmt = $db->prepare("SELECT ad.*, p.propriedade, l.nome AS lavoura_nome FROM atividades_diarias ad
         LEFT JOIN propriedades p ON ad.propriedade_id = p.id
         LEFT JOIN lavouras l ON ad.lavoura_id = l.id
-        WHERE ad.associado_id = ? ORDER BY ad.data_atividade DESC, ad.hora_inicio DESC");
+        WHERE ad.associado_id = ? AND ad.excluido = 0 ORDER BY ad.data_atividade DESC, ad.hora_inicio DESC");
     $stmt->execute([$user_id]);
     $atividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {

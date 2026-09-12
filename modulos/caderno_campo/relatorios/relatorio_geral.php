@@ -1,14 +1,25 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    die('Acesso negado. Por favor, faça login para acessar este relatório.');
+}
+
 // Incluir autoload do Composer para mPDF
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
 // Incluir configuração do banco
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../classes/Database.php';
+require_once __DIR__ . '/../../../classes/User.php';
 
 use Mpdf\Mpdf;
 
 try {
+    $user = new User();
+
     // Criar instância do mPDF
     $mpdf = new Mpdf([
         'mode' => 'utf-8',
@@ -22,8 +33,26 @@ try {
     // Conectar ao banco
     $db = Database::getInstance()->getConnection();
 
+    // Filtro de escopo: não-gestores só veem os próprios registros (view agrupada por email)
+    $whereView = '';
+    $params = [];
+    $assoc_id = null;
+    if (($_SESSION['user_nivel'] ?? NIVEL_USUARIO) > NIVEL_GESTOR) {
+        $assoc_id = $user->getAssociadoId();
+        if ($assoc_id) {
+            $stmtEmail = $db->prepare("SELECT email FROM associados WHERE id = ?");
+            $stmtEmail->execute([$assoc_id]);
+            $email = $stmtEmail->fetchColumn();
+            if ($email) {
+                $whereView = " WHERE email_usuario = :email";
+                $params[':email'] = $email;
+            }
+        }
+    }
+
     // Buscar dados da view consolidada
-    $stmt = $db->query("SELECT * FROM view_caderno_campo_consolidado ORDER BY data_atividade DESC");
+    $stmt = $db->prepare("SELECT * FROM view_caderno_campo_consolidado $whereView ORDER BY data_atividade DESC");
+    $stmt->execute($params);
     $dados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Buscar dados do associado logado (pega o primeiro associado encontrado na view)
@@ -47,13 +76,23 @@ try {
         }
     }
 
-    // Buscar lotes de produção
+    // Buscar lotes de produção (escopados para não-gestores)
     $lotes = [];
     try {
-        $stmtLotes = $db->query("SELECT lp.id, lp.nome_lote, lp.data_producao, lp.quantidade, lp.unidade_medida, p.nome AS produto_nome
+        $lotesWhere = "lp.excluido = 0";
+        $lotesParams = [];
+        if ($assoc_id) {
+            $lotesWhere .= " AND prop.associado_id = :assoc_id";
+            $lotesParams[':assoc_id'] = $assoc_id;
+        }
+        $stmtLotes = $db->prepare("SELECT lp.id, lp.nome_lote, lp.data_producao, lp.quantidade, lp.unidade_medida, p.nome AS produto_nome
             FROM lotes_producao lp
             LEFT JOIN produtos p ON lp.produto_id = p.id
+            LEFT JOIN lavouras l ON p.lavoura_id = l.id
+            LEFT JOIN propriedades prop ON l.propriedade_id = prop.id
+            WHERE $lotesWhere
             ORDER BY lp.data_producao DESC");
+        $stmtLotes->execute($lotesParams);
         $lotes = $stmtLotes->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         $lotes = [];
@@ -121,6 +160,7 @@ try {
     </style>
 
     <div class="header">
+        <img src="' . SINPORG_LOGO_PATH . '" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="height:58px; margin-bottom:6px;" />
         <h1>RELATÓRIO GERAL - CADERNO DE CAMPO</h1>
         <p>Período: Todos os registros</p>
         <p>Data de geração: ' . date('d/m/Y H:i:s') . '</p>

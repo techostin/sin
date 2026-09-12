@@ -11,17 +11,25 @@ if (!$user->isLoggedIn()) {
 }
 ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <h1>Planos de Manejo Orgânico</h1>
-        <a href="<?php echo SITE_URL; ?>/plano-manejo/novo" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Novo Plano
-        </a>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1"><i class="bi bi-journal-text me-2" style="color:var(--gm-primary);"></i>Planos de Manejo Orgânico</h1>
+                <p class="mb-0">Acompanhamento e análise dos planos de manejo por safra.</p>
+            </div>
+            <a href="<?php echo SITE_URL; ?>/plano-manejo/novo" class="btn btn-assoc-success btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> Novo Plano
+            </a>
+        </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header border-bottom-0 bg-light d-flex justify-content-between">
-            <div><i class="bi bi-table me-1"></i> Lista de Planos por Safra</div>
+    <div class="gm-card mb-4">
+        <div class="card-head border-bottom-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span><i class="bi bi-table me-1" style="color:var(--gm-primary);"></i> Lista de Planos por Safra</span>
             <div class="btn-group btn-group-sm" id="wizard-status-filtro">
                 <button type="button" class="btn btn-outline-secondary active" data-filter="Todos">
                     Todos <span class="badge bg-secondary ms-1" id="count-todos">0</span>
@@ -34,7 +42,8 @@ if (!$user->isLoggedIn()) {
                 </button>
             </div>
         </div>
-        <div class="card-body">
+        <div class="p-3">
+            <div class="table-responsive">
             <table id="planosTable" class="table table-striped table-bordered" style="width:100%">
                 <thead>
                     <tr>
@@ -52,9 +61,12 @@ if (!$user->isLoggedIn()) {
                     <!-- AJAX -->
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <!-- Modal de Alteração Rápida de Status (somente para Gestor/Admin) -->
 <?php if ($user->hasPermission(NIVEL_GESTOR)): ?>

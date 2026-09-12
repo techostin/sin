@@ -50,10 +50,8 @@ $estados        = $associadoModel->getEstados();
 // baseado em $_SESSION['user_table'], evitando erro para usuários que não são associados.
 $associado = $user->getCurrentUser();
 
-// Fallback: se por algum motivo getCurrentUser() falhar, tenta na tabela associados
-if (!$associado) {
-    $associado = $associadoModel->getById($id);
-}
+// Determina se é usuário do sistema (admin/gestor na tabela usuarios)
+$isSistemaUser = isset($_SESSION['user_table']) && $_SESSION['user_table'] === 'usuarios';
 
 if (!$associado) {
     // Nenhum dado encontrado (nem em associados, nem em usuarios)
@@ -63,6 +61,78 @@ if (!$associado) {
         Entre em contato com o administrador.
     </div>";
     require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
+
+// Se for usuário do sistema (admin/gestor), define meuAssociadoId como null
+// pois eles não precisam de vínculo com associados
+$meuAssociadoId = $isSistemaUser ? 0 : (int) ($user->getAssociadoId() ?? 0);
+
+// Associações ativas + vínculos atuais (N:M).
+// Só carrega se for associado (não usuário do sistema)
+$associacoesAtivas = [];
+$associacoesVinculadas = [];
+if (!$isSistemaUser) {
+    $associacoesAtivas = $associadoModel->getAssociacoesAtivas();
+    if ($meuAssociadoId > 0) {
+        $associacoesVinculadas = array_column($associadoModel->getAssociacoesById($meuAssociadoId), 'id');
+    }
+}
+
+// ── Gestão de Associados: vínculos e cargos (admin/gestor/diretoria) ──
+$cargosVinculo = [
+    'membro'             => 'Membro',
+    'presidente'         => 'Presidente',
+    'vice-presidente'    => 'Vice-Presidente',
+    'diretor'            => 'Diretor(a)',
+    'secretario'         => 'Secretário(a)',
+    'tesoureiro'         => 'Tesoureiro(a)',
+    'conselho_fiscal'    => 'Conselho Fiscal',
+    'comissao_etica'     => 'Comissão de Ética',
+    'comissao_educativa' => 'Comissão Educativa',
+];
+$podeGerenciarVinculos = $user->hasPermission(NIVEL_GESTOR) || $user->isMembroDiretoria();
+$gerenciarAssociadoId  = (int)($_GET['gerenciar_associado_id'] ?? 0);
+$todosAssociados       = [];
+$gerenciarVinculosIds  = [];
+$gerenciarCargos       = [];
+
+if ($podeGerenciarVinculos) {
+    if (empty($associacoesAtivas)) {
+        $associacoesAtivas = $associadoModel->getAssociacoesAtivas();
+    }
+    $todosAssociados = $associadoModel->getAll();
+    if ($gerenciarAssociadoId > 0) {
+        $gerenciarVinculosIds = array_map('intval', array_column($associadoModel->getAssociacoesById($gerenciarAssociadoId), 'id'));
+        $gerenciarCargos      = $associadoModel->getTiposVinculo($gerenciarAssociadoId);
+    }
+}
+
+// Ação separada: salvar vínculos + cargos de um associado selecionado
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'gerenciar_vinculos') {
+    if (!CSRFProtection::validatePostRequest()) {
+        die('Erro de segurança: token inválido.');
+    }
+    if ($podeGerenciarVinculos) {
+        $gAssocId     = (int)($_POST['associado_id'] ?? 0);
+        $gAssociacoes = isset($_POST['associacoes'])
+            ? array_values(array_filter(array_map('intval', (array) $_POST['associacoes']), fn($v) => $v > 0))
+            : [];
+        $gCargos = [];
+        if (isset($_POST['cargo']) && is_array($_POST['cargo'])) {
+            foreach ($_POST['cargo'] as $assocKey => $cargo) {
+                $assocKey = (int) $assocKey;
+                if ($assocKey > 0) {
+                    $gCargos[$assocKey] = in_array($cargo, array_keys($cargosVinculo), true) ? $cargo : 'membro';
+                }
+            }
+        }
+        if ($gAssocId > 0) {
+            $associadoModel->saveAssociacoes($gAssocId, $gAssociacoes, $gCargos);
+            $_SESSION['success_message'] = 'Vínculos e cargos do associado atualizados com sucesso!';
+        }
+    }
+    header('Location: ' . SITE_URL . '/meu-perfil?gerenciar_associado_id=' . $gAssocId);
     exit;
 }
 
@@ -114,6 +184,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Atualiza na tabela correta (associados ou usuarios) via User::updateCurrentUser()
         $resultado = $user->updateCurrentUser($dados);
         if ($resultado === true) {
+            // Associações (N:M) — o campo associacoes_enviado vem junto no POST do perfil
+            if (array_key_exists('associacoes_enviado', $dados) && $meuAssociadoId > 0) {
+                $associadoModel->saveAssociacoes($meuAssociadoId, $dados['associacoes'] ?? []);
+            }
             // Atualizar nome na sessão se alterado
             if (!empty($dados['nome'])) {
                 $_SESSION['user_nome'] = trim($dados['nome']) . ' ' . trim($dados['sobrenome'] ?? '');
@@ -181,12 +255,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="container-fluid px-4 py-4">
+<div class="assoc-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/associados-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
 
     <?php if ($isPrimeiroAcesso): ?>
     <!-- Banner de boas-vindas no primeiro acesso -->
-    <div class="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-start gap-3" role="alert"
-         style="background: linear-gradient(135deg, #d1e7dd 0%, #c3e6cb 100%); border-left: 4px solid #198754 !important;">
+    <div class="alert alert-success alert-dismissible fade show mb-4 d-flex align-items-start gap-3" role="alert"
+         style="border-left: 4px solid #198754 !important;">
         <i class="bi bi-hand-thumbs-up-fill text-success fs-3 mt-1 flex-shrink-0"></i>
         <div>
             <h5 class="fw-bold mb-1 text-success">Bem-vindo(a) ao SINPORG! 🌱</h5>
@@ -197,22 +273,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <?php endif; ?>
 
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="assoc-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <h1 class="h2 fw-bold mb-1">
-                <i class="bi bi-person-circle text-success me-2"></i>Meu Perfil
+            <h1 class="mb-1">
+                <i class="bi bi-person-circle me-2" style="color:var(--am-primary);"></i>Meu Perfil
             </h1>
-            <p class="text-muted mb-0">Atualize seus dados pessoais de acesso ao sistema.</p>
+            <p class="mb-0">Atualize seus dados pessoais de acesso ao sistema.</p>
         </div>
-        <a href="<?php echo isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO
-            ? SITE_URL . '/caderno-campo/dashboard-agricultor'
-            : SITE_URL . '/'; ?>"
-           class="btn btn-outline-secondary btn-sm">
+        <a href="<?php echo dashboard_destino(); ?>"
+           class="btn btn-assoc-ghost btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Voltar ao Início
         </a>
     </div>
+</div>
 
     <?php if ($mensagem) echo $mensagem; ?>
+    <?php if (isset($_SESSION['success_message'])): ?>
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-1"></i><?php echo htmlspecialchars($_SESSION['success_message']); ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['success_message']); ?>
+    <?php endif; ?>
 
     <form method="POST" action="<?php echo SITE_URL; ?>/meu-perfil" enctype="multipart/form-data">
         <?php echo CSRFProtection::getTokenField(); ?>
@@ -321,6 +404,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </select>
                             </div>
 
+                            <?php if ($meuAssociadoId > 0): ?>
+                            <div class="col-12">
+                                <label for="associacoes" class="form-label">Associações</label>
+                                <div class="border rounded p-3 assoc-checkbox-grid" style="max-height:220px; overflow-y:auto;">
+                                    <?php if (empty($associacoesAtivas)): ?>
+                                        <div class="text-muted small">Nenhuma associação ativa cadastrada.</div>
+                                    <?php else: ?>
+                                        <?php foreach ($associacoesAtivas as $assoc): ?>
+                                            <?php $nome_exibicao = !empty($assoc['sigla']) ? $assoc['sigla'] : $assoc['nome']; ?>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="associacoes[]"
+                                                       value="<?php echo $assoc['id']; ?>" id="assoc_<?php echo $assoc['id']; ?>"
+                                                       <?php echo in_array((int)$assoc['id'], $associacoesVinculadas, true) ? 'checked' : ''; ?>>
+                                                <label class="form-check-label" for="assoc_<?php echo $assoc['id']; ?>">
+                                                    <?php echo htmlspecialchars($nome_exibicao); ?>
+                                                </label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                                <small class="form-text text-muted">Selecione uma ou mais associações às quais você está vinculado(a).</small>
+                                <input type="hidden" name="associacoes_enviado" value="1">
+                            </div>
+                            <?php endif; ?>
+
                             <!-- STATUS: somente admin vê e edita -->
                             <?php if ($isAdmin): ?>
                             <div class="col-md-6">
@@ -393,9 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        class="btn btn-primary">
                         <i class="bi bi-house-add me-1"></i> Adicionar Nova Propriedade
                     </a>
-                    <a href="<?php echo isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO
-                        ? SITE_URL . '/caderno-campo/dashboard-agricultor'
-                        : SITE_URL . '/'; ?>"
+                    <a href="<?php echo dashboard_destino(); ?>"
                        class="btn btn-outline-secondary">
                         <i class="bi bi-x me-1"></i> Cancelar
                     </a>
@@ -404,7 +510,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         </div><!-- /row -->
     </form>
-</div>
+
+    <?php if ($podeGerenciarVinculos): ?>
+    <!-- ── Gestão de Associados: vínculos e cargos ── -->
+    <div class="card border-0 shadow-sm mb-4 mt-3">
+        <div class="card-header bg-white fw-semibold">
+            <i class="bi bi-person-gear me-1 text-success"></i> Gestão de Associados — Vínculos e Cargos
+        </div>
+        <div class="card-body">
+            <form method="get" action="<?php echo SITE_URL; ?>/meu-perfil" class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label for="gerenciar_associado_id" class="form-label">Selecionar Associado</label>
+                    <select name="gerenciar_associado_id" id="gerenciar_associado_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">Selecione um associado...</option>
+                        <?php foreach ($todosAssociados as $a): ?>
+                            <option value="<?php echo $a['id']; ?>" <?php echo $gerenciarAssociadoId === (int)$a['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($a['nome'] . ' ' . ($a['sobrenome'] ?? '')); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Carregar</button>
+                </div>
+            </form>
+
+            <?php if ($gerenciarAssociadoId > 0): ?>
+            <form method="post" action="<?php echo SITE_URL; ?>/meu-perfil">
+                <?php echo CSRFProtection::getTokenField(); ?>
+                <input type="hidden" name="acao" value="gerenciar_vinculos">
+                <input type="hidden" name="associado_id" value="<?php echo $gerenciarAssociadoId; ?>">
+
+                <?php if (empty($associacoesAtivas)): ?>
+                    <div class="text-muted small">Nenhuma associação ativa cadastrada.</div>
+                <?php else: ?>
+                <div class="row g-2">
+                    <?php foreach ($associacoesAtivas as $assoc): ?>
+                        <?php
+                        $gVinculado = in_array((int)$assoc['id'], $gerenciarVinculosIds, true);
+                        $gCargoAtual = $gerenciarCargos[(int)$assoc['id']] ?? 'membro';
+                        ?>
+                        <div class="col-md-6">
+                            <div class="border rounded p-2">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" name="associacoes[]"
+                                           value="<?php echo $assoc['id']; ?>" id="ga_<?php echo $assoc['id']; ?>"
+                                           <?php echo $gVinculado ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="ga_<?php echo $assoc['id']; ?>">
+                                        <?php echo htmlspecialchars(!empty($assoc['sigla']) ? $assoc['sigla'] : $assoc['nome']); ?>
+                                    </label>
+                                </div>
+                                <label class="small text-muted d-block mb-1">Cargo / Função</label>
+                                <select class="form-select form-select-sm" name="cargo[<?php echo $assoc['id']; ?>]">
+                                    <?php foreach ($cargosVinculo as $cargoVal => $cargoLabel): ?>
+                                        <option value="<?php echo $cargoVal; ?>" <?php echo $gCargoAtual === $cargoVal ? 'selected' : ''; ?>><?php echo htmlspecialchars($cargoLabel); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Salvar Vínculos e Cargos</button>
+                </div>
+            </form>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+</div> <!-- /page-bg -->
+</div> <!-- /assoc-modern -->
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

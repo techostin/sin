@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 try {
     $db = Database::getInstance()->getConnection();
 
-    $where = [];
+    $where = ["a.excluido = 0"];
     $params = [];
 
     if (!empty($_GET['dataInicio'])) {

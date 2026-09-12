@@ -607,6 +607,52 @@ if ($rawUrl !== '') {
         require __DIR__ . '/modulos/associados/pendentes.php';
         exit;
     }
+    // Cadastros Pendentes — fichas de adesão aguardando avaliação da Diretoria/Presidência
+    if ($parts[0] === 'cadastros-pendentes' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/associados/cadastros_pendentes.php';
+        exit;
+    }
+    // Todas as Fichas de Adesão — listagem completa (Admin/Diretoria)
+    if ($parts[0] === 'fichas-completas' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/associados/fichas_completas.php';
+        exit;
+    }
+    // Visualização/análise da ficha de adesão (Diretoria ou o próprio associado)
+    if ($parts[0] === 'cadastro-ficha' && isset($parts[1]) && $parts[1] === 'visualizar') {
+        require __DIR__ . '/modulos/associados/ficha_adesao_visualizar.php';
+        exit;
+    }
+    // Carteirinhas do associado
+    if ($parts[0] === 'associados' && isset($parts[1]) && $parts[1] === 'carteirinhas') {
+        require __DIR__ . '/modulos/associados/carteirinha_listar.php';
+        exit;
+    }
+    if ($parts[0] === 'associado' && isset($parts[1]) && isset($parts[2]) && $parts[2] === 'carteirinha-gerar') {
+        $_GET['id'] = decodeId($parts[1]);
+        require __DIR__ . '/modulos/associados/carteirinha_gerar.php';
+        exit;
+    }
+    if ($parts[0] === 'associado' && isset($parts[1]) && isset($parts[2]) && $parts[2] === 'carteirinha-impressa') {
+        $_GET['id'] = decodeId($parts[1]);
+        require __DIR__ . '/modulos/associados/carteirinha_impressa.php';
+        exit;
+    }
+    if ($parts[0] === 'associado' && isset($parts[1]) && isset($parts[2]) && $parts[2] === 'carteirinha-pdf') {
+        $_GET['id'] = decodeId($parts[1]);
+        require __DIR__ . '/modulos/associados/carteirinha_pdf.php';
+        exit;
+    }
+    if ($parts[0] === 'associado' && isset($parts[1]) && isset($parts[2]) && $parts[2] === 'carteirinha-enviar') {
+        $_GET['id'] = decodeId($parts[1]);
+        require __DIR__ . '/modulos/associados/carteirinha_enviar.php';
+        exit;
+    }
+    // Validação pública da carteirinha por token
+    if ($parts[0] === 'carteirinha' && isset($parts[1])) {
+        $_GET['token'] = $parts[1];
+        require __DIR__ . '/carteirinha_publica.php';
+        exit;
+    }
     if ($parts[0] === 'associados' && isset($parts[1]) && $parts[1] === 'relatorio') {
         require __DIR__ . '/modulos/associados/form_relatorio.php';
         exit;
@@ -653,6 +699,11 @@ if ($rawUrl !== '') {
             $_GET['id'] = $_POST['id'];
         }
         require __DIR__ . '/modulos/associacoes/editar.php';
+        exit;
+    }
+    // Vínculo Associação × Associados (com atribuição de cargo/função)
+    if ($parts[0] === 'associacao' && isset($parts[1]) && $parts[1] === 'associados' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/associacoes/associados.php';
         exit;
     }
 
@@ -794,6 +845,320 @@ if ($rawUrl !== '') {
         exit;
     }
 
+    // ===== ROTAS DOS DASHBOARDS POR PERFIL =====
+    if ($parts[0] === 'dashboard' && isset($parts[1])) {
+        require_once __DIR__ . '/includes/perfil.php';
+        if ($parts[1] === 'diretoria') {
+            require __DIR__ . '/modulos/dashboard/dashboard_diretoria.php';
+            exit;
+        }
+        $dashAtual = $parts[1];
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: ' . SITE_URL . '/login');
+            exit;
+        }
+        $nivel = (int)$_SESSION['user_nivel'];
+        $tipo = isset($_SESSION['user_tipo_usuario']) ? strtolower((string)$_SESSION['user_tipo_usuario']) : '';
+        $esperado = $nivel === NIVEL_ADMIN ? 'admin'
+                  : ($nivel === NIVEL_GESTOR ? 'gestor'
+                  : (($tipo === 'produtor_agroindustria' || $tipo === 'agroindustria') ? 'agroindustria' : 'agricultor'));
+        if ($dashAtual !== $esperado) {
+            $podeAcessarAgro = false;
+            if ($dashAtual === 'agroindustria') {
+                if ($nivel <= NIVEL_GESTOR) {
+                    $podeAcessarAgro = true;
+                } elseif ($nivel === NIVEL_USUARIO) {
+                    require_once __DIR__ . '/classes/User.php';
+                    $podeAcessarAgro = (new User())->temAgroindustria();
+                }
+            }
+            if (!$podeAcessarAgro) {
+                header('Location: ' . dashboard_destino());
+                exit;
+            }
+        }
+        $arquivoDash = [
+            'admin'         => __DIR__ . '/modulos/dashboard/dashboard_admin.php',
+            'gestor'        => __DIR__ . '/modulos/dashboard/dashboard_gestor.php',
+            'agricultor'    => __DIR__ . '/modulos/caderno_campo/dashboard_agricultor.php',
+            'agroindustria' => __DIR__ . '/modulos/dashboard/dashboard_agroindustria.php',
+        ][$dashAtual] ?? null;
+        if ($arquivoDash && file_exists($arquivoDash)) {
+            require $arquivoDash;
+            exit;
+        }
+    }
+
+    // ===== ROTAS DO PORTAL DO ASSOCIADO =====
+    if ($parts[0] === 'portal' && isset($parts[1]) && $parts[1] === 'login') {
+        require __DIR__ . '/modulos/portal/login.php';
+        exit;
+    }
+    if ($parts[0] === 'portal' && isset($parts[1]) && $parts[1] === 'area') {
+        require __DIR__ . '/modulos/portal/area.php';
+        exit;
+    }
+    if ($parts[0] === 'portal' && isset($parts[1]) && $parts[1] === 'logout') {
+        require __DIR__ . '/modulos/portal/logout.php';
+        exit;
+    }
+
+    // ===== MÓDULO AGROINDÚSTRIA =====
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'minhas' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/minhas_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'minha' && isset($parts[2]) && $parts[2] === 'nova') {
+        require __DIR__ . '/modulos/agroindustria/minhas_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'minha' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/agroindustria/minhas_editar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'setores' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/setores_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'setor' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/agroindustria/setores_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'setor' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/agroindustria/setores_editar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'categorias' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/categorias_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'categoria' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/agroindustria/categorias_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'categoria' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/agroindustria/categorias_editar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'atividades' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/atividades_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'atividade' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/agroindustria/atividades_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'atividade' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/agroindustria/atividades_editar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'ocorrencias' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/ocorrencias_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'ocorrencia' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/agroindustria/ocorrencias_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'ocorrencia' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/agroindustria/ocorrencias_editar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'receitas' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/receitas_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'receitas' && isset($parts[2]) && $parts[2] === 'nova') {
+        require __DIR__ . '/modulos/agroindustria/receitas_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'receitas' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/agroindustria/receitas_editar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'higienizacao' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/higienizacao_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'higienizacao' && isset($parts[2]) && $parts[2] === 'nova') {
+        require __DIR__ . '/modulos/agroindustria/higienizacao_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'ordens' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/agroindustria/ordens_listar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'ordens' && isset($parts[2]) && $parts[2] === 'nova') {
+        require __DIR__ . '/modulos/agroindustria/ordens_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'ordens' && isset($parts[2]) && is_numeric($parts[2])) {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/agroindustria/ordens_visualizar.php'; exit;
+    }
+    if ($parts[0] === 'agroindustria' && isset($parts[1]) && $parts[1] === 'rastreabilidade') {
+        require __DIR__ . '/modulos/agroindustria/rastreabilidade.php'; exit;
+    }
+
+    // ===== MÓDULO PRODUÇÃO ANIMAL =====
+    if ($parts[0] === 'producao-animal' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/producao_animal/painel.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'lotes' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/producao_animal/lotes_listar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'lote' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/producao_animal/lotes_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'lote' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/producao_animal/lotes_editar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'alimentacao' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/producao_animal/alimentacao_listar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'alimentacao' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/producao_animal/alimentacao_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'alimentacao' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/producao_animal/alimentacao_editar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'sanidade' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/producao_animal/sanidade_listar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'sanidade' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/producao_animal/sanidade_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'sanidade' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/producao_animal/sanidade_editar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'reproducao' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/producao_animal/reproducao_listar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'reproducao' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/producao_animal/reproducao_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'reproducao' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/producao_animal/reproducao_editar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'ambientes' && !isset($parts[2])) {
+        require __DIR__ . '/modulos/producao_animal/ambientes_listar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'ambiente' && isset($parts[2]) && $parts[2] === 'novo') {
+        require __DIR__ . '/modulos/producao_animal/ambientes_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'ambiente' && isset($parts[2]) && is_numeric($parts[2]) && isset($parts[3]) && $parts[3] === 'editar') {
+        $_GET['id'] = $parts[2]; require __DIR__ . '/modulos/producao_animal/ambientes_editar.php'; exit;
+    }
+    if ($parts[0] === 'producao-animal' && isset($parts[1]) && $parts[1] === 'rastreabilidade') {
+        require __DIR__ . '/modulos/producao_animal/rastreabilidade.php'; exit;
+    }
+
+    // ===== MÓDULO MANEJO ANIMAL =====
+    if ($parts[0] === 'manejo-animal' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/manejo_animal/animais_listar.php'; exit;
+    }
+    if ($parts[0] === 'manejo-animal' && isset($parts[1]) && $parts[1] === 'novo') {
+        require __DIR__ . '/modulos/manejo_animal/animais_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'manejo-animal' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'editar') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/manejo_animal/animais_editar.php'; exit;
+    }
+    if ($parts[0] === 'manejo-animal' && isset($parts[1]) && is_numeric($parts[1])) {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/manejo_animal/animais_visualizar.php'; exit;
+    }
+
+    // ===== MÓDULO MENSALIDADES =====
+    if ($parts[0] === 'mensalidades' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/mensalidades/listar.php'; exit;
+    }
+    if ($parts[0] === 'mensalidade' && isset($parts[1]) && $parts[1] === 'novo') {
+        require __DIR__ . '/modulos/mensalidades/cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'mensalidade' && isset($parts[1]) && $parts[1] === 'gerar') {
+        require __DIR__ . '/modulos/mensalidades/gerar.php'; exit;
+    }
+    if ($parts[0] === 'mensalidade' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'baixa') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/mensalidades/baixa.php'; exit;
+    }
+    if ($parts[0] === 'mensalidade' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'estornar') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/mensalidades/estornar.php'; exit;
+    }
+    if ($parts[0] === 'mensalidade' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'excluir') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/mensalidades/excluir.php'; exit;
+    }
+    if ($parts[0] === 'planos' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/mensalidades/planos.php'; exit;
+    }
+    if ($parts[0] === 'plano' && isset($parts[1]) && $parts[1] === 'novo') {
+        require __DIR__ . '/modulos/mensalidades/plano_cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'plano' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'editar') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/mensalidades/plano_editar.php'; exit;
+    }
+    if ($parts[0] === 'plano' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'excluir') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/mensalidades/plano_excluir.php'; exit;
+    }
+
+    // ===== MÓDULO CAIXA =====
+    if ($parts[0] === 'caixa' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/caixa/listar.php'; exit;
+    }
+    if ($parts[0] === 'caixa' && isset($parts[1]) && $parts[1] === 'lancamento') {
+        require __DIR__ . '/modulos/caixa/cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'caixa' && isset($parts[1]) && $parts[1] === 'cobranca') {
+        require __DIR__ . '/modulos/caixa/cobranca.php'; exit;
+    }
+    if ($parts[0] === 'caixa' && isset($parts[1]) && $parts[1] === 'relatorio') {
+        require __DIR__ . '/modulos/caixa/relatorio.php'; exit;
+    }
+    if ($parts[0] === 'caixa' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'excluir') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/caixa/excluir.php'; exit;
+    }
+
+    // ===== MÓDULO ASSEMBLEIA =====
+    if ($parts[0] === 'assembleia' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/assembleia/listar.php'; exit;
+    }
+    if ($parts[0] === 'assembleia' && isset($parts[1]) && $parts[1] === 'novo') {
+        require __DIR__ . '/modulos/assembleia/cadastrar.php'; exit;
+    }
+    if ($parts[0] === 'assembleia' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'editar') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/assembleia/editar.php'; exit;
+    }
+    if ($parts[0] === 'assembleia' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'encerrar') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/assembleia/encerrar.php'; exit;
+    }
+    if ($parts[0] === 'assembleia' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'pautas') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/assembleia/pautas.php'; exit;
+    }
+    if ($parts[0] === 'assembleia' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'publicar') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/assembleia/publicar.php'; exit;
+    }
+    if ($parts[0] === 'assembleia' && isset($parts[1]) && is_numeric($parts[1]) && isset($parts[2]) && $parts[2] === 'resultado') {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/assembleia/resultado.php'; exit;
+    }
+    if ($parts[0] === 'assembleia' && isset($parts[1]) && is_numeric($parts[1])) {
+        $_GET['id'] = $parts[1]; require __DIR__ . '/modulos/assembleia/visualizar.php'; exit;
+    }
+
+    // ===== MÓDULO REGIONALIZAÇÃO =====
+    if ($parts[0] === 'regionalizacao' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/regionalizacao/index.php'; exit;
+    }
+    if ($parts[0] === 'regionalizacao' && isset($parts[1]) && $parts[1] === 'mapa') {
+        require __DIR__ . '/modulos/regionalizacao/mapa.php'; exit;
+    }
+    if ($parts[0] === 'admin' && isset($parts[1]) && $parts[1] === 'clusters') {
+        require __DIR__ . '/modulos/admin/clusters.php'; exit;
+    }
+
+    // ===== RELATÓRIOS DA DIRETORIA =====
+    if ($parts[0] === 'relatorios_diretoria' && isset($parts[1]) && $parts[1] === 'ativos_municipio') {
+        require __DIR__ . '/modulos/relatorios_diretoria/ativos_municipio.php'; exit;
+    }
+    if ($parts[0] === 'relatorios_diretoria' && isset($parts[1]) && $parts[1] === 'inadimplentes_micro') {
+        require __DIR__ . '/modulos/relatorios_diretoria/inadimplentes_micro.php'; exit;
+    }
+    if ($parts[0] === 'relatorios_diretoria' && isset($parts[1]) && $parts[1] === 'entradas_saidas') {
+        require __DIR__ . '/modulos/relatorios_diretoria/entradas_saidas.php'; exit;
+    }
+
+    // ===== CONFORMIDADE =====
+    if ($parts[0] === 'relatorios-conformidade' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/conformidade/relatorios.php'; exit;
+    }
+    if ($parts[0] === 'relatorios-conformidade' && isset($parts[1]) && $parts[1] === 'gerar') {
+        require __DIR__ . '/modulos/conformidade/relatorios/gerar.php'; exit;
+    }
+
+    // ===== COMUNICAÇÃO =====
+    if ($parts[0] === 'comunicacao' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/comunicacao/index.php'; exit;
+    }
+
+    // ===== CONSULTA CNPO =====
+    if ($parts[0] === 'consulta-cnpo' && !isset($parts[1])) {
+        require __DIR__ . '/modulos/consulta_cnpo/index.php'; exit;
+    }
+
     // Fallback: página não encontrada
     require __DIR__ . '/404.php';
     exit;
@@ -801,12 +1166,13 @@ if ($rawUrl !== '') {
 // --- FIM DO ROTEADOR AMIGÁVEL ---
 
 
-// Redirecionar usuário do tipo 'usuario' para o dashboard do Caderno de Campo
+// Redirecionar todos os usuários logados para o dashboard do seu perfil
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (isset($_SESSION['user_nivel']) && (int)$_SESSION['user_nivel'] === NIVEL_USUARIO) {
-    header('Location: ' . SITE_URL . '/caderno-campo/dashboard-agricultor');
+if (isset($_SESSION['user_nivel'])) {
+    require_once __DIR__ . '/includes/perfil.php';
+    header('Location: ' . dashboard_destino());
     exit;
 }
 

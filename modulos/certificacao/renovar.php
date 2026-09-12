@@ -33,16 +33,29 @@ if (!$cert) {
 }
 ?>
 
-<h1 class="mt-4">Renovar Certificação</h1>
-<p>Atualize as datas de validade para o novo ciclo de certificação orgânica.</p>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="bi bi-arrow-repeat"></i> Dados da Renovação
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1">Renovar Certificação</h1>
+                <p class="mb-0">Atualize as datas de validade para o novo ciclo de certificação orgânica.</p>
             </div>
-            <div class="card-body">
+            <a href="<?php echo SITE_URL; ?>/certificacoes" class="btn btn-assoc-ghost btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Voltar para Listagem
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+    <div class="col-md-6">
+        <div class="gm-card mb-4">
+            <div class="card-head">
+                <i class="bi bi-arrow-repeat me-2" style="color:var(--gm-primary);"></i> Dados da Renovação
+            </div>
+            <div class="p-4">
                 <form id="formRenovacao">
                     <input type="hidden" name="id" value="<?php echo $cert['id']; ?>">
                     <input type="hidden" name="associado_id" value="<?php echo $cert['associado_id']; ?>">
@@ -92,8 +105,8 @@ if (!$cert) {
                     </div>
 
                     <div class="d-flex justify-content-between">
-                        <a href="<?php echo SITE_URL; ?>/certificacoes" class="btn btn-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-success">
+                        <a href="<?php echo SITE_URL; ?>/certificacoes" class="btn btn-assoc-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-assoc-success">
                             <i class="bi bi-upload"></i> Upload e Confirmar Renovação
                         </button>
                     </div>
@@ -103,11 +116,11 @@ if (!$cert) {
     </div>
     
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-light">
-                <i class="bi bi-info-circle"></i> Certificado Anterior
+        <div class="gm-card">
+            <div class="card-head bg-light">
+                <i class="bi bi-info-circle me-2" style="color:var(--gm-primary);"></i> Certificado Anterior
             </div>
-            <div class="card-body">
+            <div class="p-4">
                 <p><strong>Nº Atual:</strong> <?php echo $cert['numero_certificado'] ?: 'Não informado'; ?></p>
                 <p><strong>Emissão:</strong> <?php echo $cert['data_emissao'] ? date('d/m/Y', strtotime($cert['data_emissao'])) : '-'; ?></p>
                 <p><strong>Validade:</strong> <?php echo $cert['data_validade'] ? date('d/m/Y', strtotime($cert['data_validade'])) : '-'; ?></p>
@@ -118,6 +131,9 @@ if (!$cert) {
         </div>
     </div>
 </div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
 

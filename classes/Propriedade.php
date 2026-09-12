@@ -134,8 +134,9 @@ class Propriedade {
     public function update($dados) {
         try {
             $dados_sanitizados = Sanitizer::sanitizeArray($dados);
+            $zona_amortecimento = $dados_sanitizados['zona_amortecimento'] ?? null;
             
-            $sql = "UPDATE propriedades SET propriedade = :propriedade, endereco = :endereco, cidade = :cidade, estado = :estado, cep = :cep, bairro = :bairro, area_total = :area_total, latitude = :latitude, longitude = :longitude, observacoes = :observacoes, imagem_principal = :imagem_principal, imagem_secundaria = :imagem_secundaria WHERE id = :id";
+            $sql = "UPDATE propriedades SET propriedade = :propriedade, endereco = :endereco, cidade = :cidade, estado = :estado, cep = :cep, bairro = :bairro, area_total = :area_total, latitude = :latitude, longitude = :longitude, observacoes = :observacoes, zona_amortecimento = :zona_amortecimento, imagem_principal = :imagem_principal, imagem_secundaria = :imagem_secundaria WHERE id = :id";
             $stmt = $this->db->prepare($sql);
 
             $stmt->bindParam(':propriedade', $dados_sanitizados['propriedade']);
@@ -148,6 +149,7 @@ class Propriedade {
             $stmt->bindParam(':latitude', $dados_sanitizados['latitude']);
             $stmt->bindParam(':longitude', $dados_sanitizados['longitude']);
             $stmt->bindParam(':observacoes', $dados_sanitizados['observacoes']);
+            $stmt->bindParam(':zona_amortecimento', $zona_amortecimento);
             $stmt->bindParam(':imagem_principal', $dados_sanitizados['imagem_principal']);
             $stmt->bindParam(':imagem_secundaria', $dados_sanitizados['imagem_secundaria']);
             $stmt->bindParam(':id', $dados_sanitizados['id'], PDO::PARAM_INT);

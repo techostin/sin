@@ -2,10 +2,53 @@
 require_once __DIR__ . '/Database.php';
 
 class User {
+    /**
+     * B-01 (SQL Injection) - Whitelist de tabelas de usuario.
+     *
+     * O nome de uma tabela NAO pode ser um parametro preparado no PDO, entao
+     * $_SESSION['user_table'] acaba interpolado direto na query. Uma sessao
+     * adulterada permitiria executar SQL arbitrario. Apenas estes dois valores
+     * sao aceitos; qualquer outro e descartado.
+     */
+    public const TABELAS_USUARIO = ['associados', 'usuarios'];
+    public const TABELA_USUARIO_PADRAO = 'associados';
+
     private $db;
 
     public function __construct() {
         $this->db = Database::getInstance()->getConnection();
+    }
+
+    /**
+     * Valida um nome de tabela de usuario contra a whitelist (B-01).
+     *
+     * Use SEMPRE este metodo antes de interpolar a tabela do usuario em SQL.
+     *
+     * @param string|null $tabela Valor a validar. Se null, usa $_SESSION['user_table'].
+     * @param string|null $padrao Valor devolvido quando o informado for invalido/ausente.
+     * @return string Nome de tabela garantidamente seguro.
+     */
+    public static function tabelaUsuarioSegura($tabela = null, $padrao = null): string {
+        $padrao = in_array($padrao, self::TABELAS_USUARIO, true)
+            ? $padrao
+            : self::TABELA_USUARIO_PADRAO;
+
+        if ($tabela === null) {
+            $tabela = $_SESSION['user_table'] ?? null;
+        }
+
+        if ($tabela === null || $tabela === '') {
+            return $padrao;
+        }
+
+        $normalizada = strtolower(trim((string) $tabela));
+        if (in_array($normalizada, self::TABELAS_USUARIO, true)) {
+            return $normalizada;
+        }
+
+        // Fora da whitelist: registra (possivel adulteracao de sessao) e usa o padrao.
+        error_log('User::tabelaUsuarioSegura - tabela invalida rejeitada: ' . substr((string) $tabela, 0, 100));
+        return $padrao;
     }
 
     public function login($email, $senha) {
@@ -21,6 +64,8 @@ class User {
                 $_SESSION['user_nivel'] = $user['nivel'];
                 $_SESSION['user_nome'] = $user['nome'];
                 $_SESSION['user_tipo'] = $user['tipo'];
+                $_SESSION['user_tipo_usuario'] = $user['tipo_usuario'] ?? ($user['tipo'] ?? '');
+                $_SESSION['user_area_producao'] = $user['area_producao'] ?? '';
                 $_SESSION['user_table'] = 'associados';
                 return true;
             }
@@ -36,6 +81,7 @@ class User {
                 $_SESSION['user_nivel'] = $user['nivel'];
                 $_SESSION['user_nome'] = $user['nome'];
                 $_SESSION['user_tipo'] = $user['tipo'];
+                $_SESSION['user_tipo_usuario'] = $user['tipo_usuario'] ?? ($user['tipo'] ?? '');
                 $_SESSION['user_table'] = 'usuarios';
                 return true;
             }
@@ -76,6 +122,87 @@ class User {
     }
 
     /**
+     * Identifica o dashboard do perfil do usuário logado.
+     * Retorna um dos valores: 'admin', 'gestor', 'agricultor', 'agroindustria'.
+     *
+     * @return string
+     */
+    public function perfilDashboard(): string {
+        $nivel = isset($_SESSION['user_nivel']) ? (int)$_SESSION['user_nivel'] : NIVEL_USUARIO;
+        if ($nivel === NIVEL_ADMIN)  return 'admin';
+        if ($nivel === NIVEL_GESTOR) return 'gestor';
+        // Associado: distingue Agricultor de Produtor de Agroindústria
+        $tipo = isset($_SESSION['user_tipo_usuario']) ? strtolower((string)$_SESSION['user_tipo_usuario']) : '';
+        if ($tipo === 'produtor_agroindustria' || $tipo === 'agroindustria') {
+            return 'agroindustria';
+        }
+        return 'agricultor';
+    }
+
+    /**
+     * Verifica se o associado logado possui agroindústria.
+     * Retorna true para: produtor de agroindústria, agricultor com
+     * agroindústria (tem_agroindustria=1) ou quem já tem registro(s) em
+     * agroindustrias. Gestor/Admin também recebem true (acesso ao módulo).
+     *
+     * @return bool
+     */
+    public function temAgroindustria(): bool {
+        if (!$this->isLoggedIn()) return false;
+        $nivel = isset($_SESSION['user_nivel']) ? (int)$_SESSION['user_nivel'] : NIVEL_USUARIO;
+        if ($nivel === NIVEL_ADMIN || $nivel === NIVEL_GESTOR) return true;
+
+        $currentUser = $this->getCurrentUser();
+        if (!$currentUser) return false;
+
+        $tipo = isset($currentUser['tipo_usuario']) ? strtolower((string)$currentUser['tipo_usuario']) : '';
+        if ($tipo === 'produtor_agroindustria' || $tipo === 'agroindustria') return true;
+        if (!empty($currentUser['tem_agroindustria'])) return true;
+
+        $associadoId = $this->getAssociadoId();
+        if ($associadoId) {
+            try {
+                $stmt = $this->db->prepare("SELECT COUNT(*) FROM agroindustrias WHERE associado_id = ? AND excluido = 0");
+                $stmt->execute([(int)$associadoId]);
+                return (int)$stmt->fetchColumn() > 0;
+            } catch (PDOException $e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Retorna as áreas de produção do usuário logado (set multiple).
+     * Valores possíveis: animal, vegetal, agroindustria.
+     * Admin/Gestor retornam todas (acesso aos módulos).
+     *
+     * @return array
+     */
+    public function areaProducao(): array {
+        if (!$this->isLoggedIn()) return [];
+
+        $nivel = isset($_SESSION['user_nivel']) ? (int)$_SESSION['user_nivel'] : NIVEL_USUARIO;
+        if ($nivel === NIVEL_ADMIN || $nivel === NIVEL_GESTOR) {
+            return ['animal', 'vegetal', 'agroindustria'];
+        }
+
+        if (!empty($_SESSION['user_area_producao'])) {
+            $raw = (string)$_SESSION['user_area_producao'];
+        } else {
+            $currentUser = $this->getCurrentUser();
+            $raw = is_array($currentUser) ? (string)($currentUser['area_producao'] ?? '') : '';
+        }
+
+        $areas = array_values(array_filter(array_map('trim', explode(',', $raw))));
+        if (empty($areas)) {
+            // Legado (sem área cadastrada): libera tudo para não quebrar acesso
+            return ['animal', 'vegetal', 'agroindustria'];
+        }
+        return $areas;
+    }
+
+    /**
      * Busca dados do usuário logado
      * @return array|false Dados do usuário ou false se não encontrado
      */
@@ -84,7 +211,7 @@ class User {
             return false;
         }
 
-        $table = $_SESSION['user_table'] ?? 'associados';
+        $table = self::tabelaUsuarioSegura(); // B-01: whitelist de tabelas
         $id = $_SESSION['user_id'];
 
         try {
@@ -115,6 +242,148 @@ class User {
             return $currentUser['associado_id'];
         }
         return null;
+    }
+
+    /**
+     * Cargos de diretoria (e comissões vinculadas à Diretoria) da Associação.
+     * Estes cargos dão acesso ao Dashboard da Diretoria e às ferramentas da associação.
+     */
+    public const TIPOS_VINCULO_DIRETORIA = [
+        'diretor',
+        'secretario',
+        'tesoureiro',
+        'comissao_educativa',
+        'comissao_etica',
+        'conselho_fiscal',
+        'presidente',
+        'vice-presidente',
+    ];
+
+    /**
+     * Resolve o ID de associado do usuário logado de forma robusta,
+     * cobrindo as três formas de sessão existentes:
+     *   1. Sessão do Portal do Associado ($_SESSION['associado_id']);
+     *   2. Login principal na tabela "associados" (user_table = 'associados');
+     *   3. Usuário da tabela "usuarios" com associado_id preenchido ou com um
+     *      associado apontando user_id para ele (associados.user_id).
+     *
+     * @return int ID do associado ou 0 quando não houver vínculo.
+     */
+    public function getAssociadoIdResolvido(): int
+    {
+        // 1) Sessão do Portal do Associado (pode não ter user_id na sessão)
+        if (!empty($_SESSION['associado_id'])) {
+            return (int) $_SESSION['associado_id'];
+        }
+
+        if (!$this->isLoggedIn()) return 0;
+
+        $currentUser = $this->getCurrentUser();
+        if (!$currentUser) return 0;
+
+        // 2) Login principal na tabela associados
+        if (($_SESSION['user_table'] ?? '') === 'associados') {
+            return (int) ($_SESSION['user_id'] ?? 0);
+        }
+
+        // 3) Usuário da tabela usuarios com associado_id vinculado
+        if (!empty($currentUser['associado_id'])) {
+            return (int) $currentUser['associado_id'];
+        }
+
+        // 4) Associado com user_id apontando para este usuário
+        try {
+            $stmt = $this->db->prepare("SELECT id FROM associados WHERE user_id = ? LIMIT 1");
+            $stmt->execute([(int) ($_SESSION['user_id'] ?? 0)]);
+            return (int) $stmt->fetchColumn();
+        } catch (PDOException $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * IDs das associações em que o usuário logado ocupa cargo de diretoria
+     * ou de comissão vinculada à Diretoria (tipo_vinculo).
+     *
+     * @return int[]
+     */
+    public function getAssociacoesDiretoria(): array
+    {
+        $associadoId = $this->getAssociadoIdResolvido();
+        if (!$associadoId) return [];
+
+        try {
+            $placeholders = implode(',', array_fill(0, count(self::TIPOS_VINCULO_DIRETORIA), '?'));
+            $stmt = $this->db->prepare(
+                "SELECT DISTINCT associacao_id FROM associado_associacao
+                 WHERE associado_id = ? AND tipo_vinculo IN ({$placeholders})"
+            );
+            $stmt->execute(array_merge([$associadoId], self::TIPOS_VINCULO_DIRETORIA));
+            return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        } catch (PDOException $e) {
+            error_log('User::getAssociacoesDiretoria - erro: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * O usuário logado é membro da Diretoria (ou de comissão da Diretoria)
+     * de alguma associação? Se $associacaoId > 0, verifica apenas aquela associação.
+     *
+     * @param int $associacaoId
+     * @return bool
+     */
+    public function isMembroDiretoria(int $associacaoId = 0): bool
+    {
+        $associacoes = $this->getAssociacoesDiretoria();
+        if ($associacaoId > 0) {
+            return in_array($associacaoId, $associacoes, true);
+        }
+        return !empty($associacoes);
+    }
+
+    /**
+     * Pode acessar o Dashboard da Diretoria e as ferramentas da associação?
+     * Sim para: Admin e membros do quadro diretivo da Associação (Presidente,
+     * Vice-Presidente, Diretor, Secretário, Tesoureiro, Conselho Fiscal e
+     * comissões). Gestor/Fiscal NÃO tem acesso a esta área.
+     *
+     * @return bool
+     */
+    public function podeAcessarDiretoria(): bool
+    {
+        return $this->hasPermission(NIVEL_ADMIN) || $this->isMembroDiretoria();
+    }
+
+    /**
+     * Verifica se o usuário logado possui cargo de direção executiva
+     * (Presidente, Vice-Presidente, Diretor, Secretário, Tesoureiro)
+     * que permite acessar o portal de qualquer associado via CPF.
+     *
+     * @return bool
+     */
+    public function isDiretoriaExecutiva(): bool
+    {
+        if ($this->hasPermission(NIVEL_ADMIN)) return true;
+        
+        $associadoId = $this->getAssociadoIdResolvido();
+        if (!$associadoId) return false;
+
+        $cargosExecutivos = ['presidente', 'vice-presidente', 'diretor', 'secretario', 'tesoureiro'];
+        $placeholders = implode(',', array_fill(0, count($cargosExecutivos), '?'));
+        
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT 1 FROM associado_associacao
+                 WHERE associado_id = ? AND tipo_vinculo IN ({$placeholders})
+                 LIMIT 1"
+            );
+            $stmt->execute(array_merge([$associadoId], $cargosExecutivos));
+            return $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            error_log('User::isDiretoriaExecutiva - erro: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -152,7 +421,7 @@ class User {
     public function updatePerfil($dados) {
         if (!$this->isLoggedIn()) return false;
         
-        $table = $_SESSION['user_table'] ?? 'associados';
+        $table = self::tabelaUsuarioSegura(); // B-01: whitelist de tabelas
         $id = $_SESSION['user_id'];
         
         // Campos permitidos para atualizacao
@@ -197,7 +466,7 @@ class User {
     public function updateCurrentUser($dados) {
         if (!$this->isLoggedIn()) return false;
 
-        $table = $_SESSION['user_table'] ?? 'associados';
+        $table = self::tabelaUsuarioSegura(); // B-01: whitelist de tabelas
         $id = $_SESSION['user_id'];
 
         // Campos que NUNCA devem ser atualizados via este método (segurança)
@@ -220,9 +489,18 @@ class User {
         $sets = [];
         $params = [];
 
+        // Campos com UNIQUE KEY (ex.: cpf, email, registro_cnpo). Uma string
+        // vazia viola a unicidade porque só pode existir UM '' por índice.
+        // Converter vazio em NULL, que o MySQL permite repetir, evita o erro
+        // "1062 Duplicate entry '' for key 'cpf'".
+        $campos_unique = ['cpf', 'cnpj', 'registro_cnpo', 'email', 'user_id'];
+
         foreach ($dados as $key => $value) {
             // Só atualiza campos que existem na tabela e não estão bloqueados
             if (in_array($key, $colunas) && !in_array($key, $blocked)) {
+                if (in_array($key, $campos_unique, true) && $value === '') {
+                    $value = null;
+                }
                 $sets[] = "{$key} = :{$key}";
                 $params[":{$key}"] = $value;
             }

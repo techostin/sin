@@ -31,6 +31,7 @@ if (function_exists('date_default_timezone_set')) {
 </head>
 <body>
     <div class="header">
+        <img src="<?php echo htmlspecialchars(($logoPath ?? '') ?: ((defined('SITE_URL') ? SITE_URL : '/app') . '/img/logo_Sinporg-2.png')); ?>" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="max-width:210px; height:auto; margin-bottom:6px;" />
         <h1><?php echo htmlspecialchars($titulo ?? 'Relatório de Associados', ENT_QUOTES, 'UTF-8'); ?></h1>
         <p class="subtitle"><?php echo htmlspecialchars($associacao_razao_social ?? 'Associação', ENT_QUOTES, 'UTF-8'); ?></p>
         <p class="meta">Gerado em: <?php echo htmlspecialchars($data_geracao ?? date('d/m/Y H:i:s'), ENT_QUOTES, 'UTF-8'); ?> | Total: <?php echo (int)($total_registros ?? 0); ?></p>

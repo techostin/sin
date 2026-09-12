@@ -1,7 +1,6 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../../config/error_config.php';
 
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../classes/Certificadora.php';
@@ -92,9 +91,14 @@ function handleUpload($file) {
     }
 
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    $allowedExts = ['jpg', 'jpeg', 'png', 'svg'];
+    $allowedExts = ['jpg', 'jpeg', 'png'];
     
     if (!in_array($ext, $allowedExts)) {
+        return null;
+    }
+
+    // Confirmar que o arquivo é uma imagem válida (conteúdo real)
+    if (!getimagesize($file['tmp_name'])) {
         return null;
     }
 

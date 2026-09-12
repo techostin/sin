@@ -1,8 +1,6 @@
 <?php
-// Habilitar exibição de erros para desenvolvimento
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../config/error_config.php';
 
 // Incluir arquivos necessários
 require_once __DIR__ . '/../config/config.php';
@@ -137,7 +135,7 @@ require_once __DIR__ . '/../includes/menu.php';
                                                 <h1 class="display-5 mb-0 fw-bold">
                                                     <?php 
                                                         try {
-                                                            $stmt = $db->query("SELECT COUNT(*) as total FROM atividades_diarias WHERE DATE(data_atividade) = CURDATE()");
+                                                            $stmt = $db->query("SELECT COUNT(*) as total FROM atividades_diarias WHERE DATE(data_atividade) = CURDATE() AND excluido = 0");
                                                             $result = $stmt->fetch(PDO::FETCH_ASSOC);
                                                             echo $result['total'];
                                                         } catch (Exception $e) {
@@ -168,7 +166,7 @@ require_once __DIR__ . '/../includes/menu.php';
                                                 <h1 class="display-5 mb-0 fw-bold">
                                                     <?php 
                                                         try {
-                                                            $stmt = $db->query("SELECT COUNT(*) as total FROM insumos WHERE quantidade <= estoque_minimo");
+                                                            $stmt = $db->query("SELECT COUNT(*) as total FROM insumos WHERE quantidade_estoque < 10 AND excluido = 0");
                                                             $result = $stmt->fetch(PDO::FETCH_ASSOC);
                                                             echo $result['total'];
                                                         } catch (Exception $e) {

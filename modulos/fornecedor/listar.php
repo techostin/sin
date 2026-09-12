@@ -13,11 +13,18 @@ if (!$user->isLoggedIn()) {
 
 // Instancia a classe Fornecedor e busca os dados
 $fornecedor_obj = new Fornecedor();
-$fornecedores = $fornecedor_obj->getAll();
+if ($user->hasPermission(NIVEL_GESTOR)) {
+    // Admin/Gestor vê a lista completa
+    $fornecedores = $fornecedor_obj->getAll();
+} else {
+    // Usuário comum vê apenas os fornecedores vinculados às suas unidades
+    $associado_id = $user->getAssociadoId();
+    $fornecedores = $fornecedor_obj->getVisiveisParaAssociado($associado_id ?? -1);
+}
 ?>
 
-<h1 class="mt-4">Fornecedores Cadastrados</h1>
-<p>Abaixo está a lista de todos os fornecedores registrados no sistema.</p>
+<h1 class="mt-4"><?php echo $user->hasPermission(NIVEL_GESTOR) ? 'Fornecedores Cadastrados' : 'Meus Fornecedores'; ?></h1>
+<p><?php echo $user->hasPermission(NIVEL_GESTOR) ? 'Abaixo está a lista de todos os fornecedores registrados no sistema.' : 'Fornecedores vinculados às suas unidades produtivas (agroindústria, produção vegetal e animal).'; ?></p>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -31,6 +38,7 @@ $fornecedores = $fornecedor_obj->getAll();
                     <th>ID</th>
                     <th>Nome</th>
                     <th>Representante</th>
+                    <th>Unidades Atendidas</th>
                     <th>Cidade</th>
                     <th>Estado</th>
                     <th>Ações</th>
@@ -38,11 +46,19 @@ $fornecedores = $fornecedor_obj->getAll();
             </thead>
             <tbody>
                 <?php if (count($fornecedores) > 0): ?>
-                    <?php foreach ($fornecedores as $forn): ?>
+                    <?php foreach ($fornecedores as $forn):
+                        $unids = $fornecedor_obj->getUnidadesPorFornecedor($forn['id']);
+                        $badges = [];
+                        foreach ($unids as $unid) {
+                            $tipoLabel = ['propriedade' => 'Propriedade', 'agroindustria' => 'Agroindústria', 'animal' => 'Criação Animal'][$unid['unidade_tipo']] ?? $unid['unidade_tipo'];
+                            $badges[] = '<span class="badge bg-info text-dark" title="' . htmlspecialchars($tipoLabel) . '">' . htmlspecialchars($unid['nome_unidade']) . '</span>';
+                        }
+                    ?>
                         <tr>
                             <td><?php echo htmlspecialchars(isset($forn['id']) ? $forn['id'] : ''); ?></td>
                             <td><?php echo htmlspecialchars(isset($forn['nome']) ? $forn['nome'] : ''); ?></td>
                             <td><?php echo htmlspecialchars(isset($forn['representante']) ? $forn['representante'] : ''); ?></td>
+                            <td><?php echo $badges ? implode(' ', $badges) : '<span class="text-muted small">Somente gestores</span>'; ?></td>
                             <td><?php echo htmlspecialchars(isset($forn['cidade_nome']) ? $forn['cidade_nome'] : 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars(isset($forn['estado_sigla']) ? $forn['estado_sigla'] : 'N/A'); ?></td>
                             <td>
@@ -53,7 +69,7 @@ $fornecedores = $fornecedor_obj->getAll();
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="6" class="text-center">Nenhum fornecedor encontrado.</td>
+                        <td colspan="7" class="text-center">Nenhum fornecedor encontrado.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>

@@ -19,6 +19,7 @@ class AtividadeDiaria {
                     FROM atividades_diarias ad
                     LEFT JOIN lavouras l ON ad.lavoura_id = l.id
                     LEFT JOIN propriedades p ON ad.propriedade_id = p.id
+                    WHERE ad.excluido = 0
                     ORDER BY ad.data_atividade DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
@@ -39,7 +40,7 @@ class AtividadeDiaria {
      */
     public function getByUuid($uuid) {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM atividades_diarias WHERE uuid = :uuid");
+            $stmt = $this->db->prepare("SELECT * FROM atividades_diarias WHERE uuid = :uuid AND excluido = 0");
             $stmt->bindParam(':uuid', $uuid);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -67,7 +68,7 @@ class AtividadeDiaria {
                     LEFT JOIN lavouras l ON ad.lavoura_id = l.id
                     LEFT JOIN associados a ON ad.associado_id = a.id
                     LEFT JOIN categorias_atividades ca ON ad.categoria_id = ca.id
-                    WHERE ad.id = :id";
+                    WHERE ad.id = :id AND ad.excluido = 0";
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();

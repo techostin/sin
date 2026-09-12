@@ -3,8 +3,8 @@ $page_title = "Usuários Pendentes de Ativação";
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
 
-// Apenas admin/gestor
-if (!$user->hasPermission(NIVEL_GESTOR)) {
+// Apenas admin
+if (!$user->hasPermission(NIVEL_ADMIN)) {
     echo "<div class='alert alert-danger m-4'>Acesso negado.</div>";
     require_once __DIR__ . '/../../includes/footer.php';
     exit;
@@ -14,8 +14,9 @@ if (!$user->hasPermission(NIVEL_GESTOR)) {
 $msg = '';
 $msg_type = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'], $_POST['id'])) {
-    $id    = (int)$_POST['id'];
-    $acao  = $_POST['acao'];
+    $id     = (int)$_POST['id'];
+    $acao   = $_POST['acao'];
+    $origem = (($_POST['origem'] ?? 'associado') === 'usuario') ? 'usuario' : 'associado';
     $novoStatus = match($acao) {
         'ativar'   => 'ativo',
         'inativar' => 'inativo',
@@ -23,8 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'], $_POST['id'])
     };
     if ($novoStatus && $id > 0) {
         try {
-            $db   = Database::getInstance()->getConnection();
-            $stmt = $db->prepare("UPDATE associados SET status = :s WHERE id = :id");
+            $db    = Database::getInstance()->getConnection();
+            $tabela = $origem === 'usuario' ? 'usuarios' : 'associados';
+            $stmt  = $db->prepare("UPDATE {$tabela} SET status = :s WHERE id = :id");
             $stmt->execute([':s' => $novoStatus, ':id' => $id]);
             $msg      = $novoStatus === 'ativo' ? 'Usuário ativado com sucesso!' : 'Usuário marcado como inativo.';
             $msg_type = $novoStatus === 'ativo' ? 'success' : 'warning';
@@ -40,8 +42,14 @@ $pendentes = [];
 try {
     $db   = Database::getInstance()->getConnection();
     $stmt = $db->prepare("
-        SELECT id, nome, sobrenome, email, telefone, data_cadastro
+        SELECT id, nome, sobrenome, email, telefone, tipo_usuario, data_cadastro, 'associado' AS origem
         FROM associados
+        WHERE status = 'pendente'
+        UNION ALL
+        SELECT id, nome COLLATE utf8mb4_general_ci, sobrenome COLLATE utf8mb4_general_ci,
+               email COLLATE utf8mb4_general_ci, NULL AS telefone,
+               tipo_usuario COLLATE utf8mb4_general_ci, created_at AS data_cadastro, 'usuario' AS origem
+        FROM usuarios
         WHERE status = 'pendente'
         ORDER BY data_cadastro DESC
     ");
@@ -52,24 +60,28 @@ try {
 }
 ?>
 
-<div class="container-fluid px-4 py-4">
+<div class="assoc-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/associados-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
 
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="assoc-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <h1 class="h2 fw-bold mb-1">
-                <i class="bi bi-person-fill-exclamation text-warning me-2"></i>Usuários Pendentes
+            <h1 class="mb-1">
+                <i class="bi bi-person-fill-exclamation me-2" style="color:var(--am-gold);"></i>Usuários Pendentes
             </h1>
-            <p class="text-muted mb-0">
+            <p class="mb-0">
                 Novos cadastros aguardando ativação.
                 <?php if (count($pendentes) > 0): ?>
                     <span class="badge bg-warning text-dark ms-1"><?php echo count($pendentes); ?> pendente(s)</span>
                 <?php endif; ?>
             </p>
         </div>
-        <a href="<?php echo SITE_URL; ?>/associados" class="btn btn-outline-secondary btn-sm">
+        <a href="<?php echo SITE_URL; ?>/associados" class="btn btn-assoc-ghost btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Ver Todos os Associados
         </a>
     </div>
+</div>
 
     <?php if ($msg): ?>
         <div class="alert alert-<?php echo $msg_type; ?> alert-dismissible fade show" role="alert">
@@ -80,7 +92,7 @@ try {
     <?php endif; ?>
 
     <?php if (empty($pendentes)): ?>
-        <div class="card border-0 shadow-sm">
+        <div class="assoc-card empty-state">
             <div class="card-body text-center py-5">
                 <i class="bi bi-check-circle-fill text-success" style="font-size:3rem;"></i>
                 <h5 class="mt-3 mb-1">Nenhum cadastro pendente</h5>
@@ -88,7 +100,7 @@ try {
             </div>
         </div>
     <?php else: ?>
-        <div class="card border-0 shadow-sm">
+        <div class="assoc-card">
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0 table-responsive-stack" id="pendentesTable">
@@ -98,6 +110,7 @@ try {
                                 <th>Nome</th>
                                 <th>E-mail</th>
                                 <th>Telefone</th>
+                                <th>Perfil</th>
                                 <th>Data do Cadastro</th>
                                 <th class="text-center" style="width:180px;">Ações</th>
                             </tr>
@@ -121,6 +134,21 @@ try {
                                     </a>
                                 </td>
                                 <td data-label="Telefone"><?php echo htmlspecialchars($p['telefone'] ?? '—'); ?></td>
+                                <td data-label="Perfil">
+                                    <?php
+                                    $perfis = [
+                                        'gestor'                   => ['Gestor', 'bg-secondary'],
+                                        'agricultor'               => ['Agricultor', 'bg-info'],
+                                        'produtor_agroindustria'   => ['Produtor de Agroindústria', 'bg-success'],
+                                        'agricultor_agroindustria' => ['Agricultor com Agroindústria', 'bg-warning text-dark'],
+                                    ];
+                                    $perf = $perfis[$p['tipo_usuario']] ?? $perfis['agricultor'];
+                                    ?>
+                                    <span class="badge <?php echo $perf[1]; ?>"><?php echo $perf[0]; ?></span>
+                                    <?php if ($p['origem'] === 'usuario'): ?>
+                                    <span class="badge bg-dark ms-1" title="Acesso interno (usuário do sistema)">Interno</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td data-label="Cadastro">
                                     <?php echo date('d/m/Y H:i', strtotime($p['data_cadastro'])); ?>
                                 </td>
@@ -128,6 +156,7 @@ try {
                                     <form method="POST" class="d-inline"
                                           onsubmit="return confirm('Ativar este usuário?')">
                                         <input type="hidden" name="id"   value="<?php echo $p['id']; ?>">
+                                        <input type="hidden" name="origem" value="<?php echo $p['origem']; ?>">
                                         <input type="hidden" name="acao" value="ativar">
                                         <button class="btn btn-success btn-sm" title="Ativar">
                                             <i class="bi bi-check-lg"></i> Ativar
@@ -136,6 +165,7 @@ try {
                                     <form method="POST" class="d-inline"
                                           onsubmit="return confirm('Rejeitar este cadastro?')">
                                         <input type="hidden" name="id"   value="<?php echo $p['id']; ?>">
+                                        <input type="hidden" name="origem" value="<?php echo $p['origem']; ?>">
                                         <input type="hidden" name="acao" value="inativar">
                                         <button class="btn btn-outline-danger btn-sm" title="Rejeitar">
                                             <i class="bi bi-x-lg"></i> Rejeitar
@@ -150,6 +180,8 @@ try {
             </div>
         </div>
     <?php endif; ?>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /assoc-modern -->
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

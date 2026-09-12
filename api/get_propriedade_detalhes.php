@@ -95,7 +95,7 @@ try {
             DATE_FORMAT(ad.data_atividade, '%d/%m/%Y') as data_formatada
         FROM atividades_diarias ad
         LEFT JOIN categorias_atividades ca ON ad.categoria_id = ca.id
-        WHERE ad.propriedade_id = :propriedade_id
+        WHERE ad.propriedade_id = :propriedade_id AND ad.excluido = 0
         ORDER BY ad.data_atividade DESC, ad.hora_inicio DESC
         LIMIT 10
     ";

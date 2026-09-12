@@ -76,7 +76,7 @@ try {
     $options->set('isHtml5ParserEnabled', true);
     $options->set('isRemoteEnabled', true);
     $options->set('defaultPaperSize', 'A4');
-    $options->set('defaultPaperOrientation', 'portrait');
+    $options->set('defaultPaperOrientation', 'landscape');
 
     // 1. Gerar Certificado
     ob_start();

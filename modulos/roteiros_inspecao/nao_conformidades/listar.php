@@ -13,39 +13,42 @@ $userNivel = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
 $isAdmin   = $userNivel <= NIVEL_GESTOR;
 ?>
 
-<div class="container-fluid px-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <!-- Header / Hero -->
+    <div class="gestor-hero">
         <div>
-            <h1 class="h3 mb-1"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Não Conformidades</h1>
-            <p class="text-muted mb-0">Acompanhe e resolva pendências identificadas nas inspeções técnicas.</p>
+            <h1 class="mb-1"><i class="bi bi-exclamation-triangle-fill me-2" style="color:var(--gm-coral);"></i>Não Conformidades</h1>
+            <p class="mb-0">Acompanhe e resolva pendências identificadas nas inspeções técnicas.</p>
         </div>
     </div>
 
     <!-- KPI Cards -->
     <div class="row g-3 mb-4" id="kpi-cards">
         <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="gm-kpi-card gm-kpi card h-100" style="background:linear-gradient(135deg,#ef7a67,#e4634f);">
                 <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-danger bg-opacity-10 p-3">
-                        <i class="bi bi-exclamation-circle-fill text-danger fs-4"></i>
+                    <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="background:rgba(255,255,255,.22); width:52px; height:52px; font-size:1.4rem; flex-shrink:0;">
+                        <i class="bi bi-exclamation-circle-fill"></i>
                     </div>
                     <div>
-                        <div class="text-muted small">ABERTAS</div>
-                        <div class="fs-3 fw-bold text-danger" id="kpi-abertas">—</div>
+                        <div class="small opacity-75">ABERTAS</div>
+                        <div class="fs-3 fw-bold" id="kpi-abertas">—</div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
+            <div class="gm-kpi-card gm-kpi card h-100" style="background:linear-gradient(135deg,#f0b95c,#eda24a);">
                 <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
-                        <i class="bi bi-arrow-clockwise text-warning fs-4"></i>
+                    <div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="background:rgba(255,255,255,.22); width:52px; height:52px; font-size:1.4rem; flex-shrink:0;">
+                        <i class="bi bi-arrow-clockwise"></i>
                     </div>
                     <div>
-                        <div class="text-muted small">EM CORREÇÃO</div>
-                        <div class="fs-3 fw-bold text-warning" id="kpi-em-correcao">—</div>
+                        <div class="small opacity-75 text-dark">EM CORREÇÃO</div>
+                        <div class="fs-3 fw-bold" id="kpi-em-correcao">—</div>
                     </div>
                 </div>
             </div>
@@ -79,8 +82,8 @@ $isAdmin   = $userNivel <= NIVEL_GESTOR;
     </div>
 
     <!-- Filtros -->
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-2">
+    <div class="gm-card mb-3">
+        <div class="p-3">
             <div class="row g-2 align-items-center">
                 <div class="col-auto">
                     <label class="form-label mb-0 small fw-bold">Status:</label>
@@ -114,11 +117,12 @@ $isAdmin   = $userNivel <= NIVEL_GESTOR;
     </div>
 
     <!-- Tabela -->
-    <div class="card shadow-sm mb-5">
-        <div class="card-header bg-white fw-bold">
-            <i class="bi bi-table me-1"></i> Lista de Ocorrências
+    <div class="gm-card mb-5">
+        <div class="card-head fw-bold">
+            <i class="bi bi-table me-1" style="color:var(--gm-primary);"></i> Lista de Ocorrências
         </div>
-        <div class="card-body p-0">
+        <div class="p-0">
+            <div class="table-responsive">
             <table id="ncTable" class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
@@ -136,9 +140,12 @@ $isAdmin   = $userNivel <= NIVEL_GESTOR;
                 </thead>
                 <tbody></tbody>
             </table>
+            </div>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <!-- Modal: Atualizar NC -->
 <div class="modal fade" id="modalNC" tabindex="-1">

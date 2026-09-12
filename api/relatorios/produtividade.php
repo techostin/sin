@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 try {
     $db = Database::getInstance()->getConnection();
 
-    $where = ["a.quantidade_colhida IS NOT NULL", "a.quantidade_colhida > 0"];
+    $where = ["a.excluido = 0", "a.quantidade_colhida IS NOT NULL", "a.quantidade_colhida > 0"];
     $params = [];
 
     if (!empty($_GET['dataInicio'])) {

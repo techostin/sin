@@ -20,11 +20,12 @@ try {
     $params = [];
     
     if ($user->hasPermission(NIVEL_GESTOR)) {
-        // Vê tudo
+        // Vê tudo (exceto excluídos)
+        $whereClause = "WHERE ad.excluido = 0";
     } else {
         $associado_id = $user->getAssociadoId();
         if (!$associado_id) $associado_id = -1;
-        $whereClause = "WHERE ad.associado_id = :associado_id";
+        $whereClause = "WHERE ad.associado_id = :associado_id AND ad.excluido = 0";
         $params[':associado_id'] = $associado_id;
     }
     
@@ -151,14 +152,15 @@ try {
                                 <td data-label="Associado"><?php echo htmlspecialchars($atividade['associado_nome'] ?? '-'); ?></td>
                                 <td data-label="Ações">
                                     <div class="btn-group" role="group">
+                                        <?php $atividade_link = !empty($atividade['uuid']) ? $atividade['uuid'] : $atividade['id']; ?>
                                         <?php if (!empty($atividade['imagem_diaria'])): ?>
-                                            <a href="<?php echo SITE_URL; ?>/caderno-campo/atividade-diaria/<?php echo $atividade['uuid']; ?>/imagens" 
+                                            <a href="<?php echo SITE_URL; ?>/caderno-campo/atividade-diaria/<?php echo $atividade_link; ?>/imagens" 
                                                class="btn btn-outline-info btn-sm" 
                                                title="Visualizar Imagens">
                                                 <i class="bi bi-images"></i>
                                             </a>
                                         <?php endif; ?>
-                                        <a href="<?php echo SITE_URL; ?>/caderno-campo/atividade-diaria/<?php echo $atividade['uuid']; ?>/editar" 
+                                        <a href="<?php echo SITE_URL; ?>/caderno-campo/atividade-diaria/<?php echo $atividade_link; ?>/editar" 
                                            class="btn btn-outline-primary btn-sm" 
                                            title="Editar">
                                             <i class="bi bi-pencil-fill"></i>

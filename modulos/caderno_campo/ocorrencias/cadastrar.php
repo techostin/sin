@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../../classes/Propriedade.php';
 require_once __DIR__ . '/../../../classes/Lavoura.php';
 require_once __DIR__ . '/../../../classes/Insumo.php';
 require_once __DIR__ . '/../../../classes/CSRFProtection.php';
+require_once __DIR__ . '/../../../classes/AuditLog.php';
+require_once __DIR__ . '/../../../classes/ImageUploader.php';
 
 $message = '';
 $message_type = '';
@@ -59,17 +61,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $foto_url = '';
         if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = __DIR__ . '/../../../../uploads/ocorrencias/';
-            if (!file_exists($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-
-            $file_extension = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-            $file_name = uniqid('ocorrencia_') . '.' . $file_extension;
-            $target_path = $upload_dir . $file_name;
-
-            if (move_uploaded_file($_FILES['foto']['tmp_name'], $target_path)) {
-                $foto_url = 'uploads/ocorrencias/' . $file_name;
+            $uploader = new ImageUploader(__DIR__ . '/../../../uploads/ocorrencias/');
+            $uploader->setConfig(['maxWidth' => 1600, 'maxHeight' => 1200]);
+            $uploadResult = $uploader->uploadImage($_FILES['foto'], 'ocorrencia');
+            if ($uploadResult['success']) {
+                $foto_url = 'uploads/ocorrencias/' . $uploadResult['filename'];
             }
         }
         $dados['foto_url'] = $foto_url;
@@ -77,6 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $resultado = $ocorrencia->create($dados);
 
         if ($resultado) {
+            try {
+                AuditLog::registrar('OCORRENCIA_CADASTRADA', 'ocorrencias_manejo', (int)Database::getInstance()->getConnection()->lastInsertId(), 'Ocorrência: ' . ($dados['nome_comum'] ?? ''));
+            } catch (PDOException $e) {
+                // Auditoria é best-effort
+            }
             $message = "Ocorrência cadastrada com sucesso!";
             $message_type = "success";
         } else {

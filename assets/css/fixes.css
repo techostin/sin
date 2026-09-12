@@ -14,6 +14,8 @@
     
     #sidebar-wrapper {
         width: 250px;
+        height: 100vh;
+        height: 100dvh;
     }
     
     .navbar {
@@ -52,10 +54,12 @@
     margin-top: 0;
 }
 
-/* Ajustes para o menu lateral em dispositivos móveis */
+/* Ajuste para o menu lateral em dispositivos móveis */
 @media (max-width: 991.98px) {
     #sidebar-wrapper {
         width: 250px;
+        height: 100vh;
+        height: 100dvh;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
     }

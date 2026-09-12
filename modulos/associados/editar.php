@@ -31,6 +31,24 @@ require_once __DIR__ . '/../../includes/footer.php';
 exit;
 }
 
+// Cargos/funções disponíveis na associação
+$cargosVinculo = [
+    'membro'             => 'Membro',
+    'presidente'         => 'Presidente',
+    'vice-presidente'    => 'Vice-Presidente',
+    'diretor'            => 'Diretor(a)',
+    'secretario'         => 'Secretário(a)',
+    'tesoureiro'         => 'Tesoureiro(a)',
+    'conselho_fiscal'    => 'Conselho Fiscal',
+    'comissao_etica'     => 'Comissão de Ética',
+    'comissao_educativa' => 'Comissão Educativa',
+];
+
+// Associações ativas + vínculos e cargos atuais do associado
+$associacoesAtivas = $associadoModel->getAssociacoesAtivas();
+$associacoesVinculadas = array_map('intval', array_column($associadoModel->getAssociacoesById($id), 'id'));
+$cargosAtuais = $associadoModel->getTiposVinculo($id);
+
 // Para exibir nome da cidade e estado (que o getById simples pode não trazer com JOIN)
 // O getById original traz apenas os dados da tabela associados.
 // O original fazia um JOIN complexo. Vamos ver se o getById tem isso.
@@ -90,6 +108,9 @@ if ($resultado === true) {
 $mensagem = '<div class="alert alert-success">Associado atualizado com sucesso!</div>';
 // Atualiza dados na memória para exibir no form
 $associado = $associadoModel->getById($id);
+// Recarrega vínculos e cargos para refletir imediatamente o cargo atribuído
+$associacoesVinculadas = array_map('intval', array_column($associadoModel->getAssociacoesById($id), 'id'));
+$cargosAtuais = $associadoModel->getTiposVinculo($id);
 } else {
 $mensagem = '<div class="alert alert-danger">' . $resultado . '</div>';
 }
@@ -108,7 +129,7 @@ $mensagem = '<div class="alert alert-danger">' . $resultado . '</div>';
     echo $mensagem; ?>
 <div class="card">
     <div class="card-body">
-        <form method="post" action="<?php echo SITE_URL; ?>/associado/<?php echo $id; ?>/editar" enctype="multipart/form-data">
+        <form method="post" id="formEditarAssociado" action="<?php echo SITE_URL; ?>/associado/<?php echo $id; ?>/editar" enctype="multipart/form-data">
             <?php if (!$isViewMode): ?>
                 <?php echo CSRFProtection::getTokenField(); ?>
             <?php endif; ?>
@@ -227,6 +248,32 @@ $mensagem = '<div class="alert alert-danger">' . $resultado . '</div>';
                             </div>
                         </div>
                     </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-semibold mb-0"><i class="bi bi-building me-1 text-success"></i> Associações e Cargos</h6>
+                                <?php if (!$isViewMode): ?>
+                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalAtribuirCargo">
+                                    <i class="bi bi-person-gear me-1"></i> Atribuir Cargo
+                                </button>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (empty($associacoesVinculadas)): ?>
+                                <span class="text-muted small">Sem vínculos de associação.</span>
+                            <?php else: ?>
+                                <?php foreach ($associacoesAtivas as $assoc): ?>
+                                    <?php if (in_array((int)$assoc['id'], $associacoesVinculadas, true)): ?>
+                                        <?php $cargoAtual = $cargosAtuais[(int)$assoc['id']] ?? 'membro'; ?>
+                                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle me-1 mb-1">
+                                            <?php echo htmlspecialchars(!empty($assoc['sigla']) ? $assoc['sigla'] : $assoc['nome']); ?>
+                                            &mdash; <?php echo htmlspecialchars($cargosVinculo[$cargoAtual] ?? $cargoAtual); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="col-lg-4">
@@ -268,6 +315,59 @@ $mensagem = '<div class="alert alert-danger">' . $resultado . '</div>';
             </div>
         </form>
     </div>
+</div>
+
+<!-- Modal: Atribuir Cargo / Função na Associação -->
+<div class="modal fade" id="modalAtribuirCargo" tabindex="-1" aria-labelledby="modalAtribuirCargoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAtribuirCargoLabel"><i class="bi bi-person-gear me-2"></i>Atribuir Cargo / Função na Associação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Vincule o associado a uma ou mais associações e defina o cargo/função em cada uma.</p>
+                <?php if (empty($associacoesAtivas)): ?>
+                    <div class="alert alert-warning mb-0">Nenhuma associação ativa cadastrada.</div>
+                <?php else: ?>
+                <div class="row g-2">
+                    <?php foreach ($associacoesAtivas as $assoc): ?>
+                        <?php
+                        $vinc = in_array((int)$assoc['id'], $associacoesVinculadas, true);
+                        $cargoAtual = $cargosAtuais[(int)$assoc['id']] ?? 'membro';
+                        ?>
+                        <div class="col-md-6">
+                            <div class="border rounded p-2">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" name="associacoes[]" form="formEditarAssociado"
+                                           value="<?php echo $assoc['id']; ?>" id="assoc_<?php echo $assoc['id']; ?>"
+                                           <?php echo $vinc ? 'checked' : ''; ?> <?php echo $isViewMode ? 'disabled' : ''; ?>>
+                                    <label class="form-check-label" for="assoc_<?php echo $assoc['id']; ?>">
+                                        <?php echo htmlspecialchars(!empty($assoc['sigla']) ? $assoc['sigla'] : $assoc['nome']); ?>
+                                    </label>
+                                </div>
+                                <label class="small text-muted d-block mb-1">Cargo / Função</label>
+                                <select class="form-select form-select-sm" name="cargo[<?php echo $assoc['id']; ?>]" form="formEditarAssociado" <?php echo $isViewMode ? 'disabled' : ''; ?>>
+                                    <?php foreach ($cargosVinculo as $cargoVal => $cargoLabel): ?>
+                                        <option value="<?php echo $cargoVal; ?>" <?php echo $cargoAtual === $cargoVal ? 'selected' : ''; ?>><?php echo htmlspecialchars($cargoLabel); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <input type="hidden" name="associacoes_enviado" value="1" form="formEditarAssociado">
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="document.getElementById('formEditarAssociado').submit()">
+                    <i class="bi bi-check-lg me-1"></i> Salvar Cargo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

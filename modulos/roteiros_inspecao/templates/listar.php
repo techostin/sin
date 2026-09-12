@@ -18,16 +18,26 @@ if (!$user->hasPermission(NIVEL_GESTOR)) {
 }
 ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <h1>Templates de Roteiros</h1>
-        <a href="<?php echo SITE_URL; ?>/roteiro-inspecao/novo" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Novo Roteiro
-        </a>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1"><i class="bi bi-card-checklist me-2" style="color:var(--gm-primary);"></i>Templates de Roteiros</h1>
+                <p class="mb-0">Modelos de checklist utilizados nas inspeções e visitas técnicas.</p>
+            </div>
+            <a href="<?php echo SITE_URL; ?>/roteiro-inspecao/novo" class="btn btn-assoc-success btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> Novo Roteiro
+            </a>
+        </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
+    <div class="gm-card mb-4">
+        <div class="card-head"><i class="bi bi-collection me-1" style="color:var(--gm-primary);"></i> Roteiros disponíveis</div>
+        <div class="p-3">
+            <div class="table-responsive">
             <table id="templatesTable" class="table table-hover">
                 <thead>
                     <tr>
@@ -43,9 +53,12 @@ if (!$user->hasPermission(NIVEL_GESTOR)) {
                     <!-- AJAX -->
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <!-- Modal Novo Template (Simplificado para o exemplo) -->
 <div class="modal fade" id="modalNovoTemplate" tabindex="-1">
@@ -109,16 +122,48 @@ $(document).ready(function() {
             {
                 data: null,
                 render: function(row) {
+                    const id = row.id;
                     return `
                         <div class="btn-group">
-                            <button class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-outline-primary btn-sm btn-edit" data-id="${id}" data-nome="${(row.nome||'').replace(/"/g, '&quot;')}" title="Editar"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-outline-danger btn-sm btn-delete" data-id="${id}" data-nome="${(row.nome||'').replace(/"/g, '&quot;')}" title="Excluir"><i class="bi bi-trash"></i></button>
                         </div>
                     `;
                 }
             }
         ],
         language: { url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' }
+    });
+
+    // Event delegation: botões de editar e excluir
+    $(document).on('click', '.btn-edit', function() {
+        const id = $(this).data('id');
+        window.location.href = '<?php echo SITE_URL; ?>/roteiro-inspecao/editar/' + id;
+    });
+
+    $(document).on('click', '.btn-delete', function() {
+        const id = $(this).data('id');
+        const nome = $(this).data('nome');
+        if (!confirm('Excluir o roteiro "' + nome + '" (#id ' + id + ')? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+        fetch('<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=templates&id=' + id, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Roteiro excluído com sucesso!');
+                table.ajax.reload();
+            } else {
+                alert('Erro ao excluir roteiro: ' + (data.error || 'Erro desconhecido.'));
+            }
+        })
+        .catch(err => {
+            console.error('Erro ao excluir:', err);
+            alert('Erro de conexão com o servidor.');
+        });
     });
 
     $('#formNovoTemplate').submit(function(e) {
@@ -129,7 +174,7 @@ $(document).ready(function() {
             checklist: JSON.parse($('textarea[name="checklist"]').val())
         };
 
-        fetch('<?php echo SITE_URL; ?>/api/roteiros-inspecao?action=templates', {
+        fetch('<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=templates', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

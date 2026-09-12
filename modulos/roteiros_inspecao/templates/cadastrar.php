@@ -18,53 +18,78 @@ if (!$isAdmin) {
     require_once __DIR__ . '/../../../includes/footer.php';
     exit;
 }
+
+require_once __DIR__ . '/../../../classes/RoteiroInspecao.php';
+$roteiroId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
+$roteiro = null;
+if ($roteiroId) {
+    $roteiro = (new RoteiroInspecao())->getById($roteiroId);
+    if (!$roteiro) {
+        echo "<div class='alert alert-danger'>Roteiro não encontrado.</div>";
+        require_once __DIR__ . '/../../../includes/footer.php';
+        exit;
+    }
+}
 ?>
 
-<div class="container-fluid px-4 pb-5">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-        <div>
-            <h1 class="h3 mb-1"><i class="bi bi-file-earmark-plus text-success me-2"></i>Novo Roteiro de Inspeção</h1>
-            <p class="text-muted mb-0">Crie modelos de checklist personalizados para vistorias técnicas.</p>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1"><i class="bi bi-file-earmark-plus me-2" style="color:var(--gm-primary);"></i><?= $roteiro ? 'Editar' : 'Novo'; ?> Roteiro de Inspeção</h1>
+                <p class="mb-0">Crie modelos de checklist personalizados para vistorias técnicas.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <?php if ($roteiro): ?>
+                <a href="<?php echo SITE_URL; ?>/roteiro-inspecao/ficha/<?php echo $roteiro['id']; ?>"
+                   class="btn btn-assoc-success btn-sm" target="_blank" title="Gerar a Ficha de Inspeção em PDF para impressão">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Ficha de Inspeção (PDF)
+                </a>
+                <?php endif; ?>
+                <a href="<?php echo SITE_URL; ?>/roteiros-inspecao" class="btn btn-assoc-ghost btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar para Listagem
+                </a>
+            </div>
         </div>
-        <a href="<?php echo SITE_URL; ?>/roteiros-inspecao" class="btn btn-outline-secondary btn-sm shadow-sm">
-            <i class="bi bi-arrow-left"></i> Voltar para Listagem
-        </a>
     </div>
 
     <form id="formTemplate" class="needs-validation" novalidate>
         <div class="row g-4">
             <!-- Coluna de Configuração Geral -->
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white fw-bold border-0 pt-3">
-                        <i class="bi bi-gear-fill text-primary me-2"></i>Identificação do Roteiro
+                <div class="gm-card mb-4">
+                    <div class="card-head">
+                        <i class="bi bi-gear-fill me-2" style="color:var(--gm-primary);"></i>Identificação do Roteiro
                     </div>
-                    <div class="card-body">
+                    <div class="p-4">
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Nome do Roteiro *</label>
-                            <input type="text" class="form-control" name="nome" required placeholder="Ex: Roteiro SPG Anual 2026">
+                            <input type="text" class="form-control" name="nome" required placeholder="Ex: Roteiro SPG Anual 2026" value="<?= htmlspecialchars($roteiro['nome'] ?? ''); ?>">
                             <div class="invalid-feedback">O nome do roteiro é obrigatório.</div>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Código do Roteiro</label>
-                            <input type="text" class="form-control" name="codigo" placeholder="Ex: ROT-SPG-01">
+                            <input type="text" class="form-control" name="codigo" placeholder="Ex: ROT-SPG-01" value="<?= htmlspecialchars($roteiro['codigo'] ?? ''); ?>">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Tipo de Visita *</label>
                             <select class="form-select" name="tipo" required>
-                                <option value="Visita Regular">Visita Regular</option>
-                                <option value="Visita Inicial">Visita Inicial</option>
-                                <option value="Visita de Renovação">Visita de Renovação</option>
-                                <option value="Visita Surpresa">Visita Surpresa</option>
+                                <option value="Visita Regular" <?= ($roteiro['tipo'] ?? '') === 'Visita Regular' ? 'selected' : ''; ?>>Visita Regular</option>
+                                <option value="Visita Inicial" <?= ($roteiro['tipo'] ?? '') === 'Visita Inicial' ? 'selected' : ''; ?>>Visita Inicial</option>
+                                <option value="Visita de Renovação" <?= ($roteiro['tipo'] ?? '') === 'Visita de Renovação' ? 'selected' : ''; ?>>Visita de Renovação</option>
+                                <option value="Visita Surpresa" <?= ($roteiro['tipo'] ?? '') === 'Visita Surpresa' ? 'selected' : ''; ?>>Visita Surpresa</option>
                             </select>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Pontuação Mínima para Aprovação (%) *</label>
                             <div class="input-group">
-                                <input type="number" class="form-control" name="pontuacao_minima" value="70" min="0" max="100" required>
+                                <input type="number" class="form-control" name="pontuacao_minima" value="<?= htmlspecialchars($roteiro['pontuacao_minima'] ?? '70'); ?>" min="0" max="100" required>
                                 <span class="input-group-text">%</span>
                             </div>
                             <small class="text-muted">Percentual mínimo de conformidade necessário.</small>
@@ -72,12 +97,12 @@ if (!$isAdmin) {
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Descrição</label>
-                            <textarea class="form-control" name="descricao" rows="2" placeholder="Breve resumo da finalidade deste roteiro..."></textarea>
+                            <textarea class="form-control" name="descricao" rows="2" placeholder="Breve resumo da finalidade deste roteiro..."><?= htmlspecialchars($roteiro['descricao'] ?? ''); ?></textarea>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Objetivo Técnico</label>
-                            <textarea class="form-control" name="objetivo" rows="2" placeholder="Qual o principal objetivo a atingir nesta inspeção..."></textarea>
+                            <textarea class="form-control" name="objetivo" rows="2" placeholder="Qual o principal objetivo a atingir nesta inspeção..."><?= htmlspecialchars($roteiro['objetivo'] ?? ''); ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -85,12 +110,12 @@ if (!$isAdmin) {
 
             <!-- Coluna do Construtor de Checklist -->
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center border-0 pt-3">
-                        <span class="fw-bold"><i class="bi bi-list-check text-success me-2"></i>Itens do Checklist</span>
+                <div class="gm-card mb-4">
+                    <div class="card-head d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-list-check me-2" style="color:var(--gm-primary);"></i>Itens do Checklist</span>
                         <span class="badge bg-secondary p-2" id="kpi-total-itens">Total de Itens: 0</span>
                     </div>
-                    <div class="card-body">
+                    <div class="p-4">
                         <div class="alert alert-info py-2 small d-flex align-items-center">
                             <i class="bi bi-info-circle-fill me-2 fs-5 text-primary"></i>
                             <div>Adicione os itens de vistoria. Itens marcados como <strong>críticos/obrigatórios</strong> geram reprovação automática caso não sejam atendidos.</div>
@@ -110,18 +135,33 @@ if (!$isAdmin) {
                 </div>
 
                 <div class="d-flex justify-content-end gap-3 mt-4">
-                    <a href="<?php echo SITE_URL; ?>/roteiros-inspecao" class="btn btn-outline-secondary px-4 shadow-sm">Cancelar</a>
-                    <button type="submit" class="btn btn-success px-5 fw-bold shadow-sm" id="btn-salvar">
+                    <a href="<?php echo SITE_URL; ?>/roteiros-inspecao" class="btn btn-assoc-ghost px-4">Cancelar</a>
+                    <button type="submit" class="btn btn-assoc-success px-5 fw-bold" id="btn-salvar">
                         <i class="bi bi-save me-1"></i> Salvar Roteiro
                     </button>
                 </div>
             </div>
         </div>
     </form>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <style>
 /* Estilização para o construtor dinâmico */
+#checklist-builder {
+    max-height: 62vh;
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: #4f5bd5 #eef1f8;
+}
+#checklist-builder::-webkit-scrollbar { width: 8px; }
+#checklist-builder::-webkit-scrollbar-track { background: #eef1f8; border-radius: 8px; }
+#checklist-builder::-webkit-scrollbar-thumb {
+    background: #4f5bd5; border-radius: 8px;
+}
+#checklist-builder::-webkit-scrollbar-thumb:hover { background: #3c46c0; }
 .checklist-item-row {
     position: relative;
     border-left: 4px solid #198754;
@@ -133,6 +173,9 @@ if (!$isAdmin) {
 .btn-remove-item {
     font-size: 0.8rem;
     padding: 0.1rem 0.3rem;
+}
+@media (max-height: 700px) {
+    #checklist-builder { max-height: 52vh; }
 }
 </style>
 
@@ -236,6 +279,21 @@ $(document).ready(function() {
     renderItemRow(1, { item: 'Há histórico ou suspeita de uso de defensivos químicos ou adubação mineral proibida?', categoria: 'Insumos', obrigatorio: true, peso: 20 });
     renderItemRow(2, { item: 'Há barreiras vegetais adequadas para evitar contaminação de propriedades vizinhas?', categoria: 'Manejo', obrigatorio: false, peso: 10 });
 
+    <?php if ($roteiro): ?>
+    // Modo edição: limpar itens padrão e carregar os salvos
+    $('#checklist-builder').empty();
+    itemCount = 0;
+    const itensCriticosEdit = <?= json_encode($roteiro['itens_criticos'] ?? []); ?>;
+    (<?= json_encode($roteiro['checklist'] ?? []); ?>).forEach(function(it, idx) {
+        renderItemRow(idx, {
+            item: it.item,
+            categoria: it.categoria,
+            obrigatorio: it.obrigatorio === true || it.obrigatorio === 1 || it.obrigatorio === '1' || itensCriticosEdit.indexOf(it.id) !== -1,
+            peso: it.peso
+        });
+    });
+    <?php endif; ?>
+
     // Submissão do Formulário
     $('#formTemplate').on('submit', function(e) {
         e.preventDefault();
@@ -282,6 +340,7 @@ $(document).ready(function() {
         });
 
         const payload = {
+            id: <?= $roteiroId ? $roteiroId : 'null'; ?>,
             nome: $('input[name="nome"]').val().trim(),
             codigo: $('input[name="codigo"]').val().trim() || null,
             tipo: $('select[name="tipo"]').val(),

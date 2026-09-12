@@ -1,3 +1,19 @@
-Order Allow,Deny
-Allow from all
+# Bloquear execução de scripts (apenas PDFs são armazenados aqui)
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
 
+<FilesMatch "\.(php|php[0-9]|phtml|phps|phar|pht|pl|py|cgi|sh|asp|aspx|jsp|htaccess|ini)$">
+    Order Allow,Deny
+    Deny from all
+    Satisfy All
+</FilesMatch>
+
+# Permitir acesso a arquivos estáticos (PDFs de certificados, etc.)
+<FilesMatch "\.(css|js|jpe?g|png|gif|ico|webp|svg|bmp|woff|woff2|ttf|eot|pdf|txt|docx?|xlsx?|odt)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>

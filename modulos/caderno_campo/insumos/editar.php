@@ -32,13 +32,16 @@ if (!$user->hasPermission(NIVEL_GESTOR)) {
     $associados = $associado->getAll();
 }
 
-// Buscar fornecedores direto do banco
+// Buscar fornecedores direto do banco (escopo por perfil: usuário comum vê apenas os vinculados às suas unidades)
 $fornecedores = [];
 try {
-    $db = Database::getInstance()->getConnection();
-    $stmt = $db->prepare("SELECT id, nome FROM fornecedores ORDER BY nome ASC");
-    $stmt->execute();
-    $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    require_once __DIR__ . '/../../../classes/Fornecedor.php';
+    $forn_obj = new Fornecedor();
+    if ($user->hasPermission(NIVEL_GESTOR)) {
+        $fornecedores = $forn_obj->getAll();
+    } else {
+        $fornecedores = $forn_obj->getVisiveisParaAssociado($user->getAssociadoId() ?? -1);
+    }
 } catch (PDOException $e) {
     $message = "Erro ao carregar a lista de fornecedores. Por favor, tente novamente.";
     $message_type = "danger";

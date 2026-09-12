@@ -15,6 +15,7 @@ require_once __DIR__ . '/../../../vendor/autoload.php';
 // Incluir configuração do banco
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../classes/Database.php';
+require_once __DIR__ . '/../../../classes/User.php';
 
 use Mpdf\Mpdf;
 
@@ -44,7 +45,7 @@ try {
 
     // Construir a consulta SQL com filtros
     $params = [];
-    $where = [];
+    $where = ["ad.excluido = 0"];
     
     // Filtro de data
     $where[] = "ad.data_atividade BETWEEN :data_inicio AND :data_fim";
@@ -71,8 +72,12 @@ try {
     
     // Filtro de associado (se não for admin, só mostra as próprias atividades)
     if ($_SESSION['user_nivel'] != 1 && $_SESSION['user_nivel'] != 2) { // Se não for admin nem gestor
-        $where[] = "ad.associado_id = :associado_id";
-        $params[':associado_id'] = $_SESSION['user_id'];
+        $userFiltro = new User();
+        $assoc_id = $userFiltro->getAssociadoId();
+        if ($assoc_id) {
+            $where[] = "ad.associado_id = :associado_id";
+            $params[':associado_id'] = $assoc_id;
+        }
     } elseif ($associado_id > 0) {
         $where[] = "ad.associado_id = :associado_id";
         $params[':associado_id'] = $associado_id;
@@ -148,6 +153,7 @@ try {
     </style>
 
     <div class="header">
+        <img src="' . SINPORG_LOGO_PATH . '" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="height:58px; margin-bottom:6px;" />
         <div class="title">Relatório de Atividades Diárias</div>
         <div class="subtitle">Caderno de Campo - Sistema Integrado da Produção Orgânica</div>
         <div class="subtitle">Gerado em: ' . date('d/m/Y H:i:s') . '</div>

@@ -52,6 +52,7 @@ if (!$nc) {
 }
 
 // Resolver o nome do item do checklist
+require_once __DIR__ . '/../../../classes/ChecklistPadrao.php';
 $checklist = json_decode($nc['roteiro_checklist'], true) ?? [];
 $itemTexto = "Item #" . $nc['item_checklist_id'];
 foreach ($checklist as $item) {
@@ -59,6 +60,10 @@ foreach ($checklist as $item) {
         $itemTexto = $item['item'] ?? $item['pergunta'] ?? $itemTexto;
         break;
     }
+}
+// Se não encontrado no roteiro, buscar no checklist padrão (produção/processamento orgânico)
+if ($itemTexto === "Item #" . $nc['item_checklist_id'] && isset(ChecklistPadrao::mapa()[(int)$nc['item_checklist_id']])) {
+    $itemTexto = ChecklistPadrao::mapa()[(int)$nc['item_checklist_id']]['item'];
 }
 if (empty($nc['descricao'])) {
     $nc['descricao'] = $itemTexto;
@@ -68,16 +73,18 @@ $statusColors = ['Aberta' => 'danger', 'Em Correção' => 'warning', 'Resolvida'
 $cor = $statusColors[$nc['status']] ?? 'secondary';
 ?>
 
-<div class="container-fluid px-4 pb-5">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <div>
-            <h1 class="h3 mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Acompanhar Resolução</h1>
-            <p class="text-muted mb-0">Gestão do plano de ação corretiva para conformidade orgânica.</p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="btn btn-outline-secondary btn-sm shadow-sm">
-                <i class="bi bg-arrow-left"></i> Voltar para Lista
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1"><i class="bi bi-clock-history me-2" style="color:var(--gm-primary);"></i>Acompanhar Resolução</h1>
+                <p class="mb-0">Gestão do plano de ação corretiva para conformidade orgânica.</p>
+            </div>
+            <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="btn btn-assoc-ghost btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Voltar para Lista
             </a>
         </div>
     </div>
@@ -86,8 +93,8 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
         <!-- Coluna da Linha do Tempo e Detalhes -->
         <div class="col-lg-8">
             <!-- Detalhe da Irregularidade -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body">
+            <div class="gm-card mb-4">
+                <div class="p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <span class="badge bg-<?php echo $cor; ?> fs-6 py-2 px-3"><?php echo htmlspecialchars($nc['status']); ?></span>
                         <span class="small text-muted fw-bold">Gravidade: <span class="text-danger"><?php echo htmlspecialchars($nc['gravidade']); ?></span></span>
@@ -115,11 +122,11 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
             </div>
 
             <!-- Formulário do Plano de Ação -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white fw-bold border-0 pt-3">
-                    <i class="bi bi-card-checklist text-primary me-2"></i>Plano de Ação Corretiva
+            <div class="gm-card mb-4">
+                <div class="card-head">
+                    <i class="bi bi-card-checklist me-2" style="color:var(--gm-primary);"></i>Plano de Ação Corretiva
                 </div>
-                <div class="card-body">
+                <div class="p-4">
                     <form id="formPlanoAcao">
                         <input type="hidden" name="id" value="<?php echo $nc['id']; ?>">
                         
@@ -153,7 +160,7 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
 
                         <div class="border-top pt-3 d-flex justify-content-between align-items-center">
                             <span class="text-muted small">* Campos obrigatórios</span>
-                            <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" id="btn-salvar-acao">
+                            <button type="submit" class="btn btn-assoc-success px-4 fw-bold" id="btn-salvar-acao">
                                 <i class="bi bi-save"></i> Salvar Plano de Ação
                             </button>
                         </div>
@@ -164,11 +171,11 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
 
         <!-- Coluna de Evidências / Fotos -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white fw-bold border-0 pt-3">
-                    <i class="bi bi-camera-fill text-success me-2"></i>Fotos de Evidência
+            <div class="gm-card mb-4">
+                <div class="card-head">
+                    <i class="bi bi-camera-fill me-2" style="color:var(--gm-primary);"></i>Fotos de Evidência
                 </div>
-                <div class="card-body">
+                <div class="p-4">
                     <?php if ($nc['evidencia_correcao_url']): ?>
                         <div class="mb-3 text-center border p-2 rounded bg-light">
                             <img src="<?php echo SITE_URL . '/' . htmlspecialchars($nc['evidencia_correcao_url']); ?>" class="img-fluid rounded" style="max-height: 250px;" alt="Evidência de Correção">
@@ -185,7 +192,7 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
                             <input class="form-control form-control-sm" type="file" name="evidencia_foto" accept="image/*" required>
                             <small class="text-muted">Tire uma foto que comprove a resolução do problema.</small>
                         </div>
-                        <button type="submit" class="btn btn-outline-success btn-sm w-100 fw-bold shadow-sm" id="btn-upload">
+                        <button type="submit" class="btn btn-assoc-success btn-sm w-100 fw-bold" id="btn-upload">
                             <i class="bi bi-upload"></i> Enviar Foto
                         </button>
                     </form>
@@ -194,8 +201,8 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
 
             <!-- Técnico Resolução (Apenas para exibir status caso esteja resolvido) -->
             <?php if ($nc['status'] === 'Resolvida'): ?>
-                <div class="card border-0 shadow-sm bg-success bg-opacity-10 mb-4">
-                    <div class="card-body">
+                <div class="gm-card bg-success bg-opacity-10 mb-4">
+                    <div class="p-4">
                         <h6 class="fw-bold text-success"><i class="bi bi-check-circle-fill me-2"></i>Conformidade Validada</h6>
                         <p class="small mb-1 text-muted">VALIDADOR</p>
                         <p class="fw-bold text-dark mb-2"><?php echo htmlspecialchars($nc['verificado_por'] ?? 'Técnico Responsável'); ?></p>
@@ -207,7 +214,9 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
             <?php endif; ?>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 

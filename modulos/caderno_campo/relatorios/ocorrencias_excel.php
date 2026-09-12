@@ -30,7 +30,7 @@ try {
     $db = Database::getInstance()->getConnection();
 
     $params = [];
-    $where = [];
+    $where = ["om.excluido = 0"];
 
     if (!empty($severidade)) {
         $where[] = "om.severidade = :severidade";

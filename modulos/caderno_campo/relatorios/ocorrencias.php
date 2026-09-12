@@ -17,6 +17,12 @@ use Mpdf\Mpdf;
 try {
     $user = new User();
 
+    $severidade = $_GET['severidade'] ?? '';
+    $status = $_GET['status'] ?? '';
+    $propriedade_id = isset($_GET['propriedade_id']) ? (int)$_GET['propriedade_id'] : 0;
+    $data_inicio = $_GET['data_inicio'] ?? '';
+    $data_fim = $_GET['data_fim'] ?? '';
+
     $mpdf = new Mpdf([
         'mode' => 'utf-8',
         'format' => 'A4-L',
@@ -31,7 +37,7 @@ try {
     $db = Database::getInstance()->getConnection();
 
     $params = [];
-    $where = [];
+    $where = ["om.excluido = 0"];
 
     if (!empty($severidade)) {
         $where[] = "om.severidade = :severidade";
@@ -130,6 +136,7 @@ try {
     </style>
 
     <div class="header">
+        <img src="' . SINPORG_LOGO_PATH . '" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="height:58px; margin-bottom:6px;" />
         <div class="title">Relatório de Ocorrências de Manejo</div>
         <div class="subtitle">Caderno de Campo - Sistema Integrado da Produção Orgânica</div>
         <div class="subtitle">Gerado em: ' . date('d/m/Y H:i:s') . '</div>

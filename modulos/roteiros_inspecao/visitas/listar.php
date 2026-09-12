@@ -17,24 +17,34 @@ $userTable      = $_SESSION['user_table'] ?? 'associados';
 $isAdmin        = $userNivel <= NIVEL_GESTOR;        // admin (1) ou gestor (2)
 $isUsuarioComum = !$isAdmin && $userTable === 'associados';
 $associadoIdLogado = $isUsuarioComum ? ($_SESSION['user_id'] ?? null) : null;
+$podeReagendar  = $isAdmin || $userTable === 'associados';  // admin/gestor ou técnico (associado)
 ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <h1>Visitas Técnicas e Inspeções</h1>
-        <?php if ($isAdmin): ?>
-        <a href="<?php echo SITE_URL; ?>/visita-tecnica/agendar" class="btn btn-primary">
-            <i class="bi bi-calendar-plus"></i> Agendar Visita
-        </a>
-        <?php endif; ?>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1"><i class="bi bi-clipboard2-pulse me-2" style="color:var(--gm-primary);"></i>Visitas Técnicas e Inspeções</h1>
+                <p class="mb-0"><?php echo $isAdmin ? 'Cronograma de inspeções de todos os associados.' : 'Suas visitas técnicas realizadas e agendadas.'; ?></p>
+            </div>
+            <?php if ($isAdmin): ?>
+            <a href="<?php echo SITE_URL; ?>/visita-tecnica/agendar" class="btn btn-assoc-primary btn-sm">
+                <i class="bi bi-calendar-plus me-1"></i> Agendar Visita
+            </a>
+            <?php endif; ?>
+        </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-            <i class="bi bi-list-check me-1"></i>
+    <div class="gm-card mb-4">
+        <div class="card-head">
+            <i class="bi bi-list-check me-1" style="color:var(--gm-primary);"></i>
             <?php echo $isAdmin ? 'Cronograma de Inspeções (Todos os Associados)' : 'Minhas Visitas Técnicas'; ?>
         </div>
-        <div class="card-body">
+        <div class="p-3">
+            <div class="table-responsive">
             <table id="visitasTable" class="table table-striped table-responsive-stack">
                 <thead>
                     <tr>
@@ -44,6 +54,9 @@ $associadoIdLogado = $isUsuarioComum ? ($_SESSION['user_id'] ?? null) : null;
                         <th>Agricultor</th>
                         <?php endif; ?>
                         <th>Roteiro</th>
+                        <?php if ($isAdmin): ?>
+                        <th>Ciente</th>
+                        <?php endif; ?>
                         <th>Status</th>
                         <th>Conformidade</th>
                         <th>Ações</th>
@@ -53,12 +66,16 @@ $associadoIdLogado = $isUsuarioComum ? ($_SESSION['user_id'] ?? null) : null;
                     <!-- AJAX -->
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>
 
-<?php if ($isAdmin): ?>
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
+
 <!-- Modal Agendar Visita — Apenas Admin/Gestor -->
+<?php if ($isAdmin): ?>
 <div class="modal fade" id="modalAgendarVisita" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -98,6 +115,38 @@ $associadoIdLogado = $isUsuarioComum ? ($_SESSION['user_id'] ?? null) : null;
 </div>
 <?php endif; ?>
 
+<?php if ($podeReagendar): ?>
+<!-- Modal Reagendar Visita — Admin/Gestor/Técnico -->
+<div class="modal fade" id="modalReagendarVisita" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#f9a825,#f57c00);color:#fff;">
+                <h5 class="modal-title"><i class="bi bi-calendar-event me-2"></i>Reagendar Visita / Inspeção</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="reagendarResumo" class="alert alert-light border mb-3 small"></div>
+                <form id="formReagendarVisita">
+                    <input type="hidden" name="visita_id" id="reagendar_visita_id">
+                    <div class="mb-3">
+                        <label class="form-label">Nova Data da Visita *</label>
+                        <input type="date" class="form-control" name="data_visita" id="reagendar_data" required>
+                        <div class="form-text">A data deve ser hoje ou futura. O agricultor será notificado novamente.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nova Hora (opcional)</label>
+                        <input type="time" class="form-control" name="hora_inicio" id="reagendar_hora">
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100 fw-bold" id="btn-reagendar">
+                        <i class="bi bi-calendar-check me-1"></i> Confirmar Reagendamento
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 
 <!-- DataTables -->
@@ -108,6 +157,7 @@ $associadoIdLogado = $isUsuarioComum ? ($_SESSION['user_id'] ?? null) : null;
 <script>
 const IS_ADMIN       = <?php echo $isAdmin ? 'true' : 'false'; ?>;
 const ASSOCIADO_SELF = <?php echo $associadoIdLogado ? (int)$associadoIdLogado : 'null'; ?>;
+const PODE_REAGENDAR = <?php echo $podeReagendar ? 'true' : 'false'; ?>;
 
 $(document).ready(function() {
 
@@ -125,6 +175,25 @@ $(document).ready(function() {
         columns.push({
             data: null,
             render: row => `${row.associado_nome} ${row.associado_sobrenome}`
+        });
+    }
+
+    // Coluna "Ciente" (confirmação do agricultor sobre o agendamento — SPG)
+    if (IS_ADMIN) {
+        columns.push({
+            data: null,
+            render: row => {
+                if (row.status !== 'Agendada') {
+                    return '<span class="text-muted">—</span>';
+                }
+                if (row.ciente) {
+                    return '<span class="badge bg-success" title="Confirmado em ' + (row.ciente_em || '') + '"><i class="bi bi-check-circle me-1"></i>Confirmado</span>';
+                }
+                if (row.ciente_recusada) {
+                    return '<span class="badge bg-danger" title="Recusou em ' + (row.ciente_recusada_em || '') + ' — Motivo: ' + (row.ciente_recusada_motivo || 'não informado') + '"><i class="bi bi-calendar-x me-1"></i>Recusou / Reagendar</span>';
+                }
+                return '<span class="badge bg-warning text-dark" title="Agricultor ainda não confirmou ciência do agendamento"><i class="bi bi-hourglass-split me-1"></i>Pendente</span>';
+            }
         });
     }
 
@@ -151,6 +220,16 @@ $(document).ready(function() {
                                 class="btn btn-outline-primary btn-sm" title="Realizar Inspeção">
                                 <i class="bi bi-clipboard-check"></i> Realizar</a>`;
                 }
+                const podeReagendarRow =
+                    IS_ADMIN ||
+                    (PODE_REAGENDAR && ASSOCIADO_SELF && row.tecnico_responsavel_id == ASSOCIADO_SELF);
+                if (row.status === 'Agendada' && podeReagendarRow) {
+                    btns += `<button type="button" class="btn btn-outline-warning btn-sm btn-reagendar"
+                                data-id="${row.id}" data-data="${row.data_visita}" data-hora="${row.hora_inicio || ''}"
+                                data-associado="${row.associado_nome} ${row.associado_sobrenome || ''}"
+                                data-propriedade="${row.propriedade_nome}" title="Reagendar visita">
+                                <i class="bi bi-calendar-event"></i> Reagendar</button>`;
+                }
                 if (row.status === 'Realizada') {
                     const hid = row.hashid || row.id;
                     btns += `<a href="${SITE_URL}/visita-tecnica/${hid}/relatorio"
@@ -167,6 +246,17 @@ $(document).ready(function() {
     );
 
     // ----- DataTable -----
+    const columnDefs = [
+        { responsivePriority: 1, targets: -1 }, // Ações — nunca ocultar
+        { responsivePriority: 2, targets: 0 },  // Data
+        { responsivePriority: 3, targets: IS_ADMIN ? 5 : 3 },  // Status
+        { responsivePriority: 10, targets: IS_ADMIN ? 4 : 2 }, // Roteiro — ocultar primeiro
+        { responsivePriority: 11, targets: IS_ADMIN ? 6 : 4 }  // Conformidade
+    ];
+    if (IS_ADMIN) {
+        columnDefs.push({ responsivePriority: 12, targets: 3 }); // Ciente — ocultar antes
+    }
+
     $('#visitasTable').DataTable({
         ajax: {
             url: '<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=visitas',
@@ -174,13 +264,7 @@ $(document).ready(function() {
         },
         columns: columns,
         responsive: true,
-        columnDefs: [
-            { responsivePriority: 1, targets: -1 }, // Ações — nunca ocultar
-            { responsivePriority: 2, targets: 0 },  // Data
-            { responsivePriority: 3, targets: 4 },  // Status
-            { responsivePriority: 10, targets: 3 }, // Roteiro — ocultar primeiro
-            { responsivePriority: 11, targets: 5 }  // Conformidade
-        ],
+        columnDefs: columnDefs,
         language: { url: 'https://cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' }
     });
 
@@ -243,6 +327,55 @@ $(document).ready(function() {
                 } else {
                     alert('Erro ao agendar: ' + (data.error || ''));
                 }
+            });
+        });
+    }
+
+    // ----- Reagendar visita (admin/gestor/técnico) -----
+    if (PODE_REAGENDAR) {
+        $('#visitasTable').on('click', '.btn-reagendar', function() {
+            const id         = $(this).data('id');
+            const dataVisita = $(this).data('data');
+            const hora       = $(this).data('hora') || '';
+            const associado  = $(this).data('associado') || '';
+            const propriedade= $(this).data('propriedade') || '';
+
+            $('#reagendar_visita_id').val(id);
+            $('#reagendar_data').val(dataVisita).attr('min', new Date().toISOString().slice(0,10));
+            $('#reagendar_hora').val(hora ? String(hora).slice(0,5) : '');
+            $('#reagendarResumo').html(
+                '<strong>Agricultor:</strong> ' + $('<span>').text(associado).html() + '<br>' +
+                '<strong>Propriedade:</strong> ' + $('<span>').text(propriedade).html()
+            );
+            $('#modalReagendarVisita').modal('show');
+        });
+
+        // Submeter reagendamento
+        $('#formReagendarVisita').submit(function(e) {
+            e.preventDefault();
+            const payload = {};
+            $(this).serializeArray().forEach(i => payload[i.name] = i.value);
+            const btn = $('#btn-reagendar');
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Reagendando...');
+
+            fetch('<?php echo SITE_URL; ?>/api/roteiros_inspecao.php?action=reagendar_visita', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    $('#modalReagendarVisita').modal('hide');
+                    location.reload();
+                } else {
+                    btn.prop('disabled', false).html('<i class="bi bi-calendar-check me-1"></i> Confirmar Reagendamento');
+                    alert('Erro ao reagendar: ' + (data.error || 'Erro interno.'));
+                }
+            })
+            .catch(() => {
+                btn.prop('disabled', false).html('<i class="bi bi-calendar-check me-1"></i> Confirmar Reagendamento');
+                alert('Erro de comunicação com o servidor.');
             });
         });
     }

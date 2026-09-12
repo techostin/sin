@@ -31,6 +31,7 @@ class Insumo {
                     FROM insumos i
                     LEFT JOIN associados a ON i.associado_id = a.id
                     LEFT JOIN fornecedores f ON i.fornecedor_id = f.id
+                    WHERE i.excluido = 0
                     ORDER BY i.nome ASC";
                     
             $stmt = $this->db->prepare($sql);
@@ -65,7 +66,7 @@ class Insumo {
                     FROM insumos i
                     LEFT JOIN associados a ON i.associado_id = a.id
                     LEFT JOIN fornecedores f ON i.fornecedor_id = f.id
-                    WHERE i.associado_id = :associado_id
+                    WHERE i.associado_id = :associado_id AND i.excluido = 0
                     ORDER BY i.nome ASC";
                     
             $stmt = $this->db->prepare($sql);
@@ -85,7 +86,7 @@ class Insumo {
      */
     public function getByUuid($uuid) {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM insumos WHERE uuid = :uuid");
+            $stmt = $this->db->prepare("SELECT * FROM insumos WHERE uuid = :uuid AND excluido = 0");
             $stmt->bindParam(':uuid', $uuid);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -115,7 +116,7 @@ class Insumo {
                 );
             }
 
-            $sql = "INSERT INTO insumos (uuid, associado_id, nome, descricao, fornecedor_id, data_validade, estoq_anterior, quant_recebida, quantidade_estoque) VALUES (:uuid, :associado_id, :nome, :descricao, :fornecedor_id, :data_validade, :estoq_anterior, :quant_recebida, :quantidade_estoque)";
+            $sql = "INSERT INTO insumos (uuid, associado_id, nome, descricao, fornecedor_id, data_validade, estoq_anterior, quant_recebida, quantidade_estoque, aprovado_organico, tipo_insumo, insumo_aprovado_id, restricoes) VALUES (:uuid, :associado_id, :nome, :descricao, :fornecedor_id, :data_validade, :estoq_anterior, :quant_recebida, :quantidade_estoque, :aprovado_organico, :tipo_insumo, :insumo_aprovado_id, :restricoes)";
             $stmt = $this->db->prepare($sql);
 
             $stmt->bindParam(':uuid', $dados_sanitizados['uuid']);
@@ -127,6 +128,10 @@ class Insumo {
             $stmt->bindParam(':estoq_anterior', $dados_sanitizados['estoq_anterior']);
             $stmt->bindParam(':quant_recebida', $dados_sanitizados['quant_recebida']);
             $stmt->bindParam(':quantidade_estoque', $dados_sanitizados['quantidade_estoque']);
+            $stmt->bindValue(':aprovado_organico', isset($dados_sanitizados['aprovado_organico']) ? (int)$dados_sanitizados['aprovado_organico'] : 0, PDO::PARAM_INT);
+            $stmt->bindValue(':tipo_insumo', $dados_sanitizados['tipo_insumo'] ?? 'Não Permitido');
+            $stmt->bindValue(':insumo_aprovado_id', !empty($dados_sanitizados['insumo_aprovado_id']) ? $dados_sanitizados['insumo_aprovado_id'] : null, PDO::PARAM_INT);
+            $stmt->bindValue(':restricoes', $dados_sanitizados['restricoes'] ?? null);
 
             return $stmt->execute();
         } catch (PDOException $e) {
@@ -142,7 +147,7 @@ class Insumo {
      */
     public function getById($id) {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM insumos WHERE id = :id");
+            $stmt = $this->db->prepare("SELECT * FROM insumos WHERE id = :id AND excluido = 0");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -169,7 +174,11 @@ class Insumo {
                         data_validade = :data_validade,
                         estoq_anterior = :estoq_anterior, 
                         quant_recebida = :quant_recebida, 
-                        quantidade_estoque = :quantidade_estoque 
+                        quantidade_estoque = :quantidade_estoque,
+                        aprovado_organico = :aprovado_organico,
+                        tipo_insumo = :tipo_insumo,
+                        insumo_aprovado_id = :insumo_aprovado_id,
+                        restricoes = :restricoes 
                     WHERE id = :id";
             $stmt = $this->db->prepare($sql);
 
@@ -181,6 +190,10 @@ class Insumo {
             $stmt->bindParam(':estoq_anterior', $dados_sanitizados['estoq_anterior']);
             $stmt->bindParam(':quant_recebida', $dados_sanitizados['quant_recebida']);
             $stmt->bindParam(':quantidade_estoque', $dados_sanitizados['quantidade_estoque']);
+            $stmt->bindValue(':aprovado_organico', isset($dados_sanitizados['aprovado_organico']) ? (int)$dados_sanitizados['aprovado_organico'] : 0, PDO::PARAM_INT);
+            $stmt->bindValue(':tipo_insumo', $dados_sanitizados['tipo_insumo'] ?? 'Não Permitido');
+            $stmt->bindValue(':insumo_aprovado_id', !empty($dados_sanitizados['insumo_aprovado_id']) ? $dados_sanitizados['insumo_aprovado_id'] : null, PDO::PARAM_INT);
+            $stmt->bindValue(':restricoes', $dados_sanitizados['restricoes'] ?? null);
             $stmt->bindParam(':id', $dados_sanitizados['id'], PDO::PARAM_INT);
 
             return $stmt->execute();
@@ -191,13 +204,13 @@ class Insumo {
     }
 
     /**
-     * Exclui um insumo.
+     * Exclui (soft delete) um insumo.
      * @param int $id O ID do insumo.
      * @return bool Retorna true em caso de sucesso, false em caso de falha.
      */
     public function delete($id) {
         try {
-            $stmt = $this->db->prepare("DELETE FROM insumos WHERE id = :id");
+            $stmt = $this->db->prepare("UPDATE insumos SET excluido = 1 WHERE id = :id");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             return $stmt->execute();
         } catch (PDOException $e) {

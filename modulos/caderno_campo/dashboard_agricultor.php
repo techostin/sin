@@ -10,6 +10,13 @@ if (!$user->isLoggedIn()) {
     exit;
 }
 
+// Restringir o Painel do Agricultor a usuários do tipo agricultor (NIVEL_USUARIO)
+if ((int)($_SESSION['user_nivel'] ?? 0) !== NIVEL_USUARIO) {
+    echo "<div class='alert alert-danger m-4'>Acesso negado. Você não tem permissão para acessar este recurso.</div>";
+    require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
+
 $db = Database::getInstance()->getConnection();
 $associado_id = $user->getAssociadoId();
 
@@ -37,22 +44,23 @@ $dados = [
     'atividades_semana' => 0,
     'insumos_baixo_estoque' => 0,
     'ultima_visita' => null,
+    'total_animais' => 0,
 ];
 
 try {
-    $stmt = $db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ?");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ? AND excluido = 0");
     $stmt->execute([$associado_id]);
     $dados['total_atividades'] = $stmt->fetchColumn();
 
-    $stmt = $db->prepare("SELECT COUNT(*) FROM insumos WHERE associado_id = ?");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM insumos WHERE associado_id = ? AND excluido = 0");
     $stmt->execute([$associado_id]);
     $dados['total_insumos'] = $stmt->fetchColumn();
 
-    $stmt = $db->prepare("SELECT COUNT(*) FROM ocorrencias_manejo WHERE associado_id = ?");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM ocorrencias_manejo WHERE associado_id = ? AND excluido = 0");
     $stmt->execute([$associado_id]);
     $dados['total_ocorrencias'] = $stmt->fetchColumn();
 
-    $stmt = $db->prepare("SELECT status, data_validade FROM certificacao_participativa WHERE associado_id = ? ORDER BY data_validade DESC LIMIT 1");
+    $stmt = $db->prepare("SELECT status, data_validade FROM certificacao_participativa WHERE associado_id = ? AND excluido = 0 ORDER BY data_validade DESC LIMIT 1");
     $stmt->execute([$associado_id]);
     $cert = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($cert) {
@@ -72,22 +80,26 @@ try {
     $stmt->execute([$associado_id]);
     $dados['nc_abertas'] = $stmt->fetchColumn();
 
-    $stmt = $db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ? AND data_atividade = CURDATE()");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ? AND excluido = 0 AND data_atividade = CURDATE()");
     $stmt->execute([$associado_id]);
     $dados['pendentes_hoje'] = $stmt->fetchColumn();
 
-    $stmt = $db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ? AND YEARWEEK(data_atividade, 1) = YEARWEEK(CURDATE(), 1)");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ? AND excluido = 0 AND YEARWEEK(data_atividade, 1) = YEARWEEK(CURDATE(), 1)");
     $stmt->execute([$associado_id]);
     $dados['atividades_semana'] = $stmt->fetchColumn();
 
-    $stmt = $db->prepare("SELECT COUNT(*) FROM insumos WHERE associado_id = ? AND quantidade_estoque < 10");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM insumos WHERE associado_id = ? AND excluido = 0 AND quantidade_estoque < 10");
     $stmt->execute([$associado_id]);
     $dados['insumos_baixo_estoque'] = $stmt->fetchColumn();
+
+    $stmt = $db->prepare("SELECT COUNT(*) FROM animais WHERE associado_id = ? AND excluido = 0");
+    $stmt->execute([$associado_id]);
+    $dados['total_animais'] = $stmt->fetchColumn();
 
     $stmt = $db->prepare("SELECT ad.*, p.propriedade, l.nome AS lavoura_nome FROM atividades_diarias ad
         LEFT JOIN propriedades p ON ad.propriedade_id = p.id
         LEFT JOIN lavouras l ON ad.lavoura_id = l.id
-        WHERE ad.associado_id = ? ORDER BY ad.data_atividade DESC, ad.hora_inicio DESC LIMIT 5");
+        WHERE ad.associado_id = ? AND ad.excluido = 0 ORDER BY ad.data_atividade DESC, ad.hora_inicio DESC LIMIT 5");
     $stmt->execute([$associado_id]);
     $dados['atividades'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -181,7 +193,7 @@ $score_color = $dados['conformidade_score'] >= 80 ? 'success' : ($dados['conform
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        <div class="col-6 col-md-2">
             <div class="card border-0 shadow-sm h-100 bg-white">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0 bg-light-success p-3 rounded-3 me-3 text-success">
@@ -195,7 +207,7 @@ $score_color = $dados['conformidade_score'] >= 80 ? 'success' : ($dados['conform
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-2">
             <div class="card border-0 shadow-sm h-100 bg-white">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0 bg-light-info p-3 rounded-3 me-3 text-info">
@@ -211,7 +223,7 @@ $score_color = $dados['conformidade_score'] >= 80 ? 'success' : ($dados['conform
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-2">
             <div class="card border-0 shadow-sm h-100 bg-white">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0 bg-light-danger p-3 rounded-3 me-3 text-danger">
@@ -225,7 +237,7 @@ $score_color = $dados['conformidade_score'] >= 80 ? 'success' : ($dados['conform
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-2">
             <div class="card border-0 shadow-sm h-100 bg-white">
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-shrink-0 bg-light-warning p-3 rounded-3 me-3 text-warning">
@@ -236,6 +248,20 @@ $score_color = $dados['conformidade_score'] >= 80 ? 'success' : ($dados['conform
                         <h5 class="mb-0 fw-bold">
                             <?php echo $dados['proxima_visita'] ? date('d/m/Y', strtotime($dados['proxima_visita']['data_visita'])) : 'Nenhuma agendada'; ?>
                         </h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-shrink-0 bg-light-success p-3 rounded-3 me-3 text-success">
+                        <i class="bi bi-egg-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-1">Rebanho</h6>
+                        <h4 class="mb-0 fw-bold"><?php echo $dados['total_animais']; ?></h4>
+                        <small class="text-muted"><a href="<?php echo SITE_URL; ?>/producao-animal">produção animal</a></small>
                     </div>
                 </div>
             </div>

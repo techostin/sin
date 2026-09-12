@@ -1,4 +1,4 @@
-?php
+<?php
 /**
  * API de Exportação de Relatórios Administrativos
  * 
@@ -138,6 +138,7 @@ try {
 function renderizarHTMLRelatorio($dados, $colunas, $campos, $titulo, $responsavel_nome, $tipo_relatorio) {
     $total = count($dados);
     $data_emissao = date('d/m/Y H:i:s');
+    $logoUrl = (defined('SITE_URL') ? SITE_URL : '/app') . '/img/logo_Sinporg-2.png';
     $linhas = '';
     foreach ($dados as $item) {
         $linhas .= '<tr>';
@@ -176,7 +177,8 @@ body { background: #f5f6fa; }
         </div>
     </div>
     <div class="card shadow-sm">
-        <div class="card-header bg-white py-3">
+        <div class="card-header bg-white py-3 text-center" style="border-bottom:3px solid #1B5E20;">
+            <img src="{$logoUrl}" alt="SINPORG" style="height:58px; margin-bottom:4px;">
             <h4 class="mb-0">{$titulo}</h4>
             <small class="text-muted">Responsável: {$responsavel_nome} &mdash; Emissão: {$data_emissao} &mdash; Total: {$total} registro(s)</small>
         </div>
@@ -337,7 +339,8 @@ function gerarPDFRelatorio($dados, $colunas, $campos, $titulo, $responsavel_nome
     $html = '
     <style>
         body { font-family: Arial, sans-serif; font-size: 9pt; color: #333; }
-        .header { text-align: center; border-bottom: 3px solid #1B5E20; padding-bottom: 10px; margin-bottom: 15px; }
+        .header { text-align: center; border-bottom: 3px solid #1B5E20; padding-bottom: 10px; margin-bottom: 15px; background: #ffffff; }
+        .sinporg-logo { height: 58px; margin-bottom: 6px; }
         .title { font-size: 18pt; font-weight: bold; color: #1B5E20; }
         .subtitle { font-size: 10pt; color: #666; margin-top: 3px; }
         .responsavel { font-size: 10pt; color: #333; margin-top: 5px; font-style: italic; }
@@ -354,6 +357,7 @@ function gerarPDFRelatorio($dados, $colunas, $campos, $titulo, $responsavel_nome
     </style>
 
     <div class="header">
+        <img class="sinporg-logo" src="' . __DIR__ . '/../../img/logo_Sinporg-2.png" alt="SINPORG - Sistema Integrado da Produção Orgânica" />
         <div class="title">' . htmlspecialchars($titulo) . '</div>
         <div class="subtitle">Sistema Integrado de Produção Orgânica</div>
         <div class="responsavel">Responsável: ' . htmlspecialchars($responsavel_nome) . '</div>

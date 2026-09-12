@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
         cidadeSelect.disabled = true;
         
         if (estadoId) {
-            fetch(`<?php echo SITE_URL; ?>/api/cidades?estado_id=${estadoId}`)
+            fetch(`<?php echo SITE_URL; ?>/api/get_cidades.php?estado_id=${estadoId}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Erro na resposta da API');

@@ -12,11 +12,8 @@ if (!$user->isLoggedIn()) {
 
 // Se o perfil já estiver completo, redirecionar
 if ($user->hasPerfilCompleto()) {
-    if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
-        header("Location: " . SITE_URL . "/caderno-campo/dashboard-agricultor");
-    } else {
-        header("Location: " . SITE_URL . "/");
-    }
+    require_once __DIR__ . '/includes/perfil.php';
+    header("Location: " . dashboard_destino());
     exit;
 }
 
@@ -36,12 +33,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (isset($_POST['especialidade'])) $dados['especialidade'] = $_POST['especialidade'];
     }
     
-    // Usuario: nicho
+    // Usuario: nicho + perfil (agricultor / agroindústria / ambos)
     if ($nivel == NIVEL_USUARIO) {
         if (isset($_POST['nicho'])) $dados['nicho'] = $_POST['nicho'];
+        if (isset($_POST['tipo_usuario'])) {
+            $tipoPerfil = in_array($_POST['tipo_usuario'], ['agricultor', 'produtor_agroindustria', 'agricultor_agroindustria'], true)
+                ? $_POST['tipo_usuario'] : 'agricultor';
+            $dados['tipo_usuario'] = $tipoPerfil;
+            if (in_array($tipoPerfil, ['produtor_agroindustria', 'agricultor_agroindustria'], true)) {
+                $dados['tem_agroindustria'] = 1;
+            }
+        }
     }
     
-    if (!empty($dados) && $user->updatePerfil($dados)) {
+    if (!empty($dados) && $user->updateCurrentUser($dados)) {
+        // Atualizar sessão com o novo perfil
+        if (isset($dados['tipo_usuario'])) {
+            $_SESSION['user_tipo_usuario'] = $dados['tipo_usuario'];
+        }
         // Redirecionar para meu-perfil para completar os dados pessoais
         header("Location: " . SITE_URL . "/meu-perfil");
         exit;
@@ -128,11 +137,12 @@ if ($user->hasPerfilCompleto()) {
                         </div>
                     <?php elseif ($nivel == NIVEL_USUARIO): ?>
                         <div class="mb-3">
-                            <label for="tipo_usuario" class="form-label">Tipo de Usuário</label>
+                            <label for="tipo_usuario" class="form-label">Perfil de Atuação</label>
                             <select class="form-select" id="tipo_usuario" name="tipo_usuario" required>
                                 <option value="">Selecione...</option>
                                 <option value="agricultor" <?php echo ($currentUser['tipo_usuario'] ?? '') == 'agricultor' ? 'selected' : ''; ?>>Agricultor</option>
                                 <option value="produtor_agroindustria" <?php echo ($currentUser['tipo_usuario'] ?? '') == 'produtor_agroindustria' ? 'selected' : ''; ?>>Produtor de Agroindústria</option>
+                                <option value="agricultor_agroindustria" <?php echo ($currentUser['tipo_usuario'] ?? '') == 'agricultor_agroindustria' ? 'selected' : ''; ?>>Agricultor com Agroindústria</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -145,7 +155,7 @@ if ($user->hasPerfilCompleto()) {
                                 <option value="extrativismo" <?php echo ($currentUser['nicho'] ?? '') == 'extrativismo' ? 'selected' : ''; ?>>Extrativismo Sustentável</option>
                                 <option value="outro" <?php echo ($currentUser['nicho'] ?? '') == 'outro' ? 'selected' : ''; ?>>Outro</option>
                             </select>
-                        </div> REPLACE
+                        </div>
                     <?php endif; ?>
                     
                     <div class="d-grid">

@@ -5,6 +5,15 @@
 # Conteúdo enviado por usuários (logos, fotos, certificados, croquis)
 /uploads/
 
+# Backups de banco (conteem dados reais: e-mails, hashes de senha)
+/sql/_backup/
+
+# Segredos locais (chaves de API e de codificacao de IDs)
+/config/secrets.php
+
+# Rascunhos locais: caches, logs, testes temporarios, spikes
+/tmp/
+
 # Logs e ambiente
 *.log
 .env
@@ -14,3 +23,5 @@
 .DS_Store
 Thumbs.db
 *.swp
+# Pasta de rascunho/colaboracao local — NAO faz parte do projeto (sera excluida).
+/recicla/

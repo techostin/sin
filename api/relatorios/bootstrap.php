@@ -1,7 +1,6 @@
 <?php
-// Configurações do ambiente
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../../config/error_config.php';
 
 // Definir constantes básicas
 define('ROOT_PATH', dirname(dirname(dirname(__DIR__))));

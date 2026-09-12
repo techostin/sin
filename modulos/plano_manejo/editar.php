@@ -26,20 +26,25 @@ $stmtAssoc = $db->query("SELECT id, nome, sobrenome FROM associados ORDER BY nom
 $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <h1>Editar Plano de Manejo</h1>
-        <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo (int) $id; ?>/visualizar" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <h1 class="mb-1"><i class="bi bi-pencil-square me-2" style="color:var(--gm-primary);"></i>Editar Plano de Manejo</h1>
+            <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo (int) $id; ?>/visualizar" class="btn btn-assoc-ghost btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
     </div>
 
     <div id="msg-box"></div>
 
     <form id="formEditarPlano" novalidate>
-        <div class="card mb-4">
-            <div class="card-header"><strong>Informações Básicas</strong></div>
-            <div class="card-body row g-3">
+        <div class="gm-card mb-4">
+            <div class="card-head">Informações Básicas</div>
+            <div class="p-4 row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Propriedade</label>
                     <select class="form-select" name="propriedade_id" id="propriedade_id" required>
@@ -88,9 +93,9 @@ $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header"><strong>Caracterização e Práticas de Manejo</strong></div>
-            <div class="card-body row g-3">
+        <div class="gm-card mb-4">
+            <div class="card-head">Caracterização e Práticas de Manejo</div>
+            <div class="p-4 row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Área Orgânica (ha)</label>
                     <input class="form-control" type="number" step="0.01" name="area_organica_ha" id="area_organica_ha">
@@ -113,7 +118,7 @@ $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
                     <textarea class="form-control" rows="2" name="descricao_solo" id="descricao_solo"></textarea>
                 </div>
             </div>
-            <div class="card-body border-top pt-3 mt-2">
+            <div class="border-top pt-3 mt-2 px-4 pb-4">
                 <h6 class="text-success mb-3"><i class="bi bi-tools"></i> Práticas de Manejo e Conservação</h6>
                 <p class="text-muted small mb-3">Registre detalhadamente as práticas adotadas para refletir a intenção do agricultor:</p>
                 <div class="row">
@@ -171,26 +176,28 @@ $associados = $stmtAssoc->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>Cultivos</strong>
+        <div class="gm-card mb-4">
+            <div class="card-head d-flex justify-content-between align-items-center">
+                <span>Cultivos</span>
                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddCultivo">
                     <i class="bi bi-plus"></i> Adicionar cultivo
                 </button>
             </div>
-            <div class="card-body">
+            <div class="p-4">
                 <div id="lista-cultivos"></div>
             </div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 mb-4">
-            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="btn btn-light">Cancelar</a>
-            <button type="submit" id="btnSalvar" class="btn btn-success">
+            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="btn btn-assoc-ghost">Cancelar</a>
+            <button type="submit" id="btnSalvar" class="btn btn-assoc-success">
                 <i class="bi bi-save"></i> Salvar alterações
             </button>
         </div>
     </form>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
 

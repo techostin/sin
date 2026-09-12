@@ -84,7 +84,8 @@ function carregarEventosModal() {
                 return;
             }
             
-            const eventosModal = new bootstrap.Modal(modalEl);
+            // Inicializar o modal
+            const eventosModal = bootstrap.Modal.getOrCreateInstance(modalEl);
             
             if (data.success && data.eventos && data.eventos.length > 0) {
                 console.log('[Eventos Modal] Renderizando', data.eventos.length, 'eventos');
@@ -164,7 +165,8 @@ function carregarEventosModal() {
             
             const modalEl = document.getElementById('eventosModal');
             if (modalEl) {
-                const eventosModal = new bootstrap.Modal(modalEl);
+                // Inicializar o modal
+                const eventosModal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 eventosModal.show();
             }
         });

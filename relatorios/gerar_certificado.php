@@ -1,6 +1,7 @@
 <?php
 // Gera certificado em PDF usando dados da certificação e da certificadora vinculada ao gestor logado
-ini_set('display_errors',1); error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../config/error_config.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../classes/Database.php';

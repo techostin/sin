@@ -9,8 +9,9 @@
      display:none em desktop, display:flex em mobile (<992px)
      via CSS em style.css
      ============================================================ -->
+<?php require_once __DIR__ . '/perfil.php'; ?>
 <?php if (isset($bnav_inicio_url)): ?>
-<nav id="bottom-nav" role="navigation" aria-label="Navegação principal">
+<nav id="bottom-nav" class="bottom-nav d-lg-none" role="navigation" aria-label="Navegação principal">
 
     <a href="<?php echo $bnav_inicio_url; ?>"
        class="bottom-nav-item" data-page="home" aria-label="Início">
@@ -19,7 +20,7 @@
     </a>
 
     <?php if (empty($bnav_is_gestor)): ?>
-    <a href="<?php echo SITE_URL; ?>/caderno-campo/dashboard-agricultor"
+    <a href="<?php echo dashboard_destino(); ?>"
        class="bottom-nav-item" data-page="campo" aria-label="Caderno de Campo">
         <i class="bi bi-book-fill"></i>
         <span>Caderno</span>
@@ -83,11 +84,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-<script src="<?php echo SITE_URL; ?>/assets/js/masks.js"></script>
 <script src="<?php echo SITE_URL; ?>/assets/js/eventos.js"></script>
+<?php require_once __DIR__ . '/visita_ciente_modal.php'; ?>
+<?php require_once __DIR__ . '/visita_gestor_modal.php'; ?>
 <script>
 // Definir variável global para SITE_URL
 window.SITE_URL = '<?php echo SITE_URL; ?>';

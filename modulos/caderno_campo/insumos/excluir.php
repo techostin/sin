@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../classes/Database.php';
 require_once __DIR__ . '/../../../classes/CSRFProtection.php';
 
 require_once __DIR__ . '/../../../classes/User.php';
+require_once __DIR__ . '/../../../classes/AuditLog.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,8 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !CSRFProtection::validatePostReques
 
 try {
     $db = Database::getInstance()->getConnection();
-    $stmt = $db->prepare('DELETE FROM insumos WHERE id = ?');
+    $stmt = $db->prepare('UPDATE insumos SET excluido = 1 WHERE id = ?');
     $stmt->execute([(int)$id]);
+    AuditLog::registrar('INSUMO_EXCLUIDO', 'insumos', (int)$id, 'Soft delete de insumo');
     header('Location: ' . SITE_URL . '/insumos?msg=excluido');
     exit;
 } catch (PDOException $e) {
