@@ -21,7 +21,7 @@
 | # | Item da Fase 0 | Status |
 |---|---|---|
 | 1 | Congelar features e comunicar | ✅ **concluído em 30/10/2026** |
-| 2 | Commit/tag do estado atual + branch `feat/f1-kernel` | ⏳ pendente (252 alterações; precisa de revisão/aprovação) |
+| 2 | Commit/tag do estado atual + branch `feat/f1-kernel` | ✅ **30/10/2026** — commit `796d11d`, tag `pre-modularizacao`, branch `feat/f1-kernel` ([relatório](docs/v5/EXECUCAO-FASE0-ITEM2-GIT.md)) |
 | 3 | Staging com banco anonimizado + feature flags | ⏳ pendente |
 | 4 | P0 residual: Resend, logs de produção, decisão LGPD | ⚠️ parcial (técnico local concluído; externos pendentes) |
 | 5 | Paridade de K2 e D1 (`arquivo:linha`) | ⏳ pendente |

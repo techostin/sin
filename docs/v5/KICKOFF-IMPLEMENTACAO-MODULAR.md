@@ -59,7 +59,9 @@ versionar       (kernel, HTTP, dados,   (fatia vertical)   (fatias A→D)
 
 1. Congelar features e comunicar. ✅ **30/10/2026** — ver
    [`CONGELAMENTO-FEATURES.md`](CONGELAMENTO-FEATURES.md) e [`STATUS.md`](../../STATUS.md).
-2. Commit/tag do estado atual; branch `feat/f1-kernel`.
+2. Commit/tag do estado atual; branch `feat/f1-kernel`. ✅ **30/10/2026** — commit `796d11d`,
+   tag `pre-modularizacao`, branch `feat/f1-kernel`; ver
+   [`EXECUCAO-FASE0-ITEM2-GIT.md`](EXECUCAO-FASE0-ITEM2-GIT.md).
 3. Criar staging com cópia do banco (anonimizada) e feature flags.
 4. Fechar P0 residual (Resend, logs de produção, decisão LGPD).
 5. Inventariar paridade de **K2** e **D1** (`arquivo:linha`).

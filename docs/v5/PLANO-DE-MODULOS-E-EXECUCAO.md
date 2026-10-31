@@ -769,7 +769,9 @@ de entrada (Android 9+), abertura < 3 s.
 >
 > **⛔ Congelamento de features ATIVO desde 30/10/2026** (revisão 11/12/2026; término mínimo
 > 18/12/2026). Regras e exceções em [`CONGELAMENTO-FEATURES.md`](CONGELAMENTO-FEATURES.md);
-> painel em [`STATUS.md`](../../STATUS.md). Itens 2–6 da Fase 0 seguem pendentes.
+> painel em [`STATUS.md`](../../STATUS.md). **Item 2 da Fase 0 concluído**: commit `796d11d`,
+> tag `pre-modularizacao` e branch `feat/f1-kernel` ([relatório](EXECUCAO-FASE0-ITEM2-GIT.md)).
+> Itens 3–6 da Fase 0 seguem pendentes.
 
 ### 7.3 Trilha B — fases
 
