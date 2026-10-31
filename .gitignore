@@ -1,8 +1,8 @@
-# Dependências (gerenciadas pelo Composer/npm, não versionar)
+# DependÃªncias (gerenciadas pelo Composer/npm, nÃ£o versionar)
 /vendor/
 /node_modules/
 
-# Conteúdo enviado por usuários (logos, fotos, certificados, croquis)
+# ConteÃºdo enviado por usuÃ¡rios (logos, fotos, certificados, croquis)
 /uploads/
 
 # Backups de banco (conteem dados reais: e-mails, hashes de senha)
@@ -23,7 +23,7 @@
 .DS_Store
 Thumbs.db
 *.swp
-# Pasta de rascunho/colaboracao local — NAO faz parte do projeto (sera excluida).
+# Pasta de rascunho/colaboracao local â€” NAO faz parte do projeto (sera excluida).
 /recicla/
 
 # Evidencias/fotos enviadas em runtime (nao versionar)
@@ -32,3 +32,6 @@ Thumbs.db
 # Caches de teste e analise estatica
 .phpunit.cache/
 .phpstan-cache/
+
+# Cache do Deptrac
+.deptrac.cache
