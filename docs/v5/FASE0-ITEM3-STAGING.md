@@ -49,9 +49,9 @@ Regras aplicadas em `sisagro_staging`:
 ## 3. Configuração do staging
 
 > **Exceção controlada de login (31/10/2026):** o usuário `id=7` (admin principal) mantém no staging
-> o e-mail real `techostin@gmail.com` para permitir o login; o **hash da senha é idêntico ao de
-> produção e não foi alterado**. O nome permanece anonimizado e o staging é acessível apenas em
-> `localhost`.
+> o e-mail real `techostin@gmail.com`, nome `Edmilson` e sobrenome `Santos` para permitir o login e a
+> exibição correta no cabeçalho; o **hash da senha é idêntico ao de produção e não foi alterado**.
+> O staging é acessível apenas em `localhost`.
 
 Alterações **apenas na cópia** `app-staging`:
 
