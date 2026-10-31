@@ -112,7 +112,7 @@ function decodeId($encoded) {
 // Secure é ativado automaticamente quando a requisição é HTTPS, para não
 // quebrar o ambiente local (http://localhost).
 // ---------------------------------------------------------------------------
-if (session_status() == PHP_SESSION_NONE) {
+if (!defined('SINPORG_SKIP_SESSION') && session_status() == PHP_SESSION_NONE) {
     if (!headers_sent()) {
         $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
             || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');

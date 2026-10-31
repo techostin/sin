@@ -25,6 +25,9 @@ RewriteRule ^ - [F,L]
 
 RewriteRule ^(vendor|dev-utils|sql|tmp|storage|logs|config|node_modules|api/legacy)(/|$) - [F,L,NC]
 
+# API v1 (fundacao modular): front controller proprio em api/v1/index.php
+RewriteRule ^api/v1(/.*)?$ api/v1/index.php [QSA,L]
+
 # Regras para relatórios - permitir acesso direto a arquivos .php na pasta relatorios
 RewriteCond %{REQUEST_URI} ^/app/relatorios/([a-z-]+)\.php$
 RewriteRule ^ - [L]

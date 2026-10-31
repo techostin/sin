@@ -28,3 +28,7 @@ Thumbs.db
 
 # Evidencias/fotos enviadas em runtime (nao versionar)
 /api/uploads/
+
+# Caches de teste e analise estatica
+.phpunit.cache/
+.phpstan-cache/

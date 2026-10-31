@@ -19,3 +19,7 @@ Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 RewriteEngine On
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^(.*)$ $1 [R=200,L]
+
+# API v1 (fundacao modular): front controller proprio
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^v1(/.*)?$ v1/index.php [QSA,L]
