@@ -6,11 +6,23 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Seguranca: exige nivel 3 (fonte de verdade: relatorios.php -> reportCategories['atividades']['level']).
+// Nivel 1 = Admin, 2 = Admin/Gestor, 3 = qualquer usuario logado (semantica de User::hasPermission).
+require_once __DIR__ . '/../../classes/ApiAuth.php';
+ApiAuth::exigirNivel(3, false); // false = resposta em texto, pois o endpoint devolve HTML
+
 try {
     $db = Database::getInstance()->getConnection();
 
     $where = ["a.excluido = 0"];
     $params = [];
+
+    // IDOR: usuario de nivel 3 (comum) so pode ver as atividades do proprio associado.
+    // Mesma regra de ReportManager::getAtividadesReport (nivel > NIVEL_GESTOR filtra por associado).
+    if (ApiAuth::nivel() > NIVEL_GESTOR) {
+        $where[] = "a.associado_id = :associado_id";
+        $params[':associado_id'] = ApiAuth::associadoId();
+    }
 
     if (!empty($_GET['dataInicio'])) {
         $where[] = "a.data_atividade >= :dataInicio";

@@ -6,6 +6,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Seguranca: exige nivel 2 (fonte de verdade: relatorios.php -> reportCategories['financeiro']['level']).
+// Nivel 1 = Admin, 2 = Admin/Gestor, 3 = qualquer usuario logado (semantica de User::hasPermission).
+require_once __DIR__ . '/../../classes/ApiAuth.php';
+ApiAuth::exigirNivel(2, false); // false = resposta em texto, pois o endpoint devolve HTML
+
 try {
     $db = Database::getInstance()->getConnection();
 

@@ -1,0 +1,4 @@
+# Cache de runtime: planilhas baixadas das fontes oficiais (CNPO/PEAF).
+# A pasta e mantida no repositorio, o conteudo nao.
+*
+!.gitignore

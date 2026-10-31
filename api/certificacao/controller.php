@@ -91,6 +91,10 @@ switch ($method) {
 function handleGet($db, $user) {
     // Produtos do associado (para formulário de certificação)
     if (isset($_GET['action']) && $_GET['action'] === 'produtos' && isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
+        // Anti-IDOR: usuário comum só consulta os próprios produtos
+        // (Admin/Gestor/Diretoria Executiva podem consultar qualquer produtor).
+        require_once __DIR__ . '/../../classes/ApiAuth.php';
+        ApiAuth::exigirProprioAssociado((int) $_GET['associado_id']);
         getProdutosAssociado($db, (int) $_GET['associado_id']);
         return;
     }

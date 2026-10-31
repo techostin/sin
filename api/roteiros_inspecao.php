@@ -12,6 +12,7 @@ require_once __DIR__ . '/../config/error_config.php';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../classes/Database.php';
 require_once __DIR__ . '/../classes/User.php';
+require_once __DIR__ . '/../classes/ApiAuth.php';
 require_once __DIR__ . '/../classes/VisitaTecnica.php';
 require_once __DIR__ . '/../classes/RoteiroInspecao.php';
 require_once __DIR__ . '/../classes/VisitaReport.php';
@@ -407,6 +408,29 @@ function handleUploadEvidencia($db) {
 }
 
 function createVisita($db, $input) {
+    // Autorização: usuário comum (nível 3 sem cargo de diretoria) só agenda
+    // visita para si mesmo e na própria propriedade. Admin/Gestor/Diretoria
+    // Executiva podem agendar para qualquer produtor.
+    if (!ApiAuth::ehStaff() && !ApiAuth::ehDiretoriaExecutiva()) {
+        $meuAssociado = ApiAuth::associadoId();
+        if ($meuAssociado <= 0) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Acesso negado: usuário sem vínculo de associado']);
+            return;
+        }
+        $input['associado_id'] = $meuAssociado;
+        if (!empty($input['propriedade_id'])) {
+            $stProp = $db->prepare("SELECT COUNT(*) FROM propriedades WHERE id = ? AND associado_id = ?");
+            $stProp->execute([(int) $input['propriedade_id'], $meuAssociado]);
+            if ((int) $stProp->fetchColumn() === 0) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Acesso negado: propriedade de outro produtor']);
+                return;
+            }
+        }
+        $input['tecnico_responsavel_id'] = $meuAssociado;
+    }
+
     if (empty($input['associado_id']) || empty($input['propriedade_id']) || empty($input['roteiro_id']) || empty($input['data_visita'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Campos obrigatórios ausentes']);
@@ -719,6 +743,21 @@ function finalizarVisitaComClasse($input) {
 
     try {
         $db = Database::getInstance()->getConnection();
+
+        // Autorização: fora da equipe/diretoria, só o associado dono da visita
+        // (ou o técnico responsável) pode finalizá-la.
+        if (!ApiAuth::ehStaff() && !ApiAuth::ehDiretoriaExecutiva()) {
+            $meuAssociado = ApiAuth::associadoId();
+            $meuUsuario  = (int) ($_SESSION['user_id'] ?? 0);
+            $stVis = $db->prepare("SELECT associado_id, tecnico_responsavel_id FROM visitas_tecnicas WHERE id = ?");
+            $stVis->execute([(int) $input['visita_id']]);
+            $vis = $stVis->fetch(PDO::FETCH_ASSOC);
+            if (!$vis || ((int) $vis['associado_id'] !== $meuAssociado && (int) $vis['tecnico_responsavel_id'] !== $meuUsuario)) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Acesso negado: visita de outro produtor']);
+                return;
+            }
+        }
 
         // Carregar checklist mesclado (roteiro + padrão) para regra de itens críticos
         require_once __DIR__ . '/../classes/ChecklistPadrao.php';

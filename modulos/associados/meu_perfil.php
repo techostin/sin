@@ -127,6 +127,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'gerenci
                 }
             }
         }
+
+        // Autorização: Admin gerencia vínculos de qualquer associado. Gestor e
+        // membros da diretoria só gerenciam os PRÓPRIOS vínculos e NÃO podem se
+        // atribuir cargos executivos novos (antes qualquer cargo de diretoria
+        // podia autoatribuir "presidente" e ganhar acesso ao portal de todos).
+        $souAdmin            = $user->hasPermission(NIVEL_ADMIN);
+        $cargosExecutivos    = ['presidente', 'vice-presidente', 'diretor', 'secretario', 'tesoureiro'];
+        $meuAssociadoIdGest  = (int) $user->getAssociadoIdResolvido();
+
+        if (!$souAdmin) {
+            if ($meuAssociadoIdGest <= 0 || $gAssocId !== $meuAssociadoIdGest) {
+                $_SESSION['error_message'] = 'Você só pode gerenciar os seus próprios vínculos.';
+                header('Location: ' . SITE_URL . '/meu-perfil');
+                exit;
+            }
+            $cargosAtuais = $associadoModel->getTiposVinculo($gAssocId);
+            foreach ($gCargos as $assocKey => $cargo) {
+                $atual = $cargosAtuais[$assocKey] ?? null;
+                if (in_array($cargo, $cargosExecutivos, true) && $atual !== $cargo) {
+                    $gCargos[$assocKey] = 'membro'; // não pode ATRIBUIR cargo executivo
+                }
+            }
+        }
+
         if ($gAssocId > 0) {
             $associadoModel->saveAssociacoes($gAssocId, $gAssociacoes, $gCargos);
             $_SESSION['success_message'] = 'Vínculos e cargos do associado atualizados com sucesso!';
@@ -201,11 +225,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $db_sync = Database::getInstance()->getConnection();
                     $email = $dados['email'] ?? $associado['email'] ?? '';
 
-                    if ($user_table === 'associados' && !empty($email)) {
-                        // Atualizar também na tabela usuarios (buscar pelo email).
-                        // A tabela usuarios NÃO possui sobrenome, cpf, endereco, cidade, estado, etc.
+                    // A sincronização usa o VÍNCULO (FK), nunca o e-mail: antes um
+                    // UPDATE ... WHERE email = ? sobrescrevia dados de outra conta
+                    // que usasse o mesmo endereço.
+                    $meuAssocIdSync = (int) $user->getAssociadoIdResolvido();
+                    $meuUserIdSync  = (int) ($_SESSION['user_id'] ?? 0);
+
+                    if ($user_table === 'associados' && $meuAssocIdSync > 0) {
+                        // Atualiza a conta de sistema vinculada a este associado.
+                        // A tabela usuarios NÃO possui sobrenome, cpf, endereco, etc.
                         $campos_usuarios = [];
-                        $params_usuarios = [':email' => $email];
+                        $params_usuarios = [':assoc_sync' => $meuAssocIdSync];
                         foreach (['nome', 'telefone', 'orgao', 'setor', 'especialidade', 'nicho'] as $campo) {
                             if (!empty($dados[$campo])) {
                                 $campos_usuarios[] = "$campo = :$campo";
@@ -213,14 +243,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
                         if (!empty($campos_usuarios)) {
-                            $sql_usuarios = "UPDATE usuarios SET " . implode(', ', $campos_usuarios) . " WHERE email = :email";
+                            $sql_usuarios = "UPDATE usuarios SET " . implode(', ', $campos_usuarios) . "
+                                             WHERE associado_id = :assoc_sync
+                                                OR id = (SELECT user_id FROM associados WHERE id = :assoc_sync)";
                             $stmt_u = $db_sync->prepare($sql_usuarios);
                             $stmt_u->execute($params_usuarios);
                         }
-                    } elseif ($user_table === 'usuarios' && !empty($email)) {
-                        // Atualizar também na tabela associados (buscar pelo email)
+                    } elseif ($user_table === 'usuarios' && $meuUserIdSync > 0) {
+                        // Atualiza o cadastro de associado vinculado a esta conta.
                         $campos_assoc = [];
-                        $params_assoc = [':email' => $email];
+                        $params_assoc = [':user_sync' => $meuUserIdSync];
                         foreach (['nome', 'sobrenome', 'telefone', 'cpf', 'endereco', 'numero', 'bairro', 'complemento', 'cidade', 'estado', 'cep', 'data_nascimento', 'orgao', 'setor', 'especialidade', 'nicho'] as $campo) {
                             if (!empty($dados[$campo])) {
                                 $campos_assoc[] = "$campo = :$campo";
@@ -228,7 +260,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
                         if (!empty($campos_assoc)) {
-                            $sql_assoc = "UPDATE associados SET " . implode(', ', $campos_assoc) . " WHERE email = :email";
+                            $sql_assoc = "UPDATE associados SET " . implode(', ', $campos_assoc) . "
+                                          WHERE user_id = :user_sync
+                                             OR id = (SELECT associado_id FROM usuarios WHERE id = :user_sync)";
                             $stmt_a = $db_sync->prepare($sql_assoc);
                             $stmt_a->execute($params_assoc);
                         }

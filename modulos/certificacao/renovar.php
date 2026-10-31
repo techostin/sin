@@ -31,6 +31,16 @@ if (!$cert) {
     require_once __DIR__ . '/../../includes/footer.php';
     exit;
 }
+
+// Anti-IDOR: certificação é dado do associado (certificacao_participativa.associado_id).
+// Admin/Gestor renovam para qualquer produtor; nível 3 só a própria certificação.
+$donoCert = (int) ($cert['associado_id'] ?? 0);
+if (!$user->isGestorOuAdmin()
+    && ($donoCert <= 0 || $donoCert !== (int) $user->getAssociadoIdResolvido())) {
+    echo "<div class='alert alert-danger mt-4'>Acesso negado: esta certificação pertence a outro produtor.</div>";
+    require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
 ?>
 
 <div class="gestor-modern">

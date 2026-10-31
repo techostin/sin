@@ -6,12 +6,26 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Seguranca: exige nivel 3 (fonte de verdade: relatorios.php -> reportCategories['estoque']['level']).
+// Nivel 1 = Admin, 2 = Admin/Gestor, 3 = qualquer usuario logado (semantica de User::hasPermission).
+require_once __DIR__ . '/../../classes/ApiAuth.php';
+ApiAuth::exigirNivel(3, false); // false = resposta em texto, pois o endpoint devolve HTML
+
 try {
     $db = Database::getInstance()->getConnection();
 
     // Filtros de Estoque Atual geralmente não precisam de data, 
     // pois o status é uma "foto do momento". 
     // Só mostramos o status atual em banco.
+
+    // IDOR: usuario de nivel 3 (comum) so pode ver os insumos do proprio associado.
+    // Mesma regra de ReportManager::getInsumosReport (nivel > NIVEL_GESTOR filtra por associado).
+    $where = '';
+    $params = [];
+    if (ApiAuth::nivel() > NIVEL_GESTOR) {
+        $where = ' WHERE associado_id = :associado_id';
+        $params[':associado_id'] = ApiAuth::associadoId();
+    }
 
     $query = "SELECT 
                 id, 
@@ -23,10 +37,11 @@ try {
                 estoque_minimo,
                 status
               FROM insumos
+              $where
               ORDER BY nome ASC";
 
     $stmt = $db->prepare($query);
-    $stmt->execute();
+    $stmt->execute($params);
     $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <table id="reportTable" class="table table-striped table-bordered" style="width:100%">

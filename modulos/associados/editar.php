@@ -22,6 +22,19 @@ $mensagem = '';
 // Determinar se é modo visualização (gestor ou view=1)
 $isViewMode = ($_SESSION['user_nivel'] != NIVEL_ADMIN) || isset($_GET['view']);
 
+// Autorização: Admin/Gestor (equipe interna) podem ver o cadastro de qualquer
+// associado; usuário comum (nível 3) só o próprio — antes qualquer usuário
+// logado conseguia ler nome/e-mail/CPF/telefone/endereço de qualquer associado.
+if (!$user->isGestorOuAdmin()) {
+    $meuAssociadoId = (int) $user->getAssociadoIdResolvido();
+    if ($meuAssociadoId <= 0 || $meuAssociadoId !== $id) {
+        echo "<div class='alert alert-danger m-4'>Acesso negado: você só pode visualizar o seu próprio cadastro.</div>";
+        require_once __DIR__ . '/../../includes/footer.php';
+        exit;
+    }
+    $isViewMode = true;
+}
+
 // Buscar associado
 $associado = $associadoModel->getById($id);
 

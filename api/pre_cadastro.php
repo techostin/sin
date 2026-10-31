@@ -102,47 +102,62 @@ try {
 
 $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 
+    // Perfil/nível SOLICITADOS ficam registrados para o Admin conferir antes de
+    // conceder os privilégios (ver classes/AcessoPendente.php).
+    $perfilSolicitado = $perfil !== '' ? $perfil : ($tipoUser === 'gestor' ? 'gestor' : $tipoUser);
+
     // Gestor/Fiscal -> tabela usuarios (nivel gestor). Tratado como Gestor/Técnico.
+    // O acesso NÃO é liberado automaticamente: o Admin precisa confirmar (ou
+    // ajustar) os privilégios solicitados em /associados/pendentes.
     if ($tipoUser === 'gestor') {
         $stmt = $db->prepare("
             INSERT INTO usuarios
-                (nome, sobrenome, email, senha, nivel, tipo, tipo_usuario, status, created_at)
+                (nome, sobrenome, email, senha, nivel, nivel_solicitado, perfil_solicitado, tipo, tipo_usuario, status, created_at)
             VALUES
-                (:nome, :sobrenome, :email, :senha, :nivel, 'gestor', 'gestor', 'pendente', NOW())
+                (:nome, :sobrenome, :email, :senha, :nivel, :nivel_solicitado, :perfil_solicitado, 'gestor', 'gestor', 'pendente', NOW())
         ");
         $stmt->execute([
-            ':nome'      => $nome,
-            ':sobrenome' => $sobrenome,
-            ':email'     => $email,
-            ':senha'     => $senha_hash,
-            ':nivel'     => NIVEL_GESTOR,
+            ':nome'              => $nome,
+            ':sobrenome'         => $sobrenome,
+            ':email'             => $email,
+            ':senha'             => $senha_hash,
+            ':nivel'             => NIVEL_GESTOR,
+            ':nivel_solicitado'  => NIVEL_GESTOR,
+            ':perfil_solicitado' => $perfilSolicitado,
         ]);
     } else {
-        // Agricultor / Produtor de Agroindústria -> tabela associados (nivel usuario)
-        $tipoCadastro = 'Usuario';
+        // Agricultor / Produtor de Agroindústria -> CONTA em "usuarios" (nível usuário).
+        //
+        // O cadastro em "associados" NÃO é criado aqui: ele nasce na aprovação da
+        // Ficha de Adesão, a partir dos dados informados nela, e é vinculado a
+        // esta conta (usuarios.associado_id <-> associados.user_id). Assim a
+        // mesma pessoa nunca aparece duplicada nas duas tabelas.
         $areaProducao = implode(',', $areas);
         $stmt = $db->prepare("
-            INSERT INTO associados
-                (nome, sobrenome, email, senha, nivel, tipo, tipo_usuario, tem_agroindustria, area_producao, status, data_cadastro)
+            INSERT INTO usuarios
+                (nome, sobrenome, email, senha, nivel, nivel_solicitado, perfil_solicitado, tipo, tipo_usuario, tem_agroindustria, area_producao, status, created_at)
             VALUES
-                (:nome, :sobrenome, :email, :senha, :nivel, :tipo, :tipo_usuario, :tem_agroindustria, :area_producao, 'pendente', NOW())
+                (:nome, :sobrenome, :email, :senha, :nivel, :nivel_solicitado, :perfil_solicitado, 'usuario', :tipo_usuario, :tem_agroindustria, :area_producao, 'pendente', NOW())
         ");
         $stmt->execute([
-            ':nome'        => $nome,
-            ':sobrenome'   => $sobrenome,
-            ':email'       => $email,
-            ':senha'       => $senha_hash,
-            ':nivel'       => NIVEL_USUARIO,
-            ':tipo'        => $tipoCadastro,
-            ':tipo_usuario'=> $tipoUser,
+            ':nome'              => $nome,
+            ':sobrenome'         => $sobrenome,
+            ':email'             => $email,
+            ':senha'             => $senha_hash,
+            ':nivel'             => NIVEL_USUARIO,
+            ':nivel_solicitado'  => NIVEL_USUARIO,
+            ':perfil_solicitado' => $perfilSolicitado,
+            ':tipo_usuario'      => $tipoUser,
             ':tem_agroindustria' => $temAgroindustria,
-            ':area_producao' => $areaProducao,
+            ':area_producao'     => $areaProducao,
         ]);
     }
 
     echo json_encode([
         'success' => true,
-        'message' => 'Cadastro realizado! Aguarde a ativação pelo administrador para acessar o sistema.',
+        'message' => $tipoUser === 'gestor'
+            ? 'Solicitação enviada! O administrador vai confirmar os privilégios de Gestor/Fiscal antes de liberar o seu acesso.'
+            : 'Cadastro realizado! Aguarde a liberação pelo administrador para acessar o sistema.',
     ]);
 
 } catch (Exception $e) {

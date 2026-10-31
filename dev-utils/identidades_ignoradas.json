@@ -1,0 +1,11 @@
+{
+  "_comentario": "Decisões de identidade já confirmadas pela associação. O reconciliador ignora estes casos para manter o relatório limpo.",
+  "pares_nao_duplicados": [
+    {
+      "usuario_id": 16,
+      "associado_id": 33,
+      "motivo": "pessoas diferentes: conta de sistema 'Gabriel Cibulski' (biel@gmail.com) x associado 'Gabriel Matias' (gabriel@gmail.com). Decisão: manter Gabriel Matias sem conta vinculada."
+    }
+  ],
+  "emails_login_distintos_ok": []
+}

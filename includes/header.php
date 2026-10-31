@@ -4,8 +4,16 @@ require_once __DIR__ . '/../classes/User.php';
 
 $user = new User();
 
-// Proteção de página: se não estiver logado, redireciona para o login
-if (!$user->isLoggedIn()) {
+// Proteção de página: se não estiver logado, redireciona para o login.
+//
+// Exceções precisam ser declaradas pela PRÓPRIA página, antes de incluir este
+// arquivo, e são validadas na página:
+//   $PERMITIR_ACESSO_ANONIMO = true;  -> página pública (login do Portal do Associado)
+//   $PERMITIR_SESSAO_PORTAL  = true;  -> aceita sessão do Portal (associado_id)
+$permitirAnonimo = !empty($PERMITIR_ACESSO_ANONIMO);
+$permitirPortal  = !empty($PERMITIR_SESSAO_PORTAL) && !empty($_SESSION['associado_id']);
+
+if (!$user->isLoggedIn() && !$permitirAnonimo && !$permitirPortal) {
     header("Location: " . SITE_URL . "/login");
     exit;
 }
@@ -73,7 +81,9 @@ if (!$user->isLoggedIn()) {
         // Definir a URL base do site globalmente
         window.SITE_URL = '<?php echo SITE_URL; ?>';
         // Exportar nível do usuário para JS (bottom nav, FAB contextual)
-        window.USER_NIVEL = '<?php echo htmlspecialchars($_SESSION['nivel'] ?? '', ENT_QUOTES); ?>';
+        // A chave correta da sessão é user_nivel (antes lia $_SESSION['nivel'],
+        // que nunca é escrita, deixando o valor sempre vazio).
+        window.USER_NIVEL = '<?php echo htmlspecialchars($_SESSION['user_nivel'] ?? '', ENT_QUOTES); ?>';
         // Classe de modo no body (mobile/desktop via resize)
         (function() {
             function applyMode() {

@@ -25,3 +25,6 @@ Thumbs.db
 *.swp
 # Pasta de rascunho/colaboracao local — NAO faz parte do projeto (sera excluida).
 /recicla/
+
+# Evidencias/fotos enviadas em runtime (nao versionar)
+/api/uploads/

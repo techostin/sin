@@ -18,6 +18,17 @@ if (!$associado_id || !is_numeric($associado_id)) {
     exit;
 }
 
+// Autorização: Admin/Gestor veem o histórico de qualquer associado; usuário
+// comum só o próprio (antes qualquer usuário logado via qualquer associado_id).
+if (!$user->isGestorOuAdmin()) {
+    $meuAssociadoId = (int) $user->getAssociadoIdResolvido();
+    if ($meuAssociadoId <= 0 || $meuAssociadoId !== (int) $associado_id) {
+        echo "<div class='alert alert-danger'>Acesso negado: você só pode acessar o seu próprio histórico de certificações.</div>";
+        require_once __DIR__ . '/../../includes/footer.php';
+        exit;
+    }
+}
+
 $db = Database::getInstance()->getConnection();
 
 // Buscar dados do associado

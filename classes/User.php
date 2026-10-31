@@ -53,40 +53,50 @@ class User {
 
     public function login($email, $senha) {
         try {
-            // Primeiro, tentar na tabela associados
-            $stmt = $this->db->prepare("SELECT * FROM associados WHERE email = :email AND status = 'ativo'");
-            $stmt->bindParam(':email', $email);
-            $stmt->execute();
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($user && password_verify($senha, $user['senha'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_nivel'] = $user['nivel'];
-                $_SESSION['user_nome'] = $user['nome'];
-                $_SESSION['user_tipo'] = $user['tipo'];
-                $_SESSION['user_tipo_usuario'] = $user['tipo_usuario'] ?? ($user['tipo'] ?? '');
-                $_SESSION['user_area_producao'] = $user['area_producao'] ?? '';
-                $_SESSION['user_table'] = 'associados';
-                return true;
+            if (!is_string($email) || !is_string($senha) || $email === '' || $senha === '') {
+                return false;
             }
 
-            // Se não encontrou na tabela associados, tentar na tabela usuarios
+            // O mesmo e-mail pode existir nas duas tabelas: valida o hash nas
+            // duas e prefere a conta de sistema (usuarios), para que a linha de
+            // "associados" não esconda (nem rebaixe) uma conta de equipe.
             $stmt = $this->db->prepare("SELECT * FROM usuarios WHERE email = :email AND status = 'ativo'");
             $stmt->bindParam(':email', $email);
             $stmt->execute();
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            $userSistema = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user && password_verify($senha, $user['senha'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_nivel'] = $user['nivel'];
-                $_SESSION['user_nome'] = $user['nome'];
-                $_SESSION['user_tipo'] = $user['tipo'];
-                $_SESSION['user_tipo_usuario'] = $user['tipo_usuario'] ?? ($user['tipo'] ?? '');
-                $_SESSION['user_table'] = 'usuarios';
-                return true;
+            $stmt = $this->db->prepare("SELECT * FROM associados WHERE email = :email AND status = 'ativo'");
+            $stmt->bindParam(':email', $email);
+            $stmt->execute();
+            $userAssociado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $user = null;
+            $table = '';
+            if ($userSistema && !empty($userSistema['senha']) && password_verify($senha, $userSistema['senha'])) {
+                $user = $userSistema;
+                $table = 'usuarios';
+            } elseif ($userAssociado && !empty($userAssociado['senha']) && password_verify($senha, $userAssociado['senha'])) {
+                $user = $userAssociado;
+                $table = 'associados';
             }
 
-            return false;
+            if (!$user) {
+                return false;
+            }
+
+            // Anti fixação de sessão
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_regenerate_id(true);
+            }
+
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_nivel'] = $user['nivel'];
+            $_SESSION['user_nome'] = trim($user['nome'] . ' ' . ($user['sobrenome'] ?? ''));
+            $_SESSION['user_tipo'] = $user['tipo'];
+            $_SESSION['user_tipo_usuario'] = $user['tipo_usuario'] ?? ($user['tipo'] ?? '');
+            $_SESSION['user_area_producao'] = $user['area_producao'] ?? '';
+            $_SESSION['user_table'] = $table;
+            return true;
         } catch (PDOException $e) {
             error_log("Erro no login: " . $e->getMessage());
             return false;
@@ -102,15 +112,32 @@ class User {
     }
 
     public function hasPermission($required_level) {
-        if ($this->isLoggedIn() && isset($_SESSION['user_nivel'])) {
-            // O nível 1 (Admin) tem acesso a tudo
-            if ($_SESSION['user_nivel'] == NIVEL_ADMIN) {
-                return true;
-            }
-            // Verifica se o nível do usuário é igual ou mais privilegiado que o necessário
-            return $_SESSION['user_nivel'] <= $required_level;
+        if (!$this->isLoggedIn() || !isset($_SESSION['user_nivel'])) {
+            return false;
         }
-        return false;
+
+        // B-04 (escalonamento de privilegio): o nivel vem da sessao e era
+        // comparado com "==" / "<=" sem checagem de tipo. Em PHP 8, uma string
+        // nao numerica (ex.: nivel adulterado para "") era comparada como texto
+        // e "'' <= 1" resulta em TRUE, liberando acesso de Admin. Agora apenas
+        // valores numericos e maiores que zero sao aceitos.
+        $nivel = $_SESSION['user_nivel'];
+        if (!is_numeric($nivel)) {
+            error_log('User::hasPermission - nivel nao numerico rejeitado: ' . substr((string) $nivel, 0, 40));
+            return false;
+        }
+        $nivel = (int) $nivel;
+        $required_level = (int) $required_level;
+        if ($nivel <= 0) {
+            return false;
+        }
+
+        // O nível 1 (Admin) tem acesso a tudo
+        if ($nivel === NIVEL_ADMIN) {
+            return true;
+        }
+        // Verifica se o nível do usuário é igual ou mais privilegiado que o necessário
+        return $nivel <= $required_level;
     }
 
     /**
@@ -405,9 +432,17 @@ class User {
             return !empty($currentUser['orgao']) && !empty($currentUser['setor']) && !empty($currentUser['especialidade']);
         }
         
-        // Usuario comum precisa de nicho
+        // Usuário comum: considera o perfil completo quando existe QUALQUER
+        // dado de contato/cadastro. Antes exigia apenas "nicho" — campo que
+        // quase nenhum associado possui e que só podia ser preenchido em
+        // /completar-perfil (sem link na interface), o que desviava ~94% da
+        // base para /meu-perfil a cada login.
         if ($nivel == NIVEL_USUARIO) {
-            return !empty($currentUser['nicho']);
+            return !empty($currentUser['nicho'])
+                || !empty($currentUser['telefone'])
+                || !empty($currentUser['cidade'])
+                || !empty($currentUser['endereco'])
+                || !empty($currentUser['cep']);
         }
         
         return false;

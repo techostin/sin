@@ -57,6 +57,9 @@ if (isset($_POST['etapa']) && $_POST['etapa'] === '2' && isset($_SESSION['login_
 
             unset($_SESSION['login_temp']);
 
+            // Anti fixação de sessão ao concluir a 2ª etapa do login
+            session_regenerate_id(true);
+
             // Redirecionar: primeiro acesso vai para /meu-perfil, senão para o dashboard
             if ($isPrimeiroAcesso) {
                 header("Location: " . SITE_URL . "/meu-perfil");
@@ -73,8 +76,10 @@ if (isset($_POST['etapa']) && $_POST['etapa'] === '2' && isset($_SESSION['login_
 
 // Etapa 1: Credenciais (email + senha)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST['etapa'] !== '2')) {
-    $email = trim($_POST['email'] ?? '');
-    $senha = $_POST['senha'] ?? '';
+    // Apenas strings: um array (ex.: senha[]=x) faria password_verify()
+    // lançar TypeError e derrubar a requisição com HTTP 500.
+    $email = (isset($_POST['email']) && is_string($_POST['email'])) ? trim($_POST['email']) : '';
+    $senha = (isset($_POST['senha']) && is_string($_POST['senha'])) ? $_POST['senha'] : '';
 
     if (empty($email) || empty($senha)) {
         $error_message = "Informe o e-mail e a senha.";
@@ -82,21 +87,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
         try {
             $db = Database::getInstance()->getConnection();
 
-            // 1. Buscar na tabela associados
+            // O mesmo e-mail pode existir em "associados" E em "usuarios"
+            // (equipe que também é associada). Antes, a linha de "associados"
+            // escondia a conta de sistema (inclusive Admin) quando as senhas
+            // divergiam. Agora as duas são validadas pelo hash, com preferência
+            // para a conta de sistema (usuarios).
+            $stmt = $db->prepare("SELECT * FROM usuarios WHERE email = :email AND status = 'ativo'");
+            $stmt->execute([':email' => $email]);
+            $usuarioSistema = $stmt->fetch(PDO::FETCH_ASSOC);
+
             $stmt = $db->prepare("SELECT * FROM associados WHERE email = :email AND status = 'ativo'");
             $stmt->execute([':email' => $email]);
-            $userData = $stmt->fetch(PDO::FETCH_ASSOC);
-            $table = 'associados';
+            $usuarioAssociado = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // 2. Se não encontrou, buscar na tabela usuarios
-            if (!$userData) {
-                $stmt = $db->prepare("SELECT * FROM usuarios WHERE email = :email AND status = 'ativo'");
-                $stmt->execute([':email' => $email]);
-                $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+            $userData = null;
+            $table = '';
+            if ($usuarioSistema && !empty($usuarioSistema['senha']) && password_verify($senha, $usuarioSistema['senha'])) {
+                $userData = $usuarioSistema;
                 $table = 'usuarios';
+            } elseif ($usuarioAssociado && !empty($usuarioAssociado['senha']) && password_verify($senha, $usuarioAssociado['senha'])) {
+                $userData = $usuarioAssociado;
+                $table = 'associados';
             }
 
-            if ($userData && password_verify($senha, $userData['senha'])) {
+            if ($userData) {
+                // Anti fixação de sessão: novo ID de sessão ao autenticar.
+                session_regenerate_id(true);
+
                 // Gestor: solicitar órgão/especialidade apenas no primeiro acesso
                 if ((int)$userData['nivel'] === NIVEL_GESTOR) {
                     // Campos de vínculo profissional já preenchidos? => login direto.
@@ -109,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                         $_SESSION['login_temp'] = [
                             'user_id'    => $userData['id'],
                             'user_nivel' => $userData['nivel'],
-                            'user_nome'  => $userData['nome'],
+                            'user_nome'  => trim($userData['nome'] . ' ' . ($userData['sobrenome'] ?? '')),
                             'user_tipo'  => 'gestor',
                             'user_table' => $table,
                             'email'      => $email,
@@ -120,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                         // Login direto do gestor (Órgão/cargo/setor já armazenados)
                         $_SESSION['user_id']           = $userData['id'];
                         $_SESSION['user_nivel']        = $userData['nivel'];
-                        $_SESSION['user_nome']         = $userData['nome'];
+                        $_SESSION['user_nome']         = trim($userData['nome'] . ' ' . ($userData['sobrenome'] ?? ''));
                         $_SESSION['user_tipo']         = 'gestor';
                         $_SESSION['user_table']        = $table;
                         $_SESSION['user_orgao']        = $userData['orgao'];
@@ -140,10 +157,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                     // Admin ou usuário comum: login direto
                     $_SESSION['user_id']    = $userData['id'];
                     $_SESSION['user_nivel'] = $userData['nivel'];
-                    $_SESSION['user_nome']  = $userData['nome'];
+                    $_SESSION['user_nome']  = trim($userData['nome'] . ' ' . ($userData['sobrenome'] ?? ''));
                     $_SESSION['user_tipo']  = $userData['tipo'] ?? 'usuario';
                     $_SESSION['user_table'] = $table;
                     $_SESSION['mostrar_modal_eventos'] = true;
+
+                    // -----------------------------------------------------------------
+                    // PEDIDO DE ACESSO recém-autorizado (conta em "usuarios" sem
+                    // cadastro de associado): o primeiro acesso deve exibir a FICHA
+                    // DE ADESÃO. Ela é oferecida pelo modal global
+                    // (includes/ficha_adesao_modal.php, incluído pelo header), por
+                    // isso levamos a pessoa a uma página útil do produtor em vez de
+                    // /meu-perfil (que é centrada no cadastro do associado, que
+                    // ainda não existe). Ao aprovar a ficha, o cadastro nasce e é
+                    // vinculado a esta mesma conta.
+                    // -----------------------------------------------------------------
+                    if ($table === 'usuarios' && (int) $userData['nivel'] === NIVEL_USUARIO) {
+                        $vinculoExistente = (int) ($userData['associado_id'] ?? 0);
+                        if ($vinculoExistente <= 0) {
+                            require_once __DIR__ . '/classes/FichaAdesao.php';
+                            $temCadastro = (new FichaAdesao())->associadoIdDoUsuario((int) $userData['id']) > 0;
+                            if (!$temCadastro) {
+                                header('Location: ' . SITE_URL . '/caderno-campo/dashboard-agricultor');
+                                exit;
+                            }
+                        }
+                    }
 
                     // Detectar primeiro acesso (campos essenciais do perfil vazios)
                     $isPrimeiroAcesso = empty($userData['telefone']) && empty($userData['cpf']);
@@ -627,7 +666,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
                             <div class="mb-4">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <label for="senha" class="form-label mb-0">Senha</label>
-                                    <a href="#" class="login-link">Esqueceu?</a>
+                                    <a href="<?php echo SITE_URL; ?>/recuperar-senha" class="login-link">Esqueceu?</a>
                                 </div>
                                 <div class="input-password-wrapper">
                                     <input type="password" class="form-control" id="senha" name="senha"

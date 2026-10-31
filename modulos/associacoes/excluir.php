@@ -4,6 +4,14 @@ require_once __DIR__ . '/../../includes/menu.php';
 require_once __DIR__ . '/../../classes/Associacao.php';
 require_once __DIR__ . '/../../classes/CSRFProtection.php';
 
+// Dado GLOBAL gerido pela equipe: exclusão restrita a Admin/Gestor.
+// Antes, qualquer usuário logado (nível 3) podia excluir associações.
+if (!$user->isGestorOuAdmin()) {
+    echo "<div class='alert alert-danger mt-4'>Acesso negado: você não tem permissão para excluir associações.</div>";
+    require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !CSRFProtection::validatePostRequest() || !isset($_POST['id']) || !is_numeric($_POST['id'])) {
     echo "<div class='alert alert-danger'>ID não informado.</div>";
     require_once __DIR__ . '/../../includes/footer.php';

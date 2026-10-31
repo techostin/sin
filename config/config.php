@@ -7,11 +7,46 @@
 // B-03: exibição de erros controlada por APP_DEBUG (produção: apenas log).
 require_once __DIR__ . '/error_config.php';
 
-// Configurações do Banco de Dados
-define('DB_HOST', 'localhost');       // Host do banco de dados
-define('DB_USER', 'root');            // Usuário do banco de dados
-define('DB_PASS', '');               // Senha do banco de dados
-define('DB_NAME', 'sisagro');          // Nome do banco de dados
+// WAF de aplicação (item 5 do P0): roda antes de sessão e das regras.
+require_once __DIR__ . '/request_guard.php';
+
+// ---------------------------------------------------------------------------
+// SEGREDOS: config/secrets.php (não versionado) e variáveis de ambiente.
+// Precedência: ambiente > secrets.php > padrão seguro. Nunca usar root.
+// ---------------------------------------------------------------------------
+$envDbHost = getenv('DB_HOST');
+if ($envDbHost !== false && $envDbHost !== '') {
+    define('DB_HOST', $envDbHost);
+}
+$envDbName = getenv('DB_NAME');
+if ($envDbName !== false && $envDbName !== '') {
+    define('DB_NAME', $envDbName);
+}
+$envDbUser = getenv('DB_USER');
+if ($envDbUser !== false && $envDbUser !== '') {
+    define('DB_USER', $envDbUser);
+}
+$envDbPass = getenv('DB_PASS');
+if ($envDbPass !== false && $envDbPass !== '') {
+    define('DB_PASS', $envDbPass);
+}
+$envResend = getenv('RESEND_API_KEY');
+if ($envResend !== false && $envResend !== '') {
+    define('RESEND_API_KEY', $envResend);
+}
+$envIdKey = getenv('ID_ENCODE_KEY');
+if ($envIdKey !== false && $envIdKey !== '') {
+    define('ID_ENCODE_KEY', $envIdKey);
+}
+if (is_file(__DIR__ . '/secrets.php')) {
+    require_once __DIR__ . '/secrets.php';
+}
+
+// Configurações do Banco de Dados (fallback seguro; nunca root)
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_USER')) define('DB_USER', 'sinporg_app');
+if (!defined('DB_PASS')) define('DB_PASS', '');
+if (!defined('DB_NAME')) define('DB_NAME', 'sisagro');
 
 // Configurações do Sistema
  // URL base do seu site
@@ -27,14 +62,6 @@ define('NIVEL_USUARIO', 3);
 // Caminho absoluto da logo SINPORG usada nos relatórios (PDF/mPDF)
 define('SINPORG_LOGO_PATH', __DIR__ . '/../img/logo_Sinporg-2.png');
 define('SINPORG_LOGO_URL', SITE_URL . '/img/logo_Sinporg-2.png');
-
-// ---------------------------------------------------------------------------
-// SEGREDOS: carregados de config/secrets.php (NAO versionado) ou do ambiente.
-// Ver config/secrets.example.php. Nunca colocar chaves reais neste arquivo.
-// ---------------------------------------------------------------------------
-if (is_file(__DIR__ . '/secrets.php')) {
-    require_once __DIR__ . '/secrets.php';
-}
 
 // E-mail transacional (Resend)
 if (!defined('RESEND_API_KEY')) {
@@ -80,8 +107,25 @@ function decodeId($encoded) {
     return (int) $decrypted;
 }
 
-// Iniciar a sessão
+// ---------------------------------------------------------------------------
+// SESSÃO: cookies HttpOnly/SameSite + modo estrito (anti fixação de sessão).
+// Secure é ativado automaticamente quando a requisição é HTTPS, para não
+// quebrar o ambiente local (http://localhost).
+// ---------------------------------------------------------------------------
 if (session_status() == PHP_SESSION_NONE) {
+    if (!headers_sent()) {
+        $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+        @ini_set('session.use_strict_mode', '1');
+        @ini_set('session.use_only_cookies', '1');
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path'     => '/',
+            'secure'   => $isHttps,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
     session_start();
 }
 ?>

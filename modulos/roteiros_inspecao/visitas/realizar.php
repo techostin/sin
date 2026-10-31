@@ -53,6 +53,16 @@ if (!$visita) {
     exit;
 }
 
+// Anti-IDOR: a visita técnica pertence a um associado (visitas_tecnicas.associado_id).
+// Admin/Gestor realizam qualquer inspeção; nível 3 só as do próprio associado.
+$donoVisita = (int) ($visita['associado_id'] ?? 0);
+if (!$user->isGestorOuAdmin()
+    && ($donoVisita <= 0 || $donoVisita !== (int) $user->getAssociadoIdResolvido())) {
+    echo "<div class='alert alert-danger mt-4'>Acesso negado: esta visita pertence a outro produtor.</div>";
+    require_once __DIR__ . '/../../../includes/footer.php';
+    exit;
+}
+
 // Status: se já Realizada, não deixar reabrir inspeção
 if ($visita['status'] !== 'Agendada') {
     echo "<div class='alert alert-warning mt-4'>Esta visita já foi <strong>" . htmlspecialchars($visita['status']) . "</strong>. Inspeções só podem ser realizadas em visitas agendadas. <a href='" . SITE_URL . "/visitas-tecnicas' class='alert-link'>Voltar para listagem</a>.</div>";

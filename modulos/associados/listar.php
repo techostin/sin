@@ -55,11 +55,15 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_nivel'])) {
 
 // Se não for admin nem gestor, redireciona para a edição do próprio perfil
 if (!in_array($_SESSION['user_nivel'], [NIVEL_ADMIN, NIVEL_GESTOR], true)) {
-    if (isset($_SESSION['user_associado_id'])) {
-        header('Location: ' . SITE_URL . '/associado/' . $_SESSION['user_associado_id'] . '/editar');
+    // Usuário comum: redireciona para a edição do PRÓPRIO cadastro de associado.
+    // Antes usava $_SESSION['user_associado_id'] (chave que nunca é gravada) e
+    // caía em /usuario/<id>/editar, que agora nega acesso de usuário comum.
+    require_once __DIR__ . '/../../classes/User.php';
+    $meuAssociadoId = (int) (new User())->getAssociadoIdResolvido();
+    if ($meuAssociadoId > 0) {
+        header('Location: ' . SITE_URL . '/associado/' . $meuAssociadoId . '/editar');
     } else {
-        // Se não tiver associado_id, redireciona para o perfil do usuário
-        header('Location: ' . SITE_URL . '/usuario/' . $_SESSION['user_id'] . '/editar');
+        header('Location: ' . SITE_URL . '/meu-perfil');
     }
     exit;
 }

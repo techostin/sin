@@ -2,6 +2,11 @@
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../classes/Database.php';
 require_once __DIR__ . '/../../classes/User.php';
+require_once __DIR__ . '/../../classes/ApiAuth.php';
+
+// Endpoint JSON de evento (dado GLOBAL, somente leitura): exige login.
+// Antes, qualquer visitante anônimo lia os detalhes do evento via AJAX.
+ApiAuth::exigirLogin();
 
 // Log de debug
 error_log("Visualizar evento chamado - ID: " . ($_GET['id'] ?? 'não informado'));
@@ -161,8 +166,9 @@ try {
         }
     }
     
-    // Mostrar botão de editar apenas para usuários com permissão
-    if (isset($_SESSION['user_tipo']) && $_SESSION['user_tipo'] !== 'usuario') {
+    // Mostrar botão de editar apenas para a equipe (Admin/Gestor):
+    // nível 3 mantém somente a leitura do evento.
+    if (ApiAuth::ehStaff()) {
         $html .= '
             <a href="' . SITE_URL . '/evento/' . $evento['id'] . '/editar" class="btn btn-primary">
                 <i class="bi bi-pencil-fill"></i> Editar Evento
@@ -186,11 +192,11 @@ try {
     error_log("Erro PDO: " . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json');
-    echo json_encode(['erro' => 'Erro ao buscar dados do evento: ' . $e->getMessage()]);
+    echo json_encode(['erro' => 'Erro ao buscar dados do evento.']);
 } catch (Exception $e) {
     error_log("Erro geral: " . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json');
-    echo json_encode(['erro' => 'Erro geral: ' . $e->getMessage()]);
+    echo json_encode(['erro' => 'Erro interno ao processar a requisição.']);
 }
 ?> 

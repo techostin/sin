@@ -108,7 +108,10 @@ $podeDiretoria = $user->podeAcessarDiretoria();
         <div class="collapse" id="regionalizacaoTop" style="background:linear-gradient(180deg,rgba(13,110,253,0.30) 0%,rgba(13,110,253,0.12) 100%);">
             <a href="<?php echo SITE_URL; ?>/regionalizacao" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-diagram-3 text-success me-1"></i> Dashboard Regional</a>
             <a href="<?php echo SITE_URL; ?>/regionalizacao/mapa" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-map-fill text-info me-1"></i> Mapa de Calor</a>
+            <?php // A página /admin/clusters exige NIVEL_ADMIN: o menu não deve oferecê-la a gestores.
+            if ($user->hasPermission(NIVEL_ADMIN)): ?>
             <a href="<?php echo SITE_URL; ?>/admin/clusters" class="list-group-item list-group-item-action bg-secondary text-white ps-5"><i class="bi bi-people text-warning me-1"></i> Clusters de Comunicação</a>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -470,7 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <ul class="navbar-nav ms-auto mt-2 mt-lg-0">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-circle"></i> <?php echo $_SESSION['user_nome']; ?>
+                            <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($_SESSION['user_nome'] ?? $_SESSION['associado_nome'] ?? 'Visitante', ENT_QUOTES); ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                             <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/meu-perfil"><i class="bi bi-person-circle me-1"></i> Meu Perfil</a></li>

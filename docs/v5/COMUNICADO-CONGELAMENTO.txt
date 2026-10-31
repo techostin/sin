@@ -1,0 +1,40 @@
+Assunto: [SINPORG] Congelamento de features a partir de 30/10/2026 — início da modularização
+
+Equipe,
+
+A partir de 30/10/2026, o desenvolvimento de NOVAS FUNCIONALIDADES no sistema atual fica
+congelado para darmos início à F1 (fundação da modularização).
+
+O que muda:
+- Não entram novas telas, campos, filtros, relatórios, dashboards, regras de negócio ou
+  integrações novas.
+- Correções de SEGURANÇA e LGPD continuam permitidas, com registro.
+- Bugs bloqueantes (produção parada, perda de dado, erro generalizado) podem ser corrigidos
+  com aprovação do Tech Lead e registro no livro de exceções.
+- O trabalho da F1/K2/D1 acontece na branch feat/f1-kernel, sem alterar o comportamento
+  das telas atuais.
+
+Prazos:
+- Início: 30/10/2026
+- Revisão: 11/12/2026
+- Término mínimo: 18/12/2026 (pode ser prorrogado conforme gates G1/G2 e K2)
+
+Como pedir exceção:
+- Enviar ao Tech Lead: descrição, justificativa, risco, arquivos, prazo e plano de teste/rollback.
+- Decisão em até 1 dia útil (segurança/LGPD: imediata).
+- Sem registro aprovado, a exceção não existe.
+
+Fonte de verdade:
+- STATUS.md (raiz do projeto)
+- docs/v5/CONGELAMENTO-FEATURES.md
+
+Contamos com a colaboração de todos para proteger a janela de paridade e evitar regressões.
+
+Obrigado,
+Tech Lead / Equipe de Modularização
+
+---
+Versão curta para WhatsApp:
+"A partir de 30/10, novas features no sistema atual estão congeladas para iniciar a modularização.
+Segurança/LGPD e bugs bloqueantes seguem permitidos com registro e aprovação. Revisão em 11/12,
+término mínimo 18/12. Regras e exceções em docs/v5/CONGELAMENTO-FEATURES.md e STATUS.md."

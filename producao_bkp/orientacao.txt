@@ -1,0 +1,9 @@
+Pronto. Tudo implementado e testado.
+1. Scripts preparados para produção (cURL)
+dev-utils/atualizar_cnpo.php e dev-utils/atualizar_peaf.php agora usam cURL (com FOLLOWLOCATION, verificação SSL, HTTP status check) e caem para file_get_contents apenas se cURL não existir no servidor. Testados — executam normalmente ("já está sincronizada").
+O runner scripts/sincronizar_externos.sh também foi melhorado: agora grava o próprio log (logs/cron_externos.log) mesmo sem redirecionamento do cron. Testei com PHP_BIN apontando pro PHP local: CNPO OK, PEAF OK, status 0, log gerado.
+2. Conteúdo para produção em app/producao_bkp/
+- PRODUCAO.md — guia passo a passo com a ordem exata dos 12 itens: confirmar caminho do app, ajustar credenciais no config/config.php, verificar PHP CLI/extensões, permissões em storage/externos/ e logs/, checar allow_url_fopen/cURL e acesso HTTPS, criar as tabelas (migrate_peaf_cnpo.php), instalar o cron, testar manualmente e monitorar logs.
+- CRON_PROD.txt — linhas de cron prontas para colar (opção A: direto nos scripts; opção B: diário idempotente; opção C: via runner).
+- sincronizar_externos.sh — cópia do runner com log automático.
+Ajustes que você terá de fazer (tudo documentado): o caminho real do app no servidor, as credenciais do banco (o config.php versionado é de dev), o binário do PHP CLI + extensões xml/zip/mbstring/curl, permissões de escrita, e se a hospedagem bloqueia ou não a execução de .sh. O resto já está pronto e idempotente.

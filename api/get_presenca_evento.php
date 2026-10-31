@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../classes/Database.php';
+require_once __DIR__ . '/../classes/ApiAuth.php';
+
+// Seguranca: a checagem de X-Requested-With e apenas um cabecalho (facilmente forjado)
+// e nao autentica ninguem - expunha a lista de presenca (dados pessoais) a anonimos.
+// A pagina chamadora (modulos/eventos/listar.php) exige usuario logado (NIVEL_USUARIO).
+ApiAuth::exigirLogin();
 
 header('Content-Type: application/json');
 

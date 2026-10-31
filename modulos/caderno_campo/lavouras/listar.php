@@ -99,7 +99,8 @@ try {
                                        title="Editar">
                                         <i class="bi bi-pencil-fill"></i>
                                     </a>
-                                    <?php if ($user->hasPermission('admin')): ?>
+                                    <?php // BUG corrigido: hasPermission('admin') era comparado como texto e sempre dava false (is_numeric('admin')).
+                                    if ($user->hasPermission(NIVEL_ADMIN)): ?>
                                         <form method="POST" action="<?php echo SITE_URL; ?>/modulos/caderno_campo/lavouras/excluir.php" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta lavoura?');">
                                             <input type="hidden" name="id" value="<?php echo (int) $lav['id']; ?>">
                                             <?php echo CSRFProtection::getTokenField(); ?>

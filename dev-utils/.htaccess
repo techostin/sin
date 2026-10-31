@@ -1,0 +1,14 @@
+# Quarentena local: nunca servir esta pasta pela web.
+# Arquivos aqui sao ferramentas de desenvolvimento/diagnostico e nao fazem
+# parte da aplicacao em producao.
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Apache 2.2 (fallback)
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

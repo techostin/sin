@@ -24,6 +24,22 @@ if (!$id) {
     require_once __DIR__ . '/../../../includes/footer.php';
     exit;
 }
+
+$id = (int) $id;
+
+// Anti-IDOR: a visita técnica pertence a um associado (visitas_tecnicas.associado_id).
+// Admin/Gestor abrem qualquer relatório; nível 3 só o do próprio associado.
+require_once __DIR__ . '/../../../classes/Database.php';
+$db = Database::getInstance()->getConnection();
+$stmt = $db->prepare("SELECT associado_id FROM visitas_tecnicas WHERE id = ? LIMIT 1");
+$stmt->execute([$id]);
+$donoVisita = (int) $stmt->fetchColumn();
+if (!$user->isGestorOuAdmin()
+    && ($donoVisita <= 0 || $donoVisita !== (int) $user->getAssociadoIdResolvido())) {
+    echo "<div class='alert alert-danger mt-4'>Acesso negado: esta visita pertence a outro produtor.</div>";
+    require_once __DIR__ . '/../../../includes/footer.php';
+    exit;
+}
 ?>
 
 <div class="gestor-modern">

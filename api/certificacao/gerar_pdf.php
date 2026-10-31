@@ -2,11 +2,16 @@
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../../classes/Database.php';
 require_once __DIR__ . '/../../classes/Produto.php';
+require_once __DIR__ . '/../../classes/ApiAuth.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
 header('Content-Type: application/json');
+
+// Este endpoint estava SEM autenticação: um POST anônimo conseguia ler dados
+// de qualquer associado (IDOR) e ainda gerar PDFs em uploads/.
+ApiAuth::exigirLogin();
 
 // Receber dados via POST (pode ser raw JSON ou application/x-www-form-urlencoded)
 $data = json_decode(file_get_contents('php://input'), true);
@@ -19,6 +24,9 @@ if (!$associado_id) {
     echo json_encode(['success' => false, 'error' => 'ID do associado não informado']);
     exit;
 }
+
+// Admin/Gestor geram para qualquer produtor; usuário comum só para si.
+ApiAuth::exigirProprioAssociado($associado_id);
 
 try {
     $db = Database::getInstance()->getConnection();

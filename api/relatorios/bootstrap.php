@@ -3,7 +3,10 @@
 require_once __DIR__ . '/../../config/error_config.php';
 
 // Definir constantes básicas
-define('ROOT_PATH', dirname(dirname(dirname(__DIR__))));
+// __DIR__ = <app>/api/relatorios  =>  o app está dois níveis acima.
+// Antes apontava para <htdocs> e todo endpoint que usa este bootstrap
+// (ex.: api/relatorios/gerar.php) terminava em HTTP 500.
+define('ROOT_PATH', dirname(__DIR__, 2));
 
 // Carregar configurações
 require_once ROOT_PATH . '/config/config.php';

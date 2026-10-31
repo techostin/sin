@@ -13,6 +13,19 @@ if ($rawUrl !== '') {
         exit;
     }
 
+    // ===== ROTAS DE RECUPERAÇÃO DE SENHA (públicas) =====
+    // Sem estas rotas o link enviado por e-mail caía no 404 e redirecionava
+    // para /login, tornando a recuperação de senha inutilizável.
+    if ($parts[0] === 'recuperar-senha') {
+        require __DIR__ . '/recuperar_senha.php';
+        exit;
+    }
+    if ($parts[0] === 'redefinir-senha') {
+        $_GET['token'] = isset($parts[1]) && $parts[1] !== '' ? $parts[1] : ($_GET['token'] ?? '');
+        require __DIR__ . '/redefinir_senha.php';
+        exit;
+    }
+
     // ===== ROTAS DE RELATÓRIOS =====
 
     // Página principal de relatórios
