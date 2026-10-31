@@ -777,9 +777,11 @@ de entrada (Android 9+), abertura < 3 s.
 > [item 4](FASE0-ITEM4-P0-RESIDUAL.md) e [item 6](FASE0-ITEM6-FISCAIS-ESPECIALISTA.md).
 >
 > **🚀 F1 iniciada em 30/10/2026 por autorização explícita**, com os itens 4 e 6 ainda pendentes.
-> Fundação entregue: tag `f1-fundacao` (`2979360`), branch `feat/f1-kernel`, `/api/v1/health` 200,
-> 11 testes verdes, PHPStan/Deptrac/PHPCS limpos. Evidências em
-> [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md).
+> Fundação entregue: tags `f1-fundacao` (`2979360`) e `f1-k2-d1` (`9564ca9`), branch `feat/f1-kernel`,
+> `/api/v1/health` 200, 31 testes verdes, PHPStan/Deptrac/PHPCS limpos. **F1.6** (políticas/tenant/
+> CSRF/upload), **K2 piloto** (`/api/v1/territorios/*`) e **D1 leitura mascarada** (sem rota pública
+> até a K1). Evidências em [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md) e
+> [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md).
 
 ### 7.3 Trilha B — fases
 

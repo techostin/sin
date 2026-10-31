@@ -39,13 +39,15 @@
 | 1.3 | Kernel de contratos (6 interfaces) | ✅ |
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
-| 1.6 | Authz/CSRF/tenant/upload no Kernel | ⚠️ parcial (F2) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 11 testes, 0 erros |
-| 1.8 | CI, staging, feature flags; deploy/rollback | ⚠️ parcial |
+| 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 31 testes, 0 erros |
+| 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tag **`f1-fundacao`** → commit `2979360`; branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`) e **`f1-k2-d1`** (`9564ca9`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
+- Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
+- **D1**: camada de leitura pronta e mascarada, **sem rota pública** até a K1 (auth).
 
 ## P0 — segurança (resumo)
 

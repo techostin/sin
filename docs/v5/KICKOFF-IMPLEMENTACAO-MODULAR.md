@@ -74,9 +74,12 @@ versionar       (kernel, HTTP, dados,   (fatia vertical)   (fatias A→D)
 ### Fase 1 — Fundação F1 (4–6 semanas)
 
 > **Status em 30/10/2026:** **F1 iniciada por autorização explícita**, com os itens 4 e 6 da Fase 0
-> pendentes. Entregues 1.1–1.5, 1.7 e 1.9; 1.6 e 1.8 parciais. Tag `f1-fundacao` (`2979360`), branch
+> pendentes. Entregues 1.1–1.9 (1.8 com deploy de produção manual); **F1.6** com políticas/tenant/
+> CSRF/upload; **K2 piloto** em `/api/v1/territorios/*`; **D1** com camada de leitura mascarada, sem
+> rota pública até a K1. Tags `f1-fundacao` (`2979360`) e `f1-k2-d1` (`9564ca9`), branch
 > `feat/f1-kernel`, `/api/v1/health` 200. Evidências em
-> [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md).
+> [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md) e
+> [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md).
 
 | # | Entrega | Critério de aceite |
 |---|---|---|
