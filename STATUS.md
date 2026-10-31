@@ -22,10 +22,10 @@
 |---|---|---|
 | 1 | Congelar features e comunicar | ✅ **concluído em 30/10/2026** |
 | 2 | Commit/tag do estado atual + branch `feat/f1-kernel` | ✅ **30/10/2026** — commit `796d11d`, tag `pre-modularizacao`, branch `feat/f1-kernel` ([relatório](docs/v5/EXECUCAO-FASE0-ITEM2-GIT.md)) |
-| 3 | Staging com banco anonimizado + feature flags | ⏳ pendente |
-| 4 | P0 residual: Resend, logs de produção, decisão LGPD | ⚠️ parcial (técnico local concluído; externos pendentes) |
-| 5 | Paridade de K2 e D1 (`arquivo:linha`) | ⏳ pendente |
-| 6 | Fiscais e especialista de domínio designados | ⏳ pendente |
+| 3 | Staging com banco anonimizado + feature flags | ✅ **30/10/2026** — `http://localhost/app-staging` + `sisagro_staging`; flags em `feature_flags` ([relatório](docs/v5/FASE0-ITEM3-STAGING.md)) |
+| 4 | P0 residual: Resend, logs de produção, decisão LGPD | ⛔ **bloqueado externo** — chave Resend ainda ativa; logs de produção e assinatura LGPD pendentes ([relatório](docs/v5/FASE0-ITEM4-P0-RESIDUAL.md)) |
+| 5 | Paridade de K2 e D1 (`arquivo:linha`) | ✅ **30/10/2026** — inventário concluído ([relatório](docs/v5/FASE0-ITEM5-PARIDADE-K2-D1.md)) |
+| 6 | Fiscais e especialista de domínio designados | ⚠️ **proposta pronta; faltam nomes/aceite** ([documento](docs/v5/FASE0-ITEM6-FISCAIS-ESPECIALISTA.md)) |
 
 > A F1 só inicia quando os 6 itens estiverem verdes, conforme
 > [KICKOFF-IMPLEMENTACAO-MODULAR.md](docs/v5/KICKOFF-IMPLEMENTACAO-MODULAR.md).

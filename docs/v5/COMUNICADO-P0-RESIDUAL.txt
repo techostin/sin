@@ -1,0 +1,38 @@
+Assunto: [SINPORG] Pendências P0 — chave Resend, logs de produção e decisão LGPD
+
+Prezados,
+
+Para encerrar o item 4 da Fase 0 (P0 residual) e liberar a F1, precisamos de três providências
+que não podem ser executadas pelo agente:
+
+1) RESEND — ROTAÇÃO URGENTE
+- A chave Resend atual ainda autentica (HTTP 422) e está comprometida.
+- A chave não tem permissão para gerenciar outras chaves (HTTP 401 em /api-keys).
+- Ação: no painel da Resend, criar uma nova chave de envio e revogar a antiga.
+- Depois, executar:
+  .\scripts\atualizar-chave-resend.ps1 -NovaChave "re_..."
+- Testar recuperação de senha e envio de carteirinha.
+
+2) LOGS DE PRODUÇÃO — PERÍODO 20/10 a 27/10/2026
+- Solicitar ao provedor/hospedagem:
+  a) versão do PHP em produção e data exata da atualização para 8.4.27+;
+  b) logs de acesso e erro do Apache/PHP-FPM do período (e anteriores);
+  c) logs de WAF/CDN, se existirem;
+  d) reinícios de workers, erros 5xx e mensagens de memory limit;
+  e) logs de autenticação/sessão e de acesso ao banco.
+- Os logs locais já foram preservados e triados; faltam apenas os de produção.
+
+3) LGPD — DECISÃO FORMAL
+- O parecer A8 concluiu "incidente potencial em avaliação" (não confirmado).
+- Falta a assinatura do controlador e a validação do DPO/jurídico, além de definir a data de
+  conhecimento e confirmar se o SINPORG é agente de pequeno porte.
+- Prazos condicionais: 3 dias úteis (30/10/2026) ou 6 dias úteis (04/11/2026), se aplicável.
+- Registrar a decisão (comunicar ou não) e manter o registro por 5 anos.
+
+Referências:
+- docs/v5/FASE0-ITEM4-P0-RESIDUAL.md
+- docs/v5/EXECUCAO-A8-AVALIACAO-LGPD.md
+- docs/v5/EXECUCAO-A7-LOGS-INCIDENTE.md
+- STATUS.md
+
+Sem esses itens, o item 4 permanece aberto e a F1 não deve iniciar módulos de negócio.

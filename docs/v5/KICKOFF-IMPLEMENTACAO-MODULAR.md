@@ -62,10 +62,14 @@ versionar       (kernel, HTTP, dados,   (fatia vertical)   (fatias A→D)
 2. Commit/tag do estado atual; branch `feat/f1-kernel`. ✅ **30/10/2026** — commit `796d11d`,
    tag `pre-modularizacao`, branch `feat/f1-kernel`; ver
    [`EXECUCAO-FASE0-ITEM2-GIT.md`](EXECUCAO-FASE0-ITEM2-GIT.md).
-3. Criar staging com cópia do banco (anonimizada) e feature flags.
-4. Fechar P0 residual (Resend, logs de produção, decisão LGPD).
-5. Inventariar paridade de **K2** e **D1** (`arquivo:linha`).
-6. Designar fiscais e especialista de domínio.
+3. Criar staging com cópia do banco (anonimizada) e feature flags. ✅ **30/10/2026** — ver
+   [`FASE0-ITEM3-STAGING.md`](FASE0-ITEM3-STAGING.md).
+4. Fechar P0 residual (Resend, logs de produção, decisão LGPD). ⛔ **bloqueado externo** — ver
+   [`FASE0-ITEM4-P0-RESIDUAL.md`](FASE0-ITEM4-P0-RESIDUAL.md).
+5. Inventariar paridade de **K2** e **D1** (`arquivo:linha`). ✅ **30/10/2026** — ver
+   [`FASE0-ITEM5-PARIDADE-K2-D1.md`](FASE0-ITEM5-PARIDADE-K2-D1.md).
+6. Designar fiscais e especialista de domínio. ⚠️ **proposta pronta; faltam nomes/aceite** — ver
+   [`FASE0-ITEM6-FISCAIS-ESPECIALISTA.md`](FASE0-ITEM6-FISCAIS-ESPECIALISTA.md).
 
 ### Fase 1 — Fundação F1 (4–6 semanas)
 
