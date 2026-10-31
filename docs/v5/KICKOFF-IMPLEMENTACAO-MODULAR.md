@@ -73,6 +73,11 @@ versionar       (kernel, HTTP, dados,   (fatia vertical)   (fatias A→D)
 
 ### Fase 1 — Fundação F1 (4–6 semanas)
 
+> **Status em 30/10/2026:** **F1 iniciada por autorização explícita**, com os itens 4 e 6 da Fase 0
+> pendentes. Entregues 1.1–1.5, 1.7 e 1.9; 1.6 e 1.8 parciais. Tag `f1-fundacao` (`2979360`), branch
+> `feat/f1-kernel`, `/api/v1/health` 200. Evidências em
+> [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md).
+
 | # | Entrega | Critério de aceite |
 |---|---|---|
 | 1.1 | `composer.json` com PSR-4 `App\\` → `src/`; autoload | `composer dump-autoload` e classes carregam |

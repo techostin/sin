@@ -16,7 +16,7 @@
 
 ## Fase atual
 
-**Fase 0 — Preparação.** A F1 ainda **não começou**.
+**Fase 0 quase concluída + F1 iniciada em 30/10/2026** (autorização explícita, com itens 4 e 6 pendentes).
 
 | # | Item da Fase 0 | Status |
 |---|---|---|
@@ -27,8 +27,25 @@
 | 5 | Paridade de K2 e D1 (`arquivo:linha`) | ✅ **30/10/2026** — inventário concluído ([relatório](docs/v5/FASE0-ITEM5-PARIDADE-K2-D1.md)) |
 | 6 | Fiscais e especialista de domínio designados | ⚠️ **proposta pronta; faltam nomes/aceite** ([documento](docs/v5/FASE0-ITEM6-FISCAIS-ESPECIALISTA.md)) |
 
-> A F1 só inicia quando os 6 itens estiverem verdes, conforme
-> [KICKOFF-IMPLEMENTACAO-MODULAR.md](docs/v5/KICKOFF-IMPLEMENTACAO-MODULAR.md).
+> **Exceção de gate:** a F1 foi iniciada por autorização do responsável com os itens 4 e 6 pendentes;
+> nenhum módulo de negócio foi iniciado. Ver [relatório da fundação](docs/v5/EXECUCAO-F1-FUNDACAO.md).
+
+## F1 — Fundação (em andamento)
+
+| # | Entrega | Status |
+|---|---|---|
+| 1.1 | PSR-4 `App\` → `src/`, autoload e scripts | ✅ |
+| 1.2 | Bootstrap único + API sem sessão | ✅ |
+| 1.3 | Kernel de contratos (6 interfaces) | ✅ |
+| 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
+| 1.5 | Connection, UnitOfWork, Repository base | ✅ |
+| 1.6 | Authz/CSRF/tenant/upload no Kernel | ⚠️ parcial (F2) |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 11 testes, 0 erros |
+| 1.8 | CI, staging, feature flags; deploy/rollback | ⚠️ parcial |
+| 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
+
+- Tag **`f1-fundacao`** → commit `2979360`; branch `feat/f1-kernel`.
+- Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 
 ## P0 — segurança (resumo)
 
@@ -47,11 +64,10 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 
 ## Próximo passo
 
-1. Aprovar/realizar o **commit/tag** e a branch `feat/f1-kernel` (item 2).
-2. Preparar **staging + feature flags** (item 3).
-3. Gerar **paridade K2/D1** (item 5).
-4. Fechar **Resend/logs/LGPD** e designar **fiscais/especialista** (itens 4 e 6).
-5. Iniciar **F1**: PSR-4, Kernel, `/api/v1/health`, testes e CI.
+1. Fechar **F1.6** (authz/CSRF/tenant/upload no Kernel) e **F1.8** (deploy/rollback/sync staging).
+2. Fechar **Resend/logs/LGPD** e designar **fiscais/especialista** (itens 4 e 6).
+3. Iniciar o piloto **K2** (endpoints de território) usando o padrão da F1.
+4. Somente depois iniciar **D1** (associados).
 
 ## Regras de ouro durante o congelamento
 

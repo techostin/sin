@@ -775,6 +775,11 @@ de entrada (Android 9+), abertura < 3 s.
 > ([item 3](FASE0-ITEM3-STAGING.md)) e paridade K2/D1 ([item 5](FASE0-ITEM5-PARIDADE-K2-D1.md)).
 > **Itens 4 e 6 pendentes** (dependências externas/humanas):
 > [item 4](FASE0-ITEM4-P0-RESIDUAL.md) e [item 6](FASE0-ITEM6-FISCAIS-ESPECIALISTA.md).
+>
+> **🚀 F1 iniciada em 30/10/2026 por autorização explícita**, com os itens 4 e 6 ainda pendentes.
+> Fundação entregue: tag `f1-fundacao` (`2979360`), branch `feat/f1-kernel`, `/api/v1/health` 200,
+> 11 testes verdes, PHPStan/Deptrac/PHPCS limpos. Evidências em
+> [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md).
 
 ### 7.3 Trilha B — fases
 
