@@ -771,7 +771,10 @@ de entrada (Android 9+), abertura < 3 s.
 > 18/12/2026). Regras e exceções em [`CONGELAMENTO-FEATURES.md`](CONGELAMENTO-FEATURES.md);
 > painel em [`STATUS.md`](../../STATUS.md). **Item 2 da Fase 0 concluído**: commit `796d11d`,
 > tag `pre-modularizacao` e branch `feat/f1-kernel` ([relatório](EXECUCAO-FASE0-ITEM2-GIT.md)).
-> Itens 3–6 da Fase 0 seguem pendentes.
+> **Itens 3 e 5 concluídos**: staging anonimizado em `http://localhost/app-staging` + `feature_flags`
+> ([item 3](FASE0-ITEM3-STAGING.md)) e paridade K2/D1 ([item 5](FASE0-ITEM5-PARIDADE-K2-D1.md)).
+> **Itens 4 e 6 pendentes** (dependências externas/humanas):
+> [item 4](FASE0-ITEM4-P0-RESIDUAL.md) e [item 6](FASE0-ITEM6-FISCAIS-ESPECIALISTA.md).
 
 ### 7.3 Trilha B — fases
 
