@@ -28,6 +28,9 @@ use App\Modules\Identidade\CapabilityService;
 use App\Modules\Identidade\DatabaseIdentityRepository;
 use App\Modules\Identidade\MeController;
 use App\Modules\Identidade\SessionContextProvider;
+use App\Modules\Portal\PortalController;
+use App\Modules\Relatorios\DatabaseRelatoriosRepository;
+use App\Modules\Relatorios\RelatoriosController;
 use App\Modules\Rastreabilidade\DatabaseRastreabilidadeRepository;
 use App\Modules\Rastreabilidade\RastreabilidadeController;
 use App\Modules\Territorio\DatabaseTerritorioRepository;
@@ -295,5 +298,22 @@ return static function (Router $router, Container $container): void {
         $context = $guard($request, 'financeiro', 'write');
         $id = isset($params['id']) && is_numeric($params['id']) ? (int) $params['id'] : 0;
         return $context instanceof Response ? $context : $financeiro()->pay($request, $id, $context);
+    });
+
+    $relatorios = static fn (): RelatoriosController => new RelatoriosController(
+        new DatabaseRelatoriosRepository(Connection::pdo())
+    );
+    $router->get('/relatorios/resumo', static function (Request $request) use ($guard, $relatorios): Response {
+        $context = $guard($request, 'relatorios', 'read');
+        return $context instanceof Response ? $context : $relatorios()->summary($request, $context);
+    });
+
+    $portal = static fn (): PortalController => new PortalController(
+        new DatabaseRelatoriosRepository(Connection::pdo()),
+        $capabilities
+    );
+    $router->get('/portal/dashboard', static function (Request $request) use ($guard, $portal): Response {
+        $context = $guard($request, 'portal', 'read');
+        return $context instanceof Response ? $context : $portal()->dashboard($request, $context);
     });
 };

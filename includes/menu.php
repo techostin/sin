@@ -488,3 +488,36 @@ document.addEventListener('DOMContentLoaded', function() {
     </nav>
 
     <div class="container-fluid px-4">
+<script>
+(function () {
+    const rules = [
+        ['associados', ['/associados', '/associado/', '/associacoes', '/associacao/']],
+        ['fiscalizacao', ['/fiscalizacao', '/roteiros_inspecao', '/conformidade']],
+        ['caderno', ['/caderno_campo', '/lotes_producao', '/propriedades', '/lavouras']],
+        ['financeiro', ['/financeiro', '/mensalidades', '/caixa', '/contas']],
+        ['governanca', ['/governanca', '/assembleias', '/assembleia', '/eventos']],
+        ['relatorios', ['/relatorios', '/relatorio']],
+        ['agroindustria', ['/agroindustria']],
+        ['configuracoes', ['/usuarios', '/configuracoes']]
+    ];
+
+    fetch(<?php echo json_encode(SITE_URL . '/api/v1/me/capabilities'); ?>, { credentials: 'same-origin' })
+        .then(function (response) { return response.ok ? response.json() : null; })
+        .then(function (payload) {
+            const data = payload && payload.data ? payload.data : null;
+            if (!data || !Array.isArray(data.navigation)) { return; }
+            const allowed = new Set(data.navigation.map(function (item) { return item.key; }));
+            document.querySelectorAll('#sidebar-wrapper a[href]').forEach(function (link) {
+                const href = link.getAttribute('href') || '';
+                rules.forEach(function (rule) {
+                    const key = rule[0];
+                    const matches = rule[1].some(function (part) { return href.indexOf(part) !== -1; });
+                    if (matches && !allowed.has(key)) {
+                        link.style.display = 'none';
+                    }
+                });
+            });
+        })
+        .catch(function () { /* menu permanece intacto se a API falhar */ });
+})();
+</script>
