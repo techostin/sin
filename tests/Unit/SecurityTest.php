@@ -49,6 +49,15 @@ final class SecurityTest extends TestCase
         self::assertFalse($policy->allows($context, 'associados', 'read'));
     }
 
+    public function testAdminScopeIsGlobalEvenWithLegacyIds(): void
+    {
+        $context = new ContextoUsuarioFake(['admin'], 13, 13, [], [], 'Admin', ['*']);
+        $scope = \App\Kernel\Security\AccessScope::fromContext($context);
+
+        self::assertTrue($scope->isGlobal());
+        self::assertTrue($scope->allowsAssociado(7, 1));
+    }
+
     public function testTenantScope(): void
     {
         $global = new TenantScope(null);

@@ -21,6 +21,10 @@ final class AccessScope
 
     public static function fromContext(ContextoUsuario $context): self
     {
+        if (in_array('admin', $context->roles(), true)) {
+            return new self(null, null, []);
+        }
+
         return new self($context->associadoId(), $context->certificadoraId(), $context->visibleAssociations());
     }
 
