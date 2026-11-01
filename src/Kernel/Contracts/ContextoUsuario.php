@@ -12,6 +12,8 @@ interface ContextoUsuario
 {
     public function userId(): string;
 
+    public function name(): string;
+
     public function origin(): string;
 
     public function associadoId(): ?int;
@@ -26,6 +28,9 @@ interface ContextoUsuario
 
     /** @return list<string> */
     public function productionAreas(): array;
+
+    /** @return list<string> */
+    public function capabilities(): array;
 
     public function can(string $resource, string $action): bool;
 }

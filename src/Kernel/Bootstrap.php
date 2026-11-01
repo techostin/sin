@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Kernel;
 
+use App\Kernel\Audit\DatabaseAuditLogger;
+use App\Kernel\Contracts\AuditLogger;
 use App\Kernel\Contracts\FeatureFlags;
+use App\Kernel\Documents\DocumentNumberGenerator;
 use App\Kernel\FeatureFlags\DatabaseFeatureFlags;
 use App\Kernel\Http\Request;
 use App\Kernel\Persistence\Connection;
@@ -32,6 +35,14 @@ final class Bootstrap
         $container->set(
             FeatureFlags::class,
             static fn (Container $c): object => new DatabaseFeatureFlags(Connection::pdo())
+        );
+        $container->set(
+            AuditLogger::class,
+            static fn (Container $c): object => new DatabaseAuditLogger(Connection::pdo())
+        );
+        $container->set(
+            DocumentNumberGenerator::class,
+            static fn (Container $c): object => new DocumentNumberGenerator(Connection::pdo())
         );
 
         return $container;

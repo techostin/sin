@@ -9,6 +9,10 @@ use App\Kernel\Http\Router;
 use App\Kernel\Persistence\Connection;
 use App\Kernel\Support\Logger;
 use App\Modules\Health\HealthController;
+use App\Modules\Identidade\CapabilityService;
+use App\Modules\Identidade\DatabaseIdentityRepository;
+use App\Modules\Identidade\MeController;
+use App\Modules\Identidade\SessionContextProvider;
 use App\Modules\Territorio\DatabaseTerritorioRepository;
 use App\Modules\Territorio\TerritorioController;
 
@@ -38,4 +42,16 @@ return static function (Router $router, Container $container): void {
         static fn (Request $request): Response => $territorio()->microrregioes($request)
     );
     $router->get('/territorios/cnpo', static fn (Request $request): Response => $territorio()->cnpo($request));
+
+    $me = static function (): MeController {
+        $capabilities = new CapabilityService();
+
+        return new MeController(
+            new SessionContextProvider(new DatabaseIdentityRepository(Connection::pdo()), $capabilities),
+            $capabilities
+        );
+    };
+
+    $router->get('/me', static fn (Request $request): Response => $me()->me($request));
+    $router->get('/me/capabilities', static fn (Request $request): Response => $me()->capabilities($request));
 };

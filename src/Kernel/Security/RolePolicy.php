@@ -23,6 +23,10 @@ final class RolePolicy implements Policy
 
     public function allows(ContextoUsuario $context, string $resource, string $action): bool
     {
+        if ($context->capabilities() !== []) {
+            return $context->can($resource, $action);
+        }
+
         $roles = $context->roles();
 
         if (in_array('admin', $roles, true)) {

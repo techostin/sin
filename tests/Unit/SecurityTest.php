@@ -40,6 +40,15 @@ final class SecurityTest extends TestCase
         self::assertFalse((new RolePolicy())->allows(new ContextoUsuarioFake(['visitante']), 'associados', 'read'));
     }
 
+    public function testCapabilitiesTakePrecedenceOverLegacyRoles(): void
+    {
+        $policy = new RolePolicy();
+        $context = new ContextoUsuarioFake(['tecnico'], null, null, [], [], 'Tecnico', ['financeiro.write']);
+
+        self::assertTrue($policy->allows($context, 'financeiro', 'write'));
+        self::assertFalse($policy->allows($context, 'associados', 'read'));
+    }
+
     public function testTenantScope(): void
     {
         $global = new TenantScope(null);

@@ -19,12 +19,19 @@ final class ContextoUsuarioFake implements ContextoUsuario
         private readonly ?int $certificadoraId = null,
         private readonly array $associations = [],
         private readonly array $areas = [],
+        private readonly string $name = 'Usuario Teste',
+        private readonly array $capabilities = [],
     ) {
     }
 
     public function userId(): string
     {
         return 'test-user';
+    }
+
+    public function name(): string
+    {
+        return $this->name;
     }
 
     public function origin(): string
@@ -60,8 +67,19 @@ final class ContextoUsuarioFake implements ContextoUsuario
         return $this->areas;
     }
 
+    /** @return list<string> */
+    public function capabilities(): array
+    {
+        return $this->capabilities;
+    }
+
     public function can(string $resource, string $action): bool
     {
-        return true;
+        if (in_array('*', $this->capabilities, true)) {
+            return true;
+        }
+
+        return in_array($resource . '.' . $action, $this->capabilities, true)
+            || in_array($resource . '.*', $this->capabilities, true);
     }
 }
