@@ -25,7 +25,8 @@
 | 4 | Decisão LGPD formal | parecer A8 preliminar; sem assinatura | controlador/DPO |
 | 5 | Fiscais e especialista | proposta pronta; sem nomes/aceite | SINPORG |
 | 6 | Deploy de produção | runbook pronto; execução manual | infraestrutura |
-| 7 | Push ao remoto | commits locais; credencial `techostin` disponível | decisão do responsável |
+| 7 | Push ao remoto | **credencial inválida**: `git push --dry-run` retornou `Invalid username or token` | renovar GCM/PAT e autorizar |
+| 8 | Push das tags | depende do item 7 | responsável |
 
 ## 3. Pendências técnicas internas (backlog, não bloqueiam a fundação)
 
@@ -43,7 +44,11 @@
 2. Logs de produção recebidos e anexados ao dossiê A7.
 3. Decisão LGPD assinada e registrada por 5 anos.
 4. Fiscais e especialista nomeados com aceite.
-5. Push e deploy de produção aprovados/executados.
+5. Push e deploy de produção aprovados/executados; token GitHub renovado.
+
+> **Evidência do push:** em 01/11/2026 o `git push --dry-run app feat/f1-kernel` retornou
+> `Authentication failed` / `Invalid username or token`. O GCM lista a conta `techostin`, mas o
+> token armazenado está inválido/expirado. Nenhum push foi realizado.
 6. Backlog técnico priorizado (não precisa estar 100% implementado para a fundação).
 
 **Conclusão:** as pendências **técnicas executáveis** foram fechadas até a Onda 5. As pendências
