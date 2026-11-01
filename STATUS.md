@@ -40,14 +40,26 @@
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
 | 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 31 testes, 0 erros |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 42 testes, 0 erros |
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`) e **`f1-k2-d1`** (`9564ca9`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`) e **`onda1-k1-k3-l2`** (`089f246`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
-- **D1**: camada de leitura pronta e mascarada, **sem rota pública** até a K1 (auth).
+- **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
+
+## Onda 1 — Acesso e experiência (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **K1** | 8 papéis, 19 permissões, escopos, `/me` e `/me/capabilities` | ✅ |
+| **K3** | auditoria em `audit_log` + numeração de documentos | ✅ (arquivos/notificações depois) |
+| **L2** | manifesto de 9 áreas por capability e superfície web/PWA | ✅ contrato; UI integrada por módulo |
+
+- Relatório: [EXECUCAO-ONDA1-K1-K3-L2.md](docs/v5/EXECUCAO-ONDA1-K1-K3-L2.md).
+- Plano de ondas: [PLANO-ONDAS-APROVADO.md](docs/v5/PLANO-ONDAS-APROVADO.md).
+- Staging sincronizado em `089f246`; `/me` sem sessão → **401**.
 
 ## P0 — segurança (resumo)
 
@@ -66,10 +78,10 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 
 ## Próximo passo
 
-1. Fechar **F1.6** (authz/CSRF/tenant/upload no Kernel) e **F1.8** (deploy/rollback/sync staging).
+1. **Onda 2:** D1 completo (expor com auth + escrita/aprovação), **T1** e fatia vegetal do **D2**, com lote de insumo do **D7**.
 2. Fechar **Resend/logs/LGPD** e designar **fiscais/especialista** (itens 4 e 6).
-3. Iniciar o piloto **K2** (endpoints de território) usando o padrão da F1.
-4. Somente depois iniciar **D1** (associados).
+3. Fechar deploy de produção automatizado e push ao remoto.
+4. **Onda 3:** D3 (fiscalização/certificação) somente com cadeia rastreável.
 
 ## Regras de ouro durante o congelamento
 
