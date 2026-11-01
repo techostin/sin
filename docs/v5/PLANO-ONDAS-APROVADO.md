@@ -4,7 +4,7 @@
 > A evolução é por **capacidades**, não por uma lista solta de módulos.
 >
 > **Status:** Onda 0 ✅ · Onda 1 ✅ (`089f246`) · Onda 2 ✅ fatia vertical (`4097523`) ·
-> Onda 3 próxima (D3), precedida de `TenantScope` row-level em D1/T1.
+> Onda 3 ✅ core (`0c67a84`: escopo row-level + D3) · Onda 4 próxima (D5/D6).
 
 ## 1. Unidades lógicas (14)
 

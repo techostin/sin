@@ -40,11 +40,11 @@
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
 | 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 49 testes, 0 erros |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 60 testes, 0 erros |
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`) e **`onda2-d1-t1-d2`** (`4097523`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`) e **`onda3-d3`** (`0c67a84`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
 - **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
@@ -74,6 +74,19 @@
 - Staging sincronizado em `4097523`; D1/T1 sem sessão → **401**.
 - **Pendência para D3:** aplicar `TenantScope` row-level em D1/T1 e testes de IDOR.
 
+## Onda 3 — Fiscalização e certificação (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **Segurança** | `AccessScope` row-level em D1/T1/D3 + testes IDOR | ✅ |
+| **D3** | visitas, status, NC, revisão e certificado | ✅ core |
+| **Documentos** | numeração `CERT-AAAA-000000`, auditoria e verificação pública | ✅ |
+| **Templates/PDF/assinatura** | ainda não | ⏳ próxima fatia |
+
+- Relatório: [EXECUCAO-ONDA3-D3.md](docs/v5/EXECUCAO-ONDA3-D3.md).
+- Certificado real de teste: `CERT-2026-000001` (fluxo limpo em seguida).
+- Staging sincronizado em `0c67a84`; D3 sem sessão → **401**.
+
 ## P0 — segurança (resumo)
 
 | Item | Status |
@@ -91,9 +104,9 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 
 ## Próximo passo
 
-1. Fechar **TenantScope row-level** em D1/T1 e testes de IDOR.
-2. **Onda 3:** D3 (fiscalização/visita/NC/revisão/certificado) com documento bloqueado sem cadeia completa.
-3. Evoluir D2 offline/insumos legados e D7 (integração com `insumos`).
+1. Fechar templates/PDF/assinatura/evidências de D3 e o vínculo certificadora × associação.
+2. **Onda 4:** D5 (animal) e D6 (agroindústria) reutilizando o T1.
+3. Evoluir D2 offline/insumos legados e D7.
 4. Fechar **Resend/logs/LGPD**, fiscais/especialista, deploy de produção e push.
 
 ## Regras de ouro durante o congelamento
