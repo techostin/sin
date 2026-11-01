@@ -40,11 +40,11 @@
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
 | 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 42 testes, 0 erros |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 49 testes, 0 erros |
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`) e **`onda1-k1-k3-l2`** (`089f246`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`) e **`onda2-d1-t1-d2`** (`4097523`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
 - **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
@@ -60,6 +60,19 @@
 - Relatório: [EXECUCAO-ONDA1-K1-K3-L2.md](docs/v5/EXECUCAO-ONDA1-K1-K3-L2.md).
 - Plano de ondas: [PLANO-ONDAS-APROVADO.md](docs/v5/PLANO-ONDAS-APROVADO.md).
 - Staging sincronizado em `089f246`; `/me` sem sessão → **401**.
+
+## Onda 2 — Núcleo do agricultor + rastreabilidade (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **D1** | leitura autenticada, criação e aprovação core | ✅ |
+| **T1** | lotes/eventos/elos + QR público | ✅ vegetal/insumo |
+| **D2** | lote vegetal no legado + registro/evento T1 | ✅ primeira fatia |
+| **D7** | lote de insumo no T1 | ✅ primeira fatia |
+
+- Relatório: [EXECUCAO-ONDA2-D1-T1-D2-D7.md](docs/v5/EXECUCAO-ONDA2-D1-T1-D2-D7.md).
+- Staging sincronizado em `4097523`; D1/T1 sem sessão → **401**.
+- **Pendência para D3:** aplicar `TenantScope` row-level em D1/T1 e testes de IDOR.
 
 ## P0 — segurança (resumo)
 
@@ -78,10 +91,10 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 
 ## Próximo passo
 
-1. **Onda 2:** D1 completo (expor com auth + escrita/aprovação), **T1** e fatia vegetal do **D2**, com lote de insumo do **D7**.
-2. Fechar **Resend/logs/LGPD** e designar **fiscais/especialista** (itens 4 e 6).
-3. Fechar deploy de produção automatizado e push ao remoto.
-4. **Onda 3:** D3 (fiscalização/certificação) somente com cadeia rastreável.
+1. Fechar **TenantScope row-level** em D1/T1 e testes de IDOR.
+2. **Onda 3:** D3 (fiscalização/visita/NC/revisão/certificado) com documento bloqueado sem cadeia completa.
+3. Evoluir D2 offline/insumos legados e D7 (integração com `insumos`).
+4. Fechar **Resend/logs/LGPD**, fiscais/especialista, deploy de produção e push.
 
 ## Regras de ouro durante o congelamento
 

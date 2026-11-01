@@ -2,6 +2,9 @@
 
 > **Aprovado em:** 01/11/2026 · **Substitui a ordem linear anterior.**
 > A evolução é por **capacidades**, não por uma lista solta de módulos.
+>
+> **Status:** Onda 0 ✅ · Onda 1 ✅ (`089f246`) · Onda 2 ✅ fatia vertical (`4097523`) ·
+> Onda 3 próxima (D3), precedida de `TenantScope` row-level em D1/T1.
 
 ## 1. Unidades lógicas (14)
 

@@ -781,9 +781,12 @@ de entrada (Android 9+), abertura < 3 s.
 > **Onda 1** (01/11/2026): K1 identidade/capabilities, K3 auditoria/numeração e L2 manifesto —
 > tag `onda1-k1-k3-l2` (`089f246`), 42 testes verdes. Ordem oficial em
 > [`PLANO-ONDAS-APROVADO.md`](PLANO-ONDAS-APROVADO.md); rastreabilidade transversal **T1** incluída.
+> **Onda 2** (01/11/2026): D1 leitura/escrita core, T1 lotes/eventos/elos/QR, D2 vegetal e D7 insumo —
+> tag `onda2-d1-t1-d2` (`4097523`), 49 testes verdes.
 > Evidências: [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md),
-> [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md) e
-> [`EXECUCAO-ONDA1-K1-K3-L2.md`](EXECUCAO-ONDA1-K1-K3-L2.md).
+> [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md),
+> [`EXECUCAO-ONDA1-K1-K3-L2.md`](EXECUCAO-ONDA1-K1-K3-L2.md) e
+> [`EXECUCAO-ONDA2-D1-T1-D2-D7.md`](EXECUCAO-ONDA2-D1-T1-D2-D7.md).
 
 ### 7.3 Trilha B — fases
 
