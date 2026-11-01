@@ -68,6 +68,50 @@ final class AssociadosController
         return Response::json($this->present($row), 200, ['requestId' => $request->requestId]);
     }
 
+    public function store(Request $request): Response
+    {
+        $data = $request->json();
+        $nome = isset($data['nome']) && is_string($data['nome']) ? trim($data['nome']) : '';
+        $sobrenome = isset($data['sobrenome']) && is_string($data['sobrenome']) ? trim($data['sobrenome']) : '';
+        if ($nome === '' || $sobrenome === '') {
+            return Response::error('VALIDACAO', 'nome e sobrenome sao obrigatorios.', 400, $request->requestId);
+        }
+
+        $email = isset($data['email']) && is_string($data['email']) ? trim($data['email']) : '';
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return Response::error('VALIDACAO', 'email invalido.', 400, $request->requestId);
+        }
+
+        try {
+            $created = $this->repository->create([
+                'nome' => $nome,
+                'sobrenome' => $sobrenome,
+                'email' => $email,
+                'cpf' => isset($data['cpf']) && is_string($data['cpf']) ? trim($data['cpf']) : '',
+                'associacao_id' => $data['associacao_id'] ?? null,
+                'microrregiao_id' => $data['microrregiao_id'] ?? null,
+                'registro_cnpo' => $data['registro_cnpo'] ?? null,
+            ]);
+        } catch (\Throwable $exception) {
+            return Response::error('CONFLITO', 'Nao foi possivel criar o associado.', 409, $request->requestId);
+        }
+
+        return Response::json($this->present($created), 201, ['requestId' => $request->requestId]);
+    }
+
+    public function approve(Request $request, string $uuid): Response
+    {
+        if (preg_match('/^[0-9a-fA-F-]{36}$/', $uuid) !== 1) {
+            return Response::error('VALIDACAO', 'uuid invalido.', 400, $request->requestId);
+        }
+
+        if (!$this->repository->approve($uuid)) {
+            return Response::error('NAO_ENCONTRADO', 'Associado pendente nao encontrado.', 404, $request->requestId);
+        }
+
+        return Response::json(['uuid' => $uuid, 'status' => 'ativo'], 200, ['requestId' => $request->requestId]);
+    }
+
     /**
      * @param array<string, mixed> $row
      * @return array<string, mixed>

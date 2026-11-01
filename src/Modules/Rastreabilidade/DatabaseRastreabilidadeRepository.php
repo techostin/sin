@@ -1,0 +1,379 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Rastreabilidade;
+
+use App\Kernel\Persistence\Repository;
+use InvalidArgumentException;
+use PDO;
+use RuntimeException;
+use Throwable;
+
+final class DatabaseRastreabilidadeRepository extends Repository implements RastreabilidadeRepositoryInterface
+{
+    public function __construct(PDO $pdo)
+    {
+        parent::__construct($pdo);
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createVegetalLot(array $data, int $userId): array
+    {
+        $productId = (int) ($data['produto_id'] ?? 0);
+        $product = $this->fetchOne(
+            'SELECT p.id, p.lavoura_id, l.propriedade_id
+             FROM produtos p LEFT JOIN lavouras l ON l.id = p.lavoura_id
+             WHERE p.id = :id LIMIT 1',
+            ['id' => $productId]
+        );
+        if ($product === null) {
+            throw new InvalidArgumentException('Produto invalido.');
+        }
+
+        $uuid = $this->uuid();
+        $code = $this->code();
+        $associadoId = isset($data['associado_id']) && is_numeric($data['associado_id'])
+            ? (int) $data['associado_id'] : null;
+        $propertyId = isset($product['propriedade_id']) ? (int) $product['propriedade_id'] : null;
+        $payload = [
+            'produto_id' => $productId,
+            'nome_lote' => (string) ($data['nome_lote'] ?? ''),
+            'quantidade' => $data['quantidade'] ?? 0,
+            'unidade_medida' => (string) ($data['unidade_medida'] ?? ''),
+        ];
+
+        $this->pdo->beginTransaction();
+        try {
+            $insert = $this->pdo->prepare(
+                'INSERT INTO lotes_producao
+                    (uuid, nome_lote, produto_id, associado_id, data_producao, quantidade,
+                     unidade_medida, observacoes, criado_em)
+                 VALUES (:uuid, :nome_lote, :produto_id, :associado_id, :data_producao, :quantidade,
+                         :unidade_medida, :observacoes, NOW())'
+            );
+            $insert->execute([
+                'uuid' => $uuid,
+                'nome_lote' => (string) ($data['nome_lote'] ?? ''),
+                'produto_id' => $productId,
+                'associado_id' => $associadoId,
+                'data_producao' => (string) ($data['data_producao'] ?? date('Y-m-d')),
+                'quantidade' => $data['quantidade'] ?? 0,
+                'unidade_medida' => (string) ($data['unidade_medida'] ?? 'kg'),
+                'observacoes' => (string) ($data['observacoes'] ?? ''),
+            ]);
+            $legacyId = (int) $this->pdo->lastInsertId();
+
+            $lotId = $this->insertLot(
+                $uuid,
+                'vegetal',
+                'lotes_producao',
+                $legacyId,
+                $code,
+                $associadoId,
+                $propertyId,
+                $payload,
+                $userId
+            );
+
+            $this->insertEvent($lotId, [
+                'tipo' => 'colheita',
+                'data_evento' => (string) ($data['data_producao'] ?? date('Y-m-d')),
+                'local' => null,
+                'descricao' => 'Lote vegetal registrado no caderno de campo.',
+                'payload' => $payload,
+            ], $userId);
+
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        $lot = $this->findByUuid($uuid);
+        if ($lot === null) {
+            throw new RuntimeException('Lote criado nao encontrado.');
+        }
+
+        return $lot;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createInputLot(array $data, int $userId): array
+    {
+        $uuid = $this->uuid();
+        $code = $this->code();
+        $associadoId = isset($data['associado_id']) && is_numeric($data['associado_id'])
+            ? (int) $data['associado_id'] : null;
+        $payload = [
+            'nome' => (string) ($data['nome'] ?? ''),
+            'fornecedor' => (string) ($data['fornecedor'] ?? ''),
+            'lote' => (string) ($data['lote'] ?? ''),
+            'data_validade' => (string) ($data['data_validade'] ?? ''),
+        ];
+
+        $this->pdo->beginTransaction();
+        try {
+            $lotId = $this->insertLot(
+                $uuid,
+                'insumo',
+                'manual',
+                0,
+                $code,
+                $associadoId,
+                null,
+                $payload,
+                $userId
+            );
+
+            $this->insertEvent($lotId, [
+                'tipo' => 'recebimento',
+                'data_evento' => date('Y-m-d H:i:s'),
+                'local' => null,
+                'descricao' => 'Lote de insumo registrado.',
+                'payload' => $payload,
+            ], $userId);
+
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        $lot = $this->findByUuid($uuid);
+        if ($lot === null) {
+            throw new RuntimeException('Lote de insumo criado nao encontrado.');
+        }
+
+        return $lot;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findByUuid(string $uuid): ?array
+    {
+        $lot = $this->fetchOne('SELECT * FROM rastreabilidade_lotes WHERE uuid = :uuid LIMIT 1', ['uuid' => $uuid]);
+        if ($lot === null) {
+            return null;
+        }
+
+        $lot['payload'] = $this->decodeJson($lot['payload_json'] ?? null);
+        unset($lot['payload_json']);
+
+        $events = $this->fetchAll(
+            'SELECT * FROM rastreabilidade_eventos WHERE lote_id = :id ORDER BY data_evento, id',
+            ['id' => (int) $lot['id']]
+        );
+        foreach ($events as $index => $event) {
+            $events[$index]['payload'] = $this->decodeJson($event['payload_json'] ?? null);
+            unset($events[$index]['payload_json']);
+        }
+
+        $links = $this->fetchAll(
+            'SELECT * FROM rastreabilidade_elos
+             WHERE origem_lote_id = :origem_id OR destino_lote_id = :destino_id
+             ORDER BY id',
+            ['origem_id' => (int) $lot['id'], 'destino_id' => (int) $lot['id']]
+        );
+        foreach ($links as $index => $link) {
+            $links[$index]['payload'] = $this->decodeJson($link['payload_json'] ?? null);
+            unset($links[$index]['payload_json']);
+        }
+
+        $lot['eventos'] = $events;
+        $lot['elos'] = $links;
+
+        return $lot;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addEvent(string $uuid, array $data, int $userId): ?array
+    {
+        $lot = $this->fetchOne('SELECT id FROM rastreabilidade_lotes WHERE uuid = :uuid LIMIT 1', ['uuid' => $uuid]);
+        if ($lot === null) {
+            return null;
+        }
+
+        $this->insertEvent((int) $lot['id'], $data, $userId);
+
+        $event = $this->fetchOne(
+            'SELECT * FROM rastreabilidade_eventos WHERE lote_id = :id ORDER BY id DESC LIMIT 1',
+            ['id' => (int) $lot['id']]
+        );
+        if ($event === null) {
+            return null;
+        }
+
+        $event['payload'] = $this->decodeJson($event['payload_json'] ?? null);
+        unset($event['payload_json']);
+
+        return $event;
+    }
+
+    /** @param array<string, mixed> $data */
+    public function addLink(string $origemUuid, string $destinoUuid, array $data, int $userId): bool
+    {
+        $origem = $this->fetchOne(
+            'SELECT id FROM rastreabilidade_lotes WHERE uuid = :uuid LIMIT 1',
+            ['uuid' => $origemUuid]
+        );
+        $destino = $this->fetchOne(
+            'SELECT id FROM rastreabilidade_lotes WHERE uuid = :uuid LIMIT 1',
+            ['uuid' => $destinoUuid]
+        );
+        if ($origem === null || $destino === null || (int) $origem['id'] === (int) $destino['id']) {
+            return false;
+        }
+
+        $insert = $this->pdo->prepare(
+            'INSERT INTO rastreabilidade_elos
+                (origem_lote_id, destino_lote_id, tipo, quantidade, unidade, payload_json, created_by)
+             VALUES (:origem, :destino, :tipo, :quantidade, :unidade, :payload, :created_by)'
+        );
+        $insert->execute([
+            'origem' => (int) $origem['id'],
+            'destino' => (int) $destino['id'],
+            'tipo' => (string) ($data['tipo'] ?? 'insumo'),
+            'quantidade' => $data['quantidade'] ?? null,
+            'unidade' => $data['unidade'] ?? null,
+            'payload' => $this->encodeJson($data['payload'] ?? []),
+            'created_by' => $userId,
+        ]);
+
+        return true;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function verifyCode(string $code): ?array
+    {
+        $lot = $this->fetchOne(
+            'SELECT id, tipo, codigo_publico, status, created_at
+             FROM rastreabilidade_lotes WHERE codigo_publico = :codigo LIMIT 1',
+            ['codigo' => $code]
+        );
+        if ($lot === null) {
+            return null;
+        }
+
+        $count = $this->fetchOne(
+            'SELECT COUNT(*) AS total FROM rastreabilidade_eventos WHERE lote_id = :id',
+            ['id' => (int) $lot['id']]
+        );
+
+        return [
+            'codigo' => $lot['codigo_publico'],
+            'tipo' => $lot['tipo'],
+            'status' => $lot['status'],
+            'eventos' => (int) ($count['total'] ?? 0),
+            'criado_em' => $lot['created_at'],
+        ];
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function insertLot(
+        string $uuid,
+        string $type,
+        string $referenceTable,
+        int $referenceId,
+        string $code,
+        ?int $associadoId,
+        ?int $propertyId,
+        array $payload,
+        int $userId,
+    ): int {
+        $insert = $this->pdo->prepare(
+            'INSERT INTO rastreabilidade_lotes
+                (uuid, tipo, referencia_tabela, referencia_id, codigo_publico,
+                 associado_id, propriedade_id, status, payload_json, created_by)
+             VALUES (:uuid, :tipo, :ref_tabela, :ref_id, :codigo,
+                     :associado_id, :propriedade_id, :status, :payload, :created_by)'
+        );
+        $insert->execute([
+            'uuid' => $uuid,
+            'tipo' => $type,
+            'ref_tabela' => $referenceTable,
+            'ref_id' => $referenceId,
+            'codigo' => $code,
+            'associado_id' => $associadoId,
+            'propriedade_id' => $propertyId,
+            'status' => 'ativo',
+            'payload' => $this->encodeJson($payload),
+            'created_by' => $userId,
+        ]);
+
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    /** @param array<string, mixed> $data */
+    private function insertEvent(int $lotId, array $data, int $userId): void
+    {
+        $insert = $this->pdo->prepare(
+            'INSERT INTO rastreabilidade_eventos
+                (lote_id, tipo, data_evento, local, descricao, payload_json, usuario_id)
+             VALUES (:lote_id, :tipo, :data_evento, :local, :descricao, :payload, :usuario_id)'
+        );
+        $dataEvento = (string) ($data['data_evento'] ?? date('Y-m-d H:i:s'));
+        $timestamp = strtotime($dataEvento);
+        if ($timestamp === false) {
+            $timestamp = time();
+        }
+
+        $insert->execute([
+            'lote_id' => $lotId,
+            'tipo' => mb_substr((string) ($data['tipo'] ?? 'evento'), 0, 40),
+            'data_evento' => date('Y-m-d H:i:s', $timestamp),
+            'local' => isset($data['local']) ? mb_substr((string) $data['local'], 0, 255) : null,
+            'descricao' => isset($data['descricao']) ? mb_substr((string) $data['descricao'], 0, 500) : null,
+            'payload' => $this->encodeJson($data['payload'] ?? []),
+            'usuario_id' => $userId,
+        ]);
+    }
+
+    /** @param mixed $value */
+    private function encodeJson(mixed $value): string
+    {
+        $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return $json === false ? '{}' : $json;
+    }
+
+    /**
+     * @param mixed $value
+     * @return array<string, mixed>
+     */
+    private function decodeJson(mixed $value): array
+    {
+        if (!is_string($value) || $value === '') {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function uuid(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+        $hex = bin2hex($bytes);
+
+        return sprintf(
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12)
+        );
+    }
+
+    private function code(): string
+    {
+        return 'LOTE-' . strtoupper(bin2hex(random_bytes(6)));
+    }
+}

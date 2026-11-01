@@ -74,6 +74,7 @@ final class Request
         array $query = [],
         array $headers = [],
         ?string $requestId = null,
+        string $body = '',
     ): self {
         $normalized = '/' . trim($path, '/');
         if ($normalized === '/') {
@@ -86,6 +87,7 @@ final class Request
             $query,
             $headers,
             $requestId ?? self::resolveRequestId($headers),
+            $body,
         );
     }
 
@@ -103,6 +105,18 @@ final class Request
     public function query(string $key, mixed $default = null): mixed
     {
         return $this->query[$key] ?? $default;
+    }
+
+    /** @return array<string, mixed> */
+    public function json(): array
+    {
+        if ($this->body === '') {
+            return [];
+        }
+
+        $decoded = json_decode($this->body, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /** @param array<string, string> $headers */

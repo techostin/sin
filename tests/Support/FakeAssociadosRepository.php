@@ -17,6 +17,26 @@ final class FakeAssociadosRepository implements AssociadosRepositoryInterface
     {
     }
 
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function create(array $data): array
+    {
+        return array_merge([
+            'uuid' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            'nome' => $data['nome'] ?? '',
+            'sobrenome' => $data['sobrenome'] ?? '',
+            'cpf' => $data['cpf'] ?? null,
+            'email' => $data['email'] ?? null,
+            'status' => 'pendente',
+            'associacao_id' => $data['associacao_id'] ?? null,
+            'microrregiao_id' => $data['microrregiao_id'] ?? null,
+        ], $data);
+    }
+
+    public function approve(string $uuid): bool
+    {
+        return $uuid === '123e4567-e89b-12d3-a456-426614174000';
+    }
+
     /** @return array{items: list<array<string, mixed>>, total: int} */
     public function paginate(int $page, int $perPage, ?string $status, ?string $q): array
     {

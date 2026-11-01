@@ -75,6 +75,51 @@ final class AssociadosControllerTest extends TestCase
         self::assertStringContainsString('"email_mascarado":"p***@example.test"', $response->body);
     }
 
+    public function testStoreCreatesPendingAssociate(): void
+    {
+        $controller = new AssociadosController(new FakeAssociadosRepository());
+        $response = $controller->store(Request::create(
+            'POST',
+            '/associados',
+            [],
+            [],
+            null,
+            '{"nome":"Maria","sobrenome":"Teste","email":"maria@example.test"}'
+        ));
+
+        self::assertSame(201, $response->status);
+        self::assertStringContainsString('"status":"pendente"', $response->body);
+    }
+
+    public function testStoreRejectsInvalidEmailAndMissingNames(): void
+    {
+        $controller = new AssociadosController(new FakeAssociadosRepository());
+
+        $invalidEmail = $controller->store(Request::create(
+            'POST',
+            '/associados',
+            [],
+            [],
+            null,
+            '{"nome":"Maria","sobrenome":"Teste","email":"invalido"}'
+        ));
+        self::assertSame(400, $invalidEmail->status);
+
+        $missing = $controller->store(Request::create('POST', '/associados', [], [], null, '{}'));
+        self::assertSame(400, $missing->status);
+    }
+
+    public function testApprove(): void
+    {
+        $controller = new AssociadosController(new FakeAssociadosRepository());
+
+        self::assertSame(200, $controller->approve(Request::create('POST', '/x'), self::UUID)->status);
+        self::assertSame(404, $controller->approve(
+            Request::create('POST', '/x'),
+            'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+        )->status);
+    }
+
     /** @return array<string, mixed> */
     private function row(): array
     {
