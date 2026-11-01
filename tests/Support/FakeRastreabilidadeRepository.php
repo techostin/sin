@@ -48,7 +48,16 @@ final class FakeRastreabilidadeRepository implements RastreabilidadeRepositoryIn
         $this->lastUuid = $uuid;
 
         if ($uuid === '11111111-1111-4111-8111-111111111111') {
-            return ['uuid' => $uuid, 'tipo' => 'vegetal', 'eventos' => [], 'elos' => []];
+            return [
+                'uuid' => $uuid,
+                'tipo' => 'vegetal',
+                'codigo_publico' => 'LOTE-ABC123',
+                'associado_id' => 7,
+                'associado_associacao_id' => 1,
+                'status' => 'ativo',
+                'eventos' => [['tipo' => 'colheita']],
+                'elos' => [],
+            ];
         }
 
         return null;

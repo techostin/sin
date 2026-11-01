@@ -11,7 +11,7 @@ use Throwable;
 /**
  * Numeração sequencial por tipo/ano, com transação e bloqueio no MySQL.
  */
-final class DocumentNumberGenerator
+final class DocumentNumberGenerator implements DocumentNumberGeneratorInterface
 {
     public function __construct(private readonly PDO $pdo)
     {

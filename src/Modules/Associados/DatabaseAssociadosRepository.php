@@ -58,9 +58,18 @@ final class DatabaseAssociadosRepository extends Repository implements Associado
         return $statement->rowCount() > 0;
     }
 
-    /** @return array{items: list<array<string, mixed>>, total: int} */
-    public function paginate(int $page, int $perPage, ?string $status, ?string $q): array
-    {
+    /**
+     * @param list<int> $associationIds
+     * @return array{items: list<array<string, mixed>>, total: int}
+     */
+    public function paginate(
+        int $page,
+        int $perPage,
+        ?string $status,
+        ?string $q,
+        ?int $associadoId = null,
+        array $associationIds = [],
+    ): array {
         $where = ['1 = 1'];
         $params = [];
 
@@ -72,6 +81,18 @@ final class DatabaseAssociadosRepository extends Repository implements Associado
             $where[] = "(CONCAT(a.nome, ' ', a.sobrenome) LIKE :q_nome OR a.email LIKE :q_email)";
             $params['q_nome'] = '%' . $q . '%';
             $params['q_email'] = '%' . $q . '%';
+        }
+        if ($associadoId !== null) {
+            $where[] = 'a.id = :associado_id';
+            $params['associado_id'] = $associadoId;
+        } elseif ($associationIds !== []) {
+            $placeholders = [];
+            foreach ($associationIds as $index => $associationId) {
+                $key = 'assoc_' . $index;
+                $placeholders[] = ':' . $key;
+                $params[$key] = $associationId;
+            }
+            $where[] = 'a.associacao_id IN (' . implode(', ', $placeholders) . ')';
         }
 
         $whereSql = implode(' AND ', $where);

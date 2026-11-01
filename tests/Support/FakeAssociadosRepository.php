@@ -38,8 +38,14 @@ final class FakeAssociadosRepository implements AssociadosRepositoryInterface
     }
 
     /** @return array{items: list<array<string, mixed>>, total: int} */
-    public function paginate(int $page, int $perPage, ?string $status, ?string $q): array
-    {
+    public function paginate(
+        int $page,
+        int $perPage,
+        ?string $status,
+        ?string $q,
+        ?int $associadoId = null,
+        array $associationIds = [],
+    ): array {
         $this->lastStatus = $status;
         $this->lastQ = $q;
         $this->lastPerPage = $perPage;

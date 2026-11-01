@@ -155,7 +155,13 @@ final class DatabaseRastreabilidadeRepository extends Repository implements Rast
     /** @return array<string, mixed>|null */
     public function findByUuid(string $uuid): ?array
     {
-        $lot = $this->fetchOne('SELECT * FROM rastreabilidade_lotes WHERE uuid = :uuid LIMIT 1', ['uuid' => $uuid]);
+        $lot = $this->fetchOne(
+            'SELECT rl.*, a.associacao_id AS associado_associacao_id
+             FROM rastreabilidade_lotes rl
+             LEFT JOIN associados a ON a.id = rl.associado_id
+             WHERE rl.uuid = :uuid LIMIT 1',
+            ['uuid' => $uuid]
+        );
         if ($lot === null) {
             return null;
         }

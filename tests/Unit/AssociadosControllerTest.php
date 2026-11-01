@@ -75,6 +75,49 @@ final class AssociadosControllerTest extends TestCase
         self::assertStringContainsString('"email_mascarado":"p***@example.test"', $response->body);
     }
 
+    public function testProducerCannotSeeAnotherAssociate(): void
+    {
+        $controller = new AssociadosController(new FakeAssociadosRepository([$this->row()]));
+        $producer = new \App\Tests\Support\ContextoUsuarioFake(
+            ['produtor'],
+            99,
+            null,
+            [],
+            [],
+            'Outro Produtor',
+            ['associados.read']
+        );
+
+        $response = $controller->show(Request::create('GET', '/x'), self::UUID, $producer);
+        self::assertSame(404, $response->status);
+    }
+
+    public function testAssociationScopeAllowsOnlyItsAssociation(): void
+    {
+        $controller = new AssociadosController(new FakeAssociadosRepository([$this->row()]));
+        $allowed = new \App\Tests\Support\ContextoUsuarioFake(
+            ['gestor_associacao'],
+            null,
+            null,
+            [1],
+            [],
+            'Gestor',
+            ['associados.read']
+        );
+        $denied = new \App\Tests\Support\ContextoUsuarioFake(
+            ['gestor_associacao'],
+            null,
+            null,
+            [2],
+            [],
+            'Gestor',
+            ['associados.read']
+        );
+
+        self::assertSame(200, $controller->show(Request::create('GET', '/x'), self::UUID, $allowed)->status);
+        self::assertSame(404, $controller->show(Request::create('GET', '/x'), self::UUID, $denied)->status);
+    }
+
     public function testStoreCreatesPendingAssociate(): void
     {
         $controller = new AssociadosController(new FakeAssociadosRepository());
@@ -124,6 +167,7 @@ final class AssociadosControllerTest extends TestCase
     private function row(): array
     {
         return [
+            'id' => 7,
             'uuid' => self::UUID,
             'nome' => 'Maria',
             'sobrenome' => 'Teste',

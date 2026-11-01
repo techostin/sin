@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Kernel\Container;
 use App\Kernel\Contracts\ContextoUsuario;
+use App\Kernel\Documents\DocumentNumberGenerator;
+use App\Kernel\Audit\DatabaseAuditLogger;
 use App\Kernel\Http\Request;
 use App\Kernel\Http\Response;
 use App\Kernel\Http\Router;
@@ -11,6 +12,9 @@ use App\Kernel\Persistence\Connection;
 use App\Kernel\Support\Logger;
 use App\Modules\Associados\AssociadosController;
 use App\Modules\Associados\DatabaseAssociadosRepository;
+use App\Modules\Fiscalizacao\DatabaseFiscalizacaoRepository;
+use App\Modules\Fiscalizacao\FiscalizacaoController;
+use App\Modules\Fiscalizacao\FiscalizacaoService;
 use App\Modules\Health\HealthController;
 use App\Modules\Identidade\CapabilityService;
 use App\Modules\Identidade\DatabaseIdentityRepository;
@@ -20,6 +24,7 @@ use App\Modules\Rastreabilidade\DatabaseRastreabilidadeRepository;
 use App\Modules\Rastreabilidade\RastreabilidadeController;
 use App\Modules\Territorio\DatabaseTerritorioRepository;
 use App\Modules\Territorio\TerritorioController;
+use App\Kernel\Container;
 
 /**
  * Registro de rotas da API v1. Cada módulo adiciona seu próprio arquivo em routes/.
@@ -77,15 +82,15 @@ return static function (Router $router, Container $container): void {
 
     $router->get('/associados', static function (Request $request) use ($guard, $associados): Response {
         $context = $guard($request, 'associados', 'read');
-        return $context instanceof Response ? $context : $associados()->list($request);
+        return $context instanceof Response ? $context : $associados()->list($request, $context);
     });
     $router->get('/associados/pendentes', static function (Request $request) use ($guard, $associados): Response {
         $context = $guard($request, 'associados', 'read');
-        return $context instanceof Response ? $context : $associados()->pending($request);
+        return $context instanceof Response ? $context : $associados()->pending($request, $context);
     });
     $router->get('/associados/{uuid}', static function (Request $request, array $params) use ($guard, $associados): Response {
         $context = $guard($request, 'associados', 'read');
-        return $context instanceof Response ? $context : $associados()->show($request, $params['uuid'] ?? '');
+        return $context instanceof Response ? $context : $associados()->show($request, $params['uuid'] ?? '', $context);
     });
     $router->post('/associados', static function (Request $request) use ($guard, $associados): Response {
         $context = $guard($request, 'associados', 'write');
@@ -110,7 +115,7 @@ return static function (Router $router, Container $container): void {
     });
     $router->get('/rastreabilidade/lotes/{uuid}', static function (Request $request, array $params) use ($guard, $rastreabilidade): Response {
         $context = $guard($request, 'caderno', 'read');
-        return $context instanceof Response ? $context : $rastreabilidade()->show($request, $params['uuid'] ?? '');
+        return $context instanceof Response ? $context : $rastreabilidade()->show($request, $params['uuid'] ?? '', $context);
     });
     $router->post('/rastreabilidade/lotes/{uuid}/eventos', static function (Request $request, array $params) use ($guard, $rastreabilidade): Response {
         $context = $guard($request, 'caderno', 'write');
@@ -122,5 +127,46 @@ return static function (Router $router, Container $container): void {
     });
     $router->get('/rastreabilidade/verificar/{codigo}', static function (Request $request, array $params) use ($rastreabilidade): Response {
         return $rastreabilidade()->verify($request, $params['codigo'] ?? '');
+    });
+
+    $fiscalizacao = static fn (): FiscalizacaoController => new FiscalizacaoController(
+        new FiscalizacaoService(
+            new DatabaseFiscalizacaoRepository(Connection::pdo()),
+            new DatabaseRastreabilidadeRepository(Connection::pdo()),
+            new DocumentNumberGenerator(Connection::pdo()),
+            new DatabaseAuditLogger(Connection::pdo())
+        )
+    );
+
+    $router->get('/fiscalizacao/visitas', static function (Request $request) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'read');
+        return $context instanceof Response ? $context : $fiscalizacao()->list($request, $context);
+    });
+    $router->post('/fiscalizacao/visitas', static function (Request $request) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'write');
+        return $context instanceof Response ? $context : $fiscalizacao()->create($request, $context);
+    });
+    $router->get('/fiscalizacao/visitas/{uuid}', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'read');
+        return $context instanceof Response ? $context : $fiscalizacao()->show($request, $params['uuid'] ?? '', $context);
+    });
+    $router->post('/fiscalizacao/visitas/{uuid}/nao-conformidades', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'write');
+        return $context instanceof Response ? $context : $fiscalizacao()->addNonConformity($request, $params['uuid'] ?? '', $context);
+    });
+    $router->post('/fiscalizacao/visitas/{uuid}/status', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'write');
+        return $context instanceof Response ? $context : $fiscalizacao()->status($request, $params['uuid'] ?? '', $context);
+    });
+    $router->post('/fiscalizacao/visitas/{uuid}/revisar', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'review');
+        return $context instanceof Response ? $context : $fiscalizacao()->review($request, $params['uuid'] ?? '', $context);
+    });
+    $router->post('/fiscalizacao/visitas/{uuid}/certificado', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'certificate');
+        return $context instanceof Response ? $context : $fiscalizacao()->certificate($request, $params['uuid'] ?? '', $context);
+    });
+    $router->get('/documentos/verificar/{numero}', static function (Request $request, array $params) use ($fiscalizacao): Response {
+        return $fiscalizacao()->verify($request, $params['numero'] ?? '');
     });
 };

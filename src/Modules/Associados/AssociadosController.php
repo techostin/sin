@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Associados;
 
+use App\Kernel\Contracts\ContextoUsuario;
 use App\Kernel\Http\Request;
 use App\Kernel\Http\Response;
+use App\Kernel\Security\AccessScope;
 
 /**
  * D1 - fatia A (somente leitura). Sem rota publica nesta fase: a exposicao
@@ -19,7 +21,7 @@ final class AssociadosController
     {
     }
 
-    public function list(Request $request): Response
+    public function list(Request $request, ?ContextoUsuario $context = null): Response
     {
         $page = $this->positiveInt($request->query('page'), 1);
         $perPage = min(100, $this->positiveInt($request->query('per_page'), 25));
@@ -28,7 +30,8 @@ final class AssociadosController
         $q = $request->query('q');
         $q = is_string($q) ? trim($q) : null;
 
-        $result = $this->repository->paginate($page, $perPage, $status, $q);
+        [$associadoId, $associationIds] = $this->scopeFilters($context);
+        $result = $this->repository->paginate($page, $perPage, $status, $q, $associadoId, $associationIds);
         $items = array_map(fn (array $row): array => $this->present($row), $result['items']);
 
         return Response::json($items, 200, [
@@ -39,11 +42,12 @@ final class AssociadosController
         ]);
     }
 
-    public function pending(Request $request): Response
+    public function pending(Request $request, ?ContextoUsuario $context = null): Response
     {
         $page = $this->positiveInt($request->query('page'), 1);
         $perPage = min(100, $this->positiveInt($request->query('per_page'), 25));
-        $result = $this->repository->paginate($page, $perPage, 'pendente', null);
+        [$associadoId, $associationIds] = $this->scopeFilters($context);
+        $result = $this->repository->paginate($page, $perPage, 'pendente', null, $associadoId, $associationIds);
         $items = array_map(fn (array $row): array => $this->present($row), $result['items']);
 
         return Response::json($items, 200, [
@@ -54,7 +58,7 @@ final class AssociadosController
         ]);
     }
 
-    public function show(Request $request, string $uuid): Response
+    public function show(Request $request, string $uuid, ?ContextoUsuario $context = null): Response
     {
         if (preg_match('/^[0-9a-fA-F-]{36}$/', $uuid) !== 1) {
             return Response::error('VALIDACAO', 'uuid invalido.', 400, $request->requestId);
@@ -62,6 +66,10 @@ final class AssociadosController
 
         $row = $this->repository->findByUuid($uuid);
         if ($row === null) {
+            return Response::error('NAO_ENCONTRADO', 'Associado nao encontrado.', 404, $request->requestId);
+        }
+
+        if ($context !== null && !$this->canAccess($row, $context)) {
             return Response::error('NAO_ENCONTRADO', 'Associado nao encontrado.', 404, $request->requestId);
         }
 
@@ -110,6 +118,35 @@ final class AssociadosController
         }
 
         return Response::json(['uuid' => $uuid, 'status' => 'ativo'], 200, ['requestId' => $request->requestId]);
+    }
+
+    /**
+     * @return array{0: ?int, 1: list<int>}
+     */
+    private function scopeFilters(?ContextoUsuario $context): array
+    {
+        if ($context === null) {
+            return [null, []];
+        }
+
+        $scope = AccessScope::fromContext($context);
+        if ($scope->isGlobal()) {
+            return [null, []];
+        }
+        if ($scope->associadoId() !== null) {
+            return [$scope->associadoId(), []];
+        }
+
+        return [null, $scope->associationIds()];
+    }
+
+    /** @param array<string, mixed> $row */
+    private function canAccess(array $row, ContextoUsuario $context): bool
+    {
+        return AccessScope::fromContext($context)->allowsAssociado(
+            isset($row['id']) ? (int) $row['id'] : null,
+            isset($row['associacao_id']) ? (int) $row['associacao_id'] : null
+        );
     }
 
     /**

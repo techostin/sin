@@ -7,6 +7,7 @@ namespace App\Modules\Rastreabilidade;
 use App\Kernel\Contracts\ContextoUsuario;
 use App\Kernel\Http\Request;
 use App\Kernel\Http\Response;
+use App\Kernel\Security\AccessScope;
 use InvalidArgumentException;
 use Throwable;
 
@@ -65,14 +66,14 @@ final class RastreabilidadeController
         return Response::json($lot, 201, ['requestId' => $request->requestId]);
     }
 
-    public function show(Request $request, string $uuid): Response
+    public function show(Request $request, string $uuid, ?ContextoUsuario $context = null): Response
     {
         if (preg_match('/^[0-9a-fA-F-]{36}$/', $uuid) !== 1) {
             return $this->invalid($request, 'uuid invalido.');
         }
 
         $lot = $this->repository->findByUuid($uuid);
-        if ($lot === null) {
+        if ($lot === null || ($context !== null && !$this->canAccessLot($lot, $context))) {
             return $this->notFound($request);
         }
 
@@ -81,6 +82,11 @@ final class RastreabilidadeController
 
     public function addEvent(Request $request, string $uuid, ContextoUsuario $context): Response
     {
+        $lot = $this->repository->findByUuid($uuid);
+        if ($lot === null || !$this->canAccessLot($lot, $context)) {
+            return $this->notFound($request);
+        }
+
         $data = $request->json();
         if (!isset($data['tipo']) || !is_string($data['tipo']) || trim($data['tipo']) === '') {
             return $this->invalid($request, 'Campo obrigatorio: tipo.');
@@ -99,6 +105,11 @@ final class RastreabilidadeController
 
     public function addLink(Request $request, string $uuid, ContextoUsuario $context): Response
     {
+        $lot = $this->repository->findByUuid($uuid);
+        if ($lot === null || !$this->canAccessLot($lot, $context)) {
+            return $this->notFound($request);
+        }
+
         $data = $request->json();
         $destino = $data['destino_uuid'] ?? null;
         if (!is_string($destino) || preg_match('/^[0-9a-fA-F-]{36}$/', $destino) !== 1) {
@@ -146,6 +157,15 @@ final class RastreabilidadeController
     private function invalid(Request $request, string $message): Response
     {
         return Response::error('VALIDACAO', $message, 400, $request->requestId);
+    }
+
+    /** @param array<string, mixed> $lot */
+    private function canAccessLot(array $lot, ContextoUsuario $context): bool
+    {
+        return AccessScope::fromContext($context)->allowsAssociado(
+            isset($lot['associado_id']) ? (int) $lot['associado_id'] : null,
+            isset($lot['associado_associacao_id']) ? (int) $lot['associado_associacao_id'] : null
+        );
     }
 
     private function notFound(Request $request): Response

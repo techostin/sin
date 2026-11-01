@@ -68,4 +68,36 @@ final class RastreabilidadeControllerTest extends TestCase
         self::assertSame(200, $controller->verify(Request::create('GET', '/x'), 'LOTE-ABC123')->status);
         self::assertSame(404, $controller->verify(Request::create('GET', '/x'), 'LOTE-ZZZ999')->status);
     }
+
+    public function testProducerCannotReadAnotherLot(): void
+    {
+        $controller = new RastreabilidadeController(new FakeRastreabilidadeRepository());
+        $producer = new ContextoUsuarioFake(['produtor'], 99, null, [], [], 'Outro', ['caderno.read']);
+
+        $response = $controller->show(
+            Request::create('GET', '/x'),
+            '11111111-1111-4111-8111-111111111111',
+            $producer
+        );
+
+        self::assertSame(404, $response->status);
+    }
+
+    public function testOwnerAndAssociationCanReadLot(): void
+    {
+        $controller = new RastreabilidadeController(new FakeRastreabilidadeRepository());
+        $owner = new ContextoUsuarioFake(['produtor'], 7, null, [], [], 'Dono', ['caderno.read']);
+        $association = new ContextoUsuarioFake(['gestor_associacao'], null, null, [1], [], 'Gestor', ['caderno.read']);
+
+        self::assertSame(200, $controller->show(
+            Request::create('GET', '/x'),
+            '11111111-1111-4111-8111-111111111111',
+            $owner
+        )->status);
+        self::assertSame(200, $controller->show(
+            Request::create('GET', '/x'),
+            '11111111-1111-4111-8111-111111111111',
+            $association
+        )->status);
+    }
 }
