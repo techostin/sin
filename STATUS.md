@@ -40,11 +40,11 @@
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
 | 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 69 testes, 0 erros |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 72 testes, 0 erros |
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`), **`onda3-e2e`** (`91a8a0e`), **`onda4-d5-d6`** (`20d6abb`), **`onda4-animais`** (`bd7b4c6`) e **`onda4-d6-completo`** (`7699553`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`), **`onda3-e2e`** (`91a8a0e`), **`onda4-d5-d6`** (`20d6abb`), **`onda4-animais`** (`bd7b4c6`), **`onda4-d6-completo`** (`7699553`) e **`onda4-d7-d8-d4`** (`7bf19d1`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
 - **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
@@ -110,20 +110,22 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 | Módulo | Entrega | Status |
 |---|---|---|
 | **D5** | lote animal + T1 + evento de entrada | ✅ |
-| **D5** | animal individual + evento sanitário | ✅ |
-| **D6** | receita + ingredientes + ordem + vínculo de lotes no T1 | ✅ |
-| Animais individuais/sanidade | animal individual + evento sanitário | ✅ |
-| Ordem/receita/balanço de massa | receita/ordem/vínculo; higienização/perdas finas depois | ✅ core |
+| **D5** | animal individual + sanidade + reprodução + movimentação | ✅ |
+| **D6** | transformação + receita/ordem + higienização | ✅ core |
+| **D7** | insumo legado + lote T1 | ✅ core |
+| **D8** | eventos e assembleias | ✅ core |
+| **D4** | mensalidades e baixa de pagamento | ✅ core |
 
-- Relatório: [EXECUCAO-ONDA4-D5-D6.md](docs/v5/EXECUCAO-ONDA4-D5-D6.md).
-- E2E real: lote animal `LOTE-067C2B89FB8D` + transformação para lote vegetal; dados limpos.
-- Staging sincronizado em `7699553`.
+- Relatório: [EXECUCAO-ONDA4-D5-D6.md](docs/v5/EXECUCAO-ONDA4-D5-D6.md) e
+  [EXECUCAO-ONDA4-FINAL.md](docs/v5/EXECUCAO-ONDA4-FINAL.md).
+- E2E real de D5/D6/D7/D8/D4; dados limpos.
+- Staging sincronizado em `7bf19d1`.
 
 ## Próximo passo
 
-1. Completar **D5**: reprodução e movimentação.
-2. Completar **D6**: higienização, perdas finas e rótulo.
-3. Avançar **D7/D8/D4** e fechar UI/E2E por persona.
+1. Completar D7/D8/D4 (listagens, votos/presença, planos/caixa).
+2. **Onda 5:** L1 relatórios e L2 UI/dashboards por persona.
+3. E2E autenticado por persona e integração do menu/capabilities.
 4. Fechar **Resend/logs/LGPD**, fiscais/especialista, deploy de produção e push.
 
 ## Regras de ouro durante o congelamento
