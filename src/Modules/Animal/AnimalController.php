@@ -90,6 +90,46 @@ final class AnimalController
         return Response::json($event, 201, ['requestId' => $request->requestId]);
     }
 
+    public function reproduction(Request $request, string $uuid, int $animalId, ContextoUsuario $context): Response
+    {
+        if (!$this->canAccessLot($uuid, $context)) {
+            return $this->notFound($request);
+        }
+
+        $data = $request->json();
+        $tipos = ['COBERTURA', 'INSEMINACAO', 'PARTO', 'NASCIMENTO', 'DESMAME'];
+        if (!isset($data['tipo_evento']) || !in_array($data['tipo_evento'], $tipos, true)) {
+            return $this->invalid($request, 'tipo_evento invalido.');
+        }
+
+        $event = $this->repository->addReproductionEvent($uuid, $animalId, $data, (int) $context->userId());
+        if ($event === null) {
+            return $this->notFound($request);
+        }
+
+        return Response::json($event, 201, ['requestId' => $request->requestId]);
+    }
+
+    public function movement(Request $request, string $uuid, int $animalId, ContextoUsuario $context): Response
+    {
+        if (!$this->canAccessLot($uuid, $context)) {
+            return $this->notFound($request);
+        }
+
+        $data = $request->json();
+        $tipos = ['ENTRADA', 'SAIDA', 'TRANSFERENCIA', 'OBITO'];
+        if (!isset($data['tipo']) || !in_array($data['tipo'], $tipos, true)) {
+            return $this->invalid($request, 'tipo de movimentacao invalido.');
+        }
+
+        $movement = $this->repository->addAnimalMovement($uuid, $animalId, $data, (int) $context->userId());
+        if ($movement === null) {
+            return $this->notFound($request);
+        }
+
+        return Response::json($movement, 201, ['requestId' => $request->requestId]);
+    }
+
     private function canAccessLot(string $uuid, ContextoUsuario $context): bool
     {
         $lot = $this->repository->findByUuid($uuid);

@@ -72,6 +72,42 @@ interface RastreabilidadeRepositoryInterface
     public function addSanitaryEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array;
 
     /**
+     * @param array{tipo_evento: string, data_evento: string, observacoes?: string} $data
+     * @return array<string, mixed>|null
+     */
+    public function addReproductionEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array;
+
+    /**
+     * @param array{tipo: string, data_movimentacao: string, destino?: string, observacoes?: string} $data
+     * @return array<string, mixed>|null
+     */
+    public function addAnimalMovement(string $lotUuid, int $animalId, array $data, int $userId): ?array;
+
+    /**
+     * @param array{
+     *   data_hora_inicio: string,
+     *   equipamento_linha: string,
+     *   sanitizante_utilizado: string,
+     *   responsavel_nome: string
+     * } $data
+     * @return array<string, mixed>|null
+     */
+    public function addHygiene(string $orderLotUuid, array $data, int $userId): ?array;
+
+    /**
+     * @param array{
+     *   nome: string,
+     *   fornecedor_id?: int,
+     *   lote?: string,
+     *   data_validade?: string,
+     *   quantidade_estoque?: int|float|string,
+     *   associado_id?: int|null
+     * } $data
+     * @return array<string, mixed>
+     */
+    public function createLegacyInputLot(array $data, int $userId): array;
+
+    /**
      * @param array{
      *   nome_produto_final: string,
      *   percentual_organico_calculado: float|int|string,

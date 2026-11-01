@@ -57,6 +57,37 @@ final class FakeRastreabilidadeRepository implements RastreabilidadeRepositoryIn
         return ['id' => 20, 'animal_id' => $animalId, 'tipo_tratamento' => $data['tipo_tratamento'] ?? ''];
     }
 
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addReproductionEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array
+    {
+        return ['id' => 21, 'animal_id' => $animalId, 'tipo_evento' => $data['tipo_evento'] ?? ''];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addAnimalMovement(string $lotUuid, int $animalId, array $data, int $userId): ?array
+    {
+        return ['id' => 22, 'animal_id' => $animalId, 'tipo' => $data['tipo'] ?? ''];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addHygiene(string $orderLotUuid, array $data, int $userId): ?array
+    {
+        return ['id' => 23, 'equipamento_linha' => $data['equipamento_linha'] ?? ''];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createLegacyInputLot(array $data, int $userId): array
+    {
+        return [
+            'uuid' => '55555555-5555-4555-8555-555555555555',
+            'tipo' => 'insumo',
+            'codigo_publico' => 'LOTE-INS999',
+            'status' => 'ativo',
+            'eventos' => [],
+            'elos' => [],
+        ];
+    }
+
     /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createRecipe(array $data, int $userId): array
     {

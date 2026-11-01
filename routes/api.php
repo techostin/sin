@@ -19,6 +19,10 @@ use App\Modules\Associados\DatabaseAssociadosRepository;
 use App\Modules\Fiscalizacao\DatabaseFiscalizacaoRepository;
 use App\Modules\Fiscalizacao\FiscalizacaoController;
 use App\Modules\Fiscalizacao\FiscalizacaoService;
+use App\Modules\Financeiro\DatabaseFinanceiroRepository;
+use App\Modules\Financeiro\FinanceiroController;
+use App\Modules\Governanca\DatabaseGovernancaRepository;
+use App\Modules\Governanca\GovernancaController;
 use App\Modules\Health\HealthController;
 use App\Modules\Identidade\CapabilityService;
 use App\Modules\Identidade\DatabaseIdentityRepository;
@@ -116,6 +120,16 @@ return static function (Router $router, Container $container): void {
     $router->post('/insumos/lotes', static function (Request $request) use ($guard, $rastreabilidade): Response {
         $context = $guard($request, 'caderno', 'write');
         return $context instanceof Response ? $context : $rastreabilidade()->createInsumo($request, $context);
+    });
+    $router->post('/insumos', static function (Request $request) use ($guard, $rastreabilidade): Response {
+        $context = $guard($request, 'caderno', 'write');
+        if ($context instanceof Response) {
+            return $context;
+        }
+        $insumo = new \App\Modules\Insumos\InsumoController(
+            new DatabaseRastreabilidadeRepository(Connection::pdo())
+        );
+        return $insumo->create($request, $context);
     });
     $router->get('/rastreabilidade/lotes/{uuid}', static function (Request $request, array $params) use ($guard, $rastreabilidade): Response {
         $context = $guard($request, 'caderno', 'read');
@@ -219,6 +233,16 @@ return static function (Router $router, Container $container): void {
         $animalId = isset($params['animalId']) && is_numeric($params['animalId']) ? (int) $params['animalId'] : 0;
         return $context instanceof Response ? $context : $animal()->sanitary($request, $params['uuid'] ?? '', $animalId, $context);
     });
+    $router->post('/animal/lotes/{uuid}/animais/{animalId}/reproducao', static function (Request $request, array $params) use ($guard, $animal): Response {
+        $context = $guard($request, 'caderno', 'write');
+        $animalId = isset($params['animalId']) && is_numeric($params['animalId']) ? (int) $params['animalId'] : 0;
+        return $context instanceof Response ? $context : $animal()->reproduction($request, $params['uuid'] ?? '', $animalId, $context);
+    });
+    $router->post('/animal/lotes/{uuid}/animais/{animalId}/movimentacao', static function (Request $request, array $params) use ($guard, $animal): Response {
+        $context = $guard($request, 'caderno', 'write');
+        $animalId = isset($params['animalId']) && is_numeric($params['animalId']) ? (int) $params['animalId'] : 0;
+        return $context instanceof Response ? $context : $animal()->movement($request, $params['uuid'] ?? '', $animalId, $context);
+    });
     $router->post('/agroindustria/transformacoes', static function (Request $request) use ($guard, $agroindustria): Response {
         $context = $guard($request, 'agroindustria', 'write');
         return $context instanceof Response ? $context : $agroindustria()->transform($request, $context);
@@ -230,5 +254,46 @@ return static function (Router $router, Container $container): void {
     $router->post('/agroindustria/ordens', static function (Request $request) use ($guard, $agroindustria): Response {
         $context = $guard($request, 'agroindustria', 'write');
         return $context instanceof Response ? $context : $agroindustria()->order($request, $context);
+    });
+    $router->post('/agroindustria/ordens/{uuid}/higienizacao', static function (Request $request, array $params) use ($guard, $agroindustria): Response {
+        $context = $guard($request, 'agroindustria', 'write');
+        return $context instanceof Response ? $context : $agroindustria()->hygiene($request, $params['uuid'] ?? '', $context);
+    });
+
+    $governanca = static fn (): GovernancaController => new GovernancaController(
+        new DatabaseGovernancaRepository(Connection::pdo())
+    );
+    $router->get('/governanca/eventos', static function (Request $request) use ($guard, $governanca): Response {
+        $context = $guard($request, 'governanca', 'read');
+        return $context instanceof Response ? $context : $governanca()->events($request);
+    });
+    $router->post('/governanca/eventos', static function (Request $request) use ($guard, $governanca): Response {
+        $context = $guard($request, 'governanca', 'write');
+        return $context instanceof Response ? $context : $governanca()->createEvent($request, $context);
+    });
+    $router->get('/governanca/assembleias', static function (Request $request) use ($guard, $governanca): Response {
+        $context = $guard($request, 'governanca', 'read');
+        return $context instanceof Response ? $context : $governanca()->assemblies($request);
+    });
+    $router->post('/governanca/assembleias', static function (Request $request) use ($guard, $governanca): Response {
+        $context = $guard($request, 'governanca', 'write');
+        return $context instanceof Response ? $context : $governanca()->createAssembly($request, $context);
+    });
+
+    $financeiro = static fn (): FinanceiroController => new FinanceiroController(
+        new DatabaseFinanceiroRepository(Connection::pdo())
+    );
+    $router->get('/financeiro/mensalidades', static function (Request $request) use ($guard, $financeiro): Response {
+        $context = $guard($request, 'financeiro', 'read');
+        return $context instanceof Response ? $context : $financeiro()->list($request, $context);
+    });
+    $router->post('/financeiro/mensalidades', static function (Request $request) use ($guard, $financeiro): Response {
+        $context = $guard($request, 'financeiro', 'write');
+        return $context instanceof Response ? $context : $financeiro()->create($request, $context);
+    });
+    $router->post('/financeiro/mensalidades/{id}/pagar', static function (Request $request, array $params) use ($guard, $financeiro): Response {
+        $context = $guard($request, 'financeiro', 'write');
+        $id = isset($params['id']) && is_numeric($params['id']) ? (int) $params['id'] : 0;
+        return $context instanceof Response ? $context : $financeiro()->pay($request, $id, $context);
     });
 };

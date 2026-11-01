@@ -266,6 +266,200 @@ final class DatabaseRastreabilidadeRepository extends Repository implements Rast
         return $this->fetchOne('SELECT * FROM controle_sanidade_animal WHERE id = :id LIMIT 1', ['id' => $sanitaryId]);
     }
 
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addReproductionEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array
+    {
+        $lot = $this->animalLot($lotUuid);
+        if ($lot === null || !$this->animalBelongsToLot($animalId, (int) $lot['referencia_id'])) {
+            return null;
+        }
+
+        $insert = $this->pdo->prepare(
+            'INSERT INTO controle_reproducao_animal
+                (associado_id, animal_id, tipo_evento, data_evento, observacoes, excluido, criado_por)
+             VALUES (:associado_id, :animal_id, :tipo, :data_evento, :observacoes, 0, :criado_por)'
+        );
+        $insert->execute([
+            'associado_id' => $lot['associado_id'] ?? null,
+            'animal_id' => $animalId,
+            'tipo' => (string) ($data['tipo_evento'] ?? 'COBERTURA'),
+            'data_evento' => (string) ($data['data_evento'] ?? date('Y-m-d')),
+            'observacoes' => $data['observacoes'] ?? null,
+            'criado_por' => $userId,
+        ]);
+        $id = (int) $this->pdo->lastInsertId();
+
+        $this->insertEvent((int) $lot['id'], [
+            'tipo' => 'reproducao',
+            'data_evento' => (string) ($data['data_evento'] ?? date('Y-m-d')),
+            'descricao' => 'Evento reprodutivo registrado.',
+            'payload' => ['animal_id' => $animalId, 'tipo' => $data['tipo_evento'] ?? ''],
+        ], $userId);
+
+        return $this->fetchOne('SELECT * FROM controle_reproducao_animal WHERE id = :id LIMIT 1', ['id' => $id]);
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addAnimalMovement(string $lotUuid, int $animalId, array $data, int $userId): ?array
+    {
+        $lot = $this->animalLot($lotUuid);
+        if ($lot === null || !$this->animalBelongsToLot($animalId, (int) $lot['referencia_id'])) {
+            return null;
+        }
+
+        $movUuid = $this->uuid();
+        $insert = $this->pdo->prepare(
+            'INSERT INTO animal_movimentacoes
+                (uuid, animal_id, lote_id, tipo, data_movimentacao, destino, observacoes, criado_por)
+             VALUES (:uuid, :animal_id, :lote_id, :tipo, :data_movimentacao, :destino, :observacoes, :criado_por)'
+        );
+        $insert->execute([
+            'uuid' => $movUuid,
+            'animal_id' => $animalId,
+            'lote_id' => (int) $lot['referencia_id'],
+            'tipo' => (string) ($data['tipo'] ?? 'TRANSFERENCIA'),
+            'data_movimentacao' => (string) ($data['data_movimentacao'] ?? date('Y-m-d')),
+            'destino' => $data['destino'] ?? null,
+            'observacoes' => $data['observacoes'] ?? null,
+            'criado_por' => $userId,
+        ]);
+
+        $this->insertEvent((int) $lot['id'], [
+            'tipo' => 'movimentacao',
+            'data_evento' => (string) ($data['data_movimentacao'] ?? date('Y-m-d')),
+            'descricao' => 'Movimentacao animal registrada.',
+            'payload' => ['animal_id' => $animalId, 'tipo' => $data['tipo'] ?? ''],
+        ], $userId);
+
+        return $this->fetchOne('SELECT * FROM animal_movimentacoes WHERE uuid = :uuid LIMIT 1', ['uuid' => $movUuid]);
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addHygiene(string $orderLotUuid, array $data, int $userId): ?array
+    {
+        $lot = $this->fetchOne(
+            "SELECT id FROM rastreabilidade_lotes WHERE uuid = :uuid AND tipo = 'agroindustria' LIMIT 1",
+            ['uuid' => $orderLotUuid]
+        );
+        if ($lot === null) {
+            return null;
+        }
+
+        $insert = $this->pdo->prepare(
+            'INSERT INTO controle_higienizacao
+                (data_hora_inicio, equipamento_linha, sanitizante_utilizado, responsavel_nome,
+                 associado_id, observacoes, excluido, criado_por)
+             VALUES (:inicio, :equipamento, :sanitizante, :responsavel, :associado_id, :observacoes, 0, :criado_por)'
+        );
+        $insert->execute([
+            'inicio' => (string) ($data['data_hora_inicio'] ?? date('Y-m-d H:i:s')),
+            'equipamento' => (string) ($data['equipamento_linha'] ?? ''),
+            'sanitizante' => (string) ($data['sanitizante_utilizado'] ?? ''),
+            'responsavel' => (string) ($data['responsavel_nome'] ?? ''),
+            'associado_id' => $data['associado_id'] ?? null,
+            'observacoes' => $data['observacoes'] ?? null,
+            'criado_por' => $userId,
+        ]);
+        $id = (int) $this->pdo->lastInsertId();
+
+        $this->insertEvent((int) $lot['id'], [
+            'tipo' => 'higienizacao',
+            'data_evento' => (string) ($data['data_hora_inicio'] ?? date('Y-m-d H:i:s')),
+            'descricao' => 'Higienizacao previa registrada.',
+            'payload' => ['higienizacao_id' => $id],
+        ], $userId);
+
+        return $this->fetchOne('SELECT * FROM controle_higienizacao WHERE id = :id LIMIT 1', ['id' => $id]);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function animalLot(string $uuid): ?array
+    {
+        return $this->fetchOne(
+            "SELECT id, referencia_id, associado_id FROM rastreabilidade_lotes
+             WHERE uuid = :uuid AND tipo = 'animal' LIMIT 1",
+            ['uuid' => $uuid]
+        );
+    }
+
+    private function animalBelongsToLot(int $animalId, int $lotId): bool
+    {
+        $animal = $this->fetchOne(
+            'SELECT id FROM animais WHERE id = :id AND lote_id = :lote AND excluido = 0 LIMIT 1',
+            ['id' => $animalId, 'lote' => $lotId]
+        );
+
+        return $animal !== null;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createLegacyInputLot(array $data, int $userId): array
+    {
+        $uuid = $this->uuid();
+        $code = $this->code();
+        $associadoId = isset($data['associado_id']) && is_numeric($data['associado_id'])
+            ? (int) $data['associado_id'] : null;
+        $payload = [
+            'nome' => (string) ($data['nome'] ?? ''),
+            'lote' => (string) ($data['lote'] ?? ''),
+            'fornecedor_id' => $data['fornecedor_id'] ?? null,
+        ];
+
+        $this->pdo->beginTransaction();
+        try {
+            $insert = $this->pdo->prepare(
+                'INSERT INTO insumos
+                    (uuid, associado_id, nome, fornecedor_id, lote, data_validade,
+                     quantidade_estoque, aprovado_organico, excluido)
+                 VALUES (:uuid, :associado_id, :nome, :fornecedor_id, :lote, :data_validade,
+                         :quantidade, 1, 0)'
+            );
+            $insert->execute([
+                'uuid' => $uuid,
+                'associado_id' => $associadoId,
+                'nome' => (string) ($data['nome'] ?? ''),
+                'fornecedor_id' => $data['fornecedor_id'] ?? null,
+                'lote' => $data['lote'] ?? null,
+                'data_validade' => $data['data_validade'] ?? null,
+                'quantidade' => $data['quantidade_estoque'] ?? 0,
+            ]);
+            $legacyId = (int) $this->pdo->lastInsertId();
+
+            $lotId = $this->insertLot(
+                $uuid,
+                'insumo',
+                'insumos',
+                $legacyId,
+                $code,
+                $associadoId,
+                null,
+                $payload,
+                $userId
+            );
+
+            $this->insertEvent($lotId, [
+                'tipo' => 'recebimento',
+                'data_evento' => date('Y-m-d H:i:s'),
+                'descricao' => 'Lote de insumo legado registrado.',
+                'payload' => $payload,
+            ], $userId);
+
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        $lot = $this->findByUuid($uuid);
+        if ($lot === null) {
+            throw new RuntimeException('Lote de insumo criado nao encontrado.');
+        }
+
+        return $lot;
+    }
+
     /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createRecipe(array $data, int $userId): array
     {

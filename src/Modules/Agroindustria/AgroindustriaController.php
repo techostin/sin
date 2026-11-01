@@ -109,6 +109,24 @@ final class AgroindustriaController
         return Response::json($order, 201, ['requestId' => $request->requestId]);
     }
 
+    public function hygiene(Request $request, string $uuid, ContextoUsuario $context): Response
+    {
+        $data = $request->json();
+        $required = ['data_hora_inicio', 'equipamento_linha', 'sanitizante_utilizado', 'responsavel_nome'];
+        foreach ($required as $field) {
+            if (!isset($data[$field]) || trim((string) $data[$field]) === '') {
+                return $this->invalid($request, 'Campo obrigatorio: ' . $field);
+            }
+        }
+
+        $hygiene = $this->repository->addHygiene($uuid, $data, (int) $context->userId());
+        if ($hygiene === null) {
+            return $this->invalid($request, 'Ordem agroindustrial nao encontrada.');
+        }
+
+        return Response::json($hygiene, 201, ['requestId' => $request->requestId]);
+    }
+
     private function invalid(Request $request, string $message): Response
     {
         return Response::error('VALIDACAO', $message, 400, $request->requestId);
