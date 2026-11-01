@@ -40,11 +40,11 @@
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
 | 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 63 testes, 0 erros |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 67 testes, 0 erros |
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`) e **`onda3-e2e`** (`91a8a0e`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`), **`onda3-e2e`** (`91a8a0e`) e **`onda4-d5-d6`** (`20d6abb`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
 - **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
@@ -88,7 +88,7 @@
 
 - Relatório: [EXECUCAO-ONDA3-D3.md](docs/v5/EXECUCAO-ONDA3-D3.md).
 - Certificado real de teste: `CERT-2026-000009` (fluxo/arquivos limpos em seguida).
-- Staging sincronizado em `91a8a0e`; D3/evidências sem sessão → **401**.
+- Staging sincronizado em `20d6abb` (inclui Onda 4); D3/evidências sem sessão → **401**.
 
 ## P0 — segurança (resumo)
 
@@ -105,11 +105,24 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 [A6](docs/v5/EXECUCAO-A6-SEGREDOS-SESSOES.md) · [A7](docs/v5/EXECUCAO-A7-LOGS-INCIDENTE.md) ·
 [A8](docs/v5/EXECUCAO-A8-AVALIACAO-LGPD.md)
 
+## Onda 4 — Cadeia animal e agroindústria (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **D5** | lote animal no `animal_lotes` + T1 + evento de entrada | ✅ fatia inicial |
+| **D6** | elo de transformação entre lotes no T1 | ✅ fatia inicial |
+| Animais individuais/sanidade | próxima fatia | ⏳ |
+| Ordem/receita/balanço de massa | próxima fatia | ⏳ |
+
+- Relatório: [EXECUCAO-ONDA4-D5-D6.md](docs/v5/EXECUCAO-ONDA4-D5-D6.md).
+- E2E real: lote animal `LOTE-067C2B89FB8D` + transformação para lote vegetal; dados limpos.
+- Staging sincronizado em `20d6abb`.
+
 ## Próximo passo
 
-1. Fechar UI de D3 e assinatura ICP-Brasil, se exigida.
-2. **Onda 4:** D5 (animal) e D6 (agroindústria) reutilizando o T1.
-3. Evoluir D2 offline/insumos legados e D7; cadastrar vínculos certificadora × associação.
+1. Completar **D5**: animais individuais, sanidade, reprodução e movimentação.
+2. Completar **D6**: ordem, receita, higienização, balanço de massa e rótulo.
+3. Avançar **D7/D8/D4** e fechar UI/E2E por persona.
 4. Fechar **Resend/logs/LGPD**, fiscais/especialista, deploy de produção e push.
 
 ## Regras de ouro durante o congelamento

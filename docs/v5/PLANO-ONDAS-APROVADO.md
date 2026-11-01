@@ -5,7 +5,7 @@
 >
 > **Status:** Onda 0 ✅ · Onda 1 ✅ (`089f246`) · Onda 2 ✅ fatia vertical (`4097523`) ·
 > Onda 3 ✅ core + documentos/evidências/E2E (`0c67a84`, `b357201`, `e49c7f9`, `91a8a0e`) ·
-> Onda 4 próxima (D5/D6).
+> Onda 4 ✅ fatia inicial D5/D6 (`20d6abb`) · próximas fatias: D5/D6 completos, D7/D8/D4.
 
 ## 1. Unidades lógicas (14)
 
