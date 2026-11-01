@@ -783,8 +783,9 @@ de entrada (Android 9+), abertura < 3 s.
 > [`PLANO-ONDAS-APROVADO.md`](PLANO-ONDAS-APROVADO.md); rastreabilidade transversal **T1** incluída.
 > **Onda 2** (01/11/2026): D1 leitura/escrita core, T1 lotes/eventos/elos/QR, D2 vegetal e D7 insumo —
 > tag `onda2-d1-t1-d2` (`4097523`), 49 testes verdes.
-> **Onda 3** (01/11/2026): `AccessScope` row-level em D1/T1/D3, visitas/NC/revisão/certificado e
-> verificação pública — tag `onda3-d3` (`0c67a84`), 60 testes verdes.
+> **Onda 3** (01/11/2026): `AccessScope` row-level em D1/T1/D3, visitas/NC/revisão/certificado,
+> PDF com hash/HMAC e verificação pública — tags `onda3-d3` (`0c67a84`) e `onda3-documentos`
+> (`b357201`), 61 testes verdes.
 > Evidências: [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md),
 > [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md),
 > [`EXECUCAO-ONDA1-K1-K3-L2.md`](EXECUCAO-ONDA1-K1-K3-L2.md),

@@ -84,6 +84,25 @@ verify=true
 
 > A sequência consumiu o número `000001`; o próximo certificado será `000002`.
 
+### PDF, hash e assinatura
+
+- `MpdfCertificateGenerator` gera o PDF a partir de
+  `resources/certificados/certificado.php`.
+- Saída em `.certificados/` (ignorada no Git e bloqueada pelo `.htaccess`).
+- Temporários do mPDF em `.pdf-tmp/` (também ignorado/bloqueado).
+- `CertificateSigner` grava HMAC-SHA256 sobre o payload + hash do PDF.
+- `GET /documentos/{numero}/pdf` serve o PDF público (somente `emitido`).
+
+Teste real:
+
+```text
+numero=CERT-2026-000008
+arquivo=.certificados/CERT-2026-000008.pdf
+hash=2548835e...
+assinatura=51373cdb...
+download=200 application/pdf (17 KB)
+```
+
 ---
 
 ## 3. Separação de funções
@@ -105,9 +124,9 @@ A capability é aplicada no servidor; esconder botão na UI não é suficiente.
 | Item | Situação |
 |---|---|
 | Cadeia completa | valida existência + evento; balanço de massa completo fica para D2/D5/D6 |
-| Templates/PDF/assinatura | ainda não; o documento é registro + número + verificação |
+| Templates/PDF/assinatura | ✅ PDF + hash + HMAC; assinatura ICP-Brasil não |
 | UI | endpoints prontos; telas ainda legadas |
-| Evidências/fotos da visita | próxima fatia |
+| Evidências/fotos da visita | ainda não; próxima fatia |
 | Escopo de certificadora | depende do vínculo certificadora × associação, ainda não modelado |
 | Validade jurídica | depende do especialista/DPR; software não substitui certificadora |
 
@@ -124,6 +143,6 @@ A capability é aplicada no servidor; esconder botão na UI não é suficiente.
 
 ## 6. Próxima etapa
 
-1. Fechar templates/PDF/assinatura/evidências de D3.
+1. Fechar evidências/fotos da visita e assinatura ICP-Brasil (se exigida).
 2. Modelar certificadora × associação para escopo completo.
 3. **Onda 4:** D5 (animal) e D6 (agroindústria) usando o mesmo T1.

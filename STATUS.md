@@ -44,7 +44,7 @@
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`) e **`onda3-d3`** (`0c67a84`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`) e **`onda3-documentos`** (`b357201`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
 - **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
@@ -81,7 +81,8 @@
 | **Segurança** | `AccessScope` row-level em D1/T1/D3 + testes IDOR | ✅ |
 | **D3** | visitas, status, NC, revisão e certificado | ✅ core |
 | **Documentos** | numeração `CERT-AAAA-000000`, auditoria e verificação pública | ✅ |
-| **Templates/PDF/assinatura** | ainda não | ⏳ próxima fatia |
+| **Templates/PDF/assinatura** | PDF + hash + HMAC; ICP-Brasil não | ✅ core |
+| **Evidências/fotos** | ainda não | ⏳ próxima fatia |
 
 - Relatório: [EXECUCAO-ONDA3-D3.md](docs/v5/EXECUCAO-ONDA3-D3.md).
 - Certificado real de teste: `CERT-2026-000001` (fluxo limpo em seguida).
