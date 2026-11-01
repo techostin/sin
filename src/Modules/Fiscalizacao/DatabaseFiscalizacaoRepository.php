@@ -66,7 +66,8 @@ final class DatabaseFiscalizacaoRepository extends Repository implements Fiscali
         }
 
         return $this->fetchAll(
-            'SELECT v.*, a.associacao_id AS associado_associacao_id
+            'SELECT v.*, a.associacao_id AS associado_associacao_id,
+                    a.nome AS associado_nome, a.sobrenome AS associado_sobrenome
              FROM fiscalizacao_visitas v
              LEFT JOIN associados a ON a.id = v.associado_id
              WHERE ' . implode(' AND ', $where) . '
@@ -79,7 +80,8 @@ final class DatabaseFiscalizacaoRepository extends Repository implements Fiscali
     public function findVisit(string $uuid): ?array
     {
         return $this->fetchOne(
-            'SELECT v.*, a.associacao_id AS associado_associacao_id
+            'SELECT v.*, a.associacao_id AS associado_associacao_id,
+                    a.nome AS associado_nome, a.sobrenome AS associado_sobrenome
              FROM fiscalizacao_visitas v
              LEFT JOIN associados a ON a.id = v.associado_id
              WHERE v.uuid = :uuid LIMIT 1',
@@ -155,9 +157,9 @@ final class DatabaseFiscalizacaoRepository extends Repository implements Fiscali
         $insert = $this->pdo->prepare(
             'INSERT INTO documentos_emitidos
                 (uuid, tipo, numero, associado_id, visita_id, lote_uuid, status,
-                 payload_json, emitido_por, emitido_em)
+                 payload_json, emitido_por, emitido_em, arquivo, hash_arquivo, assinatura_hash)
              VALUES (:uuid, :tipo, :numero, :associado_id, :visita_id, :lote_uuid, :status,
-                     :payload, :emitido_por, NOW())'
+                     :payload, :emitido_por, NOW(), :arquivo, :hash_arquivo, :assinatura_hash)'
         );
         $insert->execute([
             'uuid' => $uuid,
@@ -169,6 +171,9 @@ final class DatabaseFiscalizacaoRepository extends Repository implements Fiscali
             'status' => 'emitido',
             'payload' => $payload === false ? '{}' : $payload,
             'emitido_por' => $data['emitido_por'] ?? null,
+            'arquivo' => $data['arquivo'] ?? null,
+            'hash_arquivo' => $data['hash_arquivo'] ?? null,
+            'assinatura_hash' => $data['assinatura_hash'] ?? null,
         ]);
 
         $document = $this->findDocumentByNumber((string) ($data['numero'] ?? ''));
@@ -183,7 +188,8 @@ final class DatabaseFiscalizacaoRepository extends Repository implements Fiscali
     public function findDocumentByNumber(string $number): ?array
     {
         return $this->fetchOne(
-            'SELECT id, uuid, tipo, numero, associado_id, lote_uuid, status, emitido_em, created_at
+            'SELECT id, uuid, tipo, numero, associado_id, lote_uuid, status, emitido_em,
+                    created_at, arquivo, hash_arquivo, assinatura_hash
              FROM documentos_emitidos WHERE numero = :numero LIMIT 1',
             ['numero' => $number]
         );

@@ -6,10 +6,13 @@ namespace App\Modules\Fiscalizacao;
 
 use App\Kernel\Contracts\AuditLogger;
 use App\Kernel\Contracts\ContextoUsuario;
+use App\Kernel\Documents\CertificateGeneratorInterface;
+use App\Kernel\Documents\CertificateSigner;
 use App\Kernel\Documents\DocumentNumberGeneratorInterface;
 use App\Kernel\Security\AccessScope;
 use App\Modules\Rastreabilidade\RastreabilidadeRepositoryInterface;
 use InvalidArgumentException;
+use RuntimeException;
 
 final class FiscalizacaoService
 {
@@ -18,6 +21,8 @@ final class FiscalizacaoService
         private readonly RastreabilidadeRepositoryInterface $traceability,
         private readonly DocumentNumberGeneratorInterface $numbers,
         private readonly AuditLogger $audit,
+        private readonly ?CertificateGeneratorInterface $pdf = null,
+        private readonly ?CertificateSigner $signer = null,
     ) {
     }
 
@@ -156,6 +161,34 @@ final class FiscalizacaoService
         }
 
         $number = $this->numbers->next('CERT', (int) date('Y'));
+        $emitidoEm = date('d/m/Y H:i');
+        $payload = [
+            'visita_uuid' => $uuid,
+            'lote_uuid' => $lotUuid,
+            'lote_codigo' => $lot['codigo_publico'] ?? null,
+            'eventos' => count($lot['eventos'] ?? []),
+            'associado_nome' => trim((string) ($visit['associado_nome'] ?? '') . ' '
+                . (string) ($visit['associado_sobrenome'] ?? '')),
+            'emitido_em' => $emitidoEm,
+            'emitido_por_nome' => $context->name(),
+            'verificacao_url' => (defined('SITE_URL') ? (string) constant('SITE_URL') : '')
+                . '/api/v1/documentos/' . $number . '/pdf',
+        ];
+
+        $filePath = null;
+        $fileHash = null;
+        $signature = null;
+        if ($this->pdf !== null) {
+            $filePath = $this->pdf->generate($number, $payload);
+            $fileHash = hash_file('sha256', $filePath);
+            if ($fileHash === false) {
+                throw new RuntimeException('Falha ao calcular hash do certificado.');
+            }
+            if ($this->signer !== null) {
+                $signature = $this->signer->sign($payload, $fileHash);
+            }
+        }
+
         $document = $this->repository->issueDocument([
             'tipo' => 'certificado_organico',
             'numero' => $number,
@@ -163,13 +196,10 @@ final class FiscalizacaoService
             'visita_id' => (int) $visit['id'],
             'lote_uuid' => $lotUuid,
             'emitido_por' => (int) $context->userId(),
-            'payload' => [
-                'visita_uuid' => $uuid,
-                'lote_uuid' => $lotUuid,
-                'lote_codigo' => $lot['codigo_publico'] ?? null,
-                'eventos' => count($lot['eventos'] ?? []),
-                'emitido_em' => date(DATE_ATOM),
-            ],
+            'payload' => $payload,
+            'arquivo' => $filePath,
+            'hash_arquivo' => $fileHash,
+            'assinatura_hash' => $signature,
         ]);
 
         $this->audit->record('emitir_certificado', 'documentos_emitidos', $number, [

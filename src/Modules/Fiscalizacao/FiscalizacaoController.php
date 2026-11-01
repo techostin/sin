@@ -126,6 +126,35 @@ final class FiscalizacaoController
         ], 200, ['requestId' => $request->requestId]);
     }
 
+    public function pdf(Request $request, string $number): Response
+    {
+        if (preg_match('/^CERT-\d{4}-\d{6}$/', $number) !== 1) {
+            return $this->notFound($request);
+        }
+
+        $document = $this->service->verifyDocument($number);
+        if ($document === null || ($document['status'] ?? '') !== 'emitido') {
+            return $this->notFound($request);
+        }
+
+        $path = (string) ($document['arquivo'] ?? '');
+        $base = realpath(dirname(__DIR__, 3) . '/.certificados');
+        $real = $path !== '' ? realpath($path) : false;
+        if ($base === false || $real === false || !str_starts_with($real, $base) || !is_file($real)) {
+            return $this->notFound($request);
+        }
+
+        $body = file_get_contents($real);
+        if ($body === false) {
+            return $this->notFound($request);
+        }
+
+        return new Response(200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . basename($real) . '"',
+        ], $body);
+    }
+
     private function invalid(Request $request, string $message): Response
     {
         return Response::error('VALIDACAO', $message, 400, $request->requestId);

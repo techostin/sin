@@ -33,5 +33,9 @@ Thumbs.db
 .phpunit.cache/
 .phpstan-cache/
 
+# Certificados gerados e temporarios de PDF (nunca versionar)
+/.certificados/
+/.pdf-tmp/
+
 # Cache do Deptrac
 .deptrac.cache

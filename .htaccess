@@ -23,7 +23,7 @@ RewriteRule ^ - [F,L]
 RewriteCond %{HTTP_USER_AGENT} (sqlmap|nikto|nmap|masscan|zgrab|acunetix|nessus|dirbuster|gobuster|wpscan) [NC]
 RewriteRule ^ - [F,L]
 
-RewriteRule ^(vendor|dev-utils|sql|tmp|storage|logs|config|node_modules|api/legacy)(/|$) - [F,L,NC]
+RewriteRule ^(vendor|dev-utils|sql|tmp|storage|logs|config|node_modules|api/legacy|\.certificados|\.pdf-tmp)(/|$) - [F,L,NC]
 
 # API v1 (fundacao modular): front controller proprio em api/v1/index.php
 RewriteRule ^api/v1(/.*)?$ api/v1/index.php [QSA,L]

@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Kernel\Contracts\ContextoUsuario;
+use App\Kernel\Documents\CertificateSigner;
 use App\Kernel\Documents\DocumentNumberGenerator;
+use App\Kernel\Documents\MpdfCertificateGenerator;
 use App\Kernel\Audit\DatabaseAuditLogger;
 use App\Kernel\Http\Request;
 use App\Kernel\Http\Response;
@@ -129,14 +131,24 @@ return static function (Router $router, Container $container): void {
         return $rastreabilidade()->verify($request, $params['codigo'] ?? '');
     });
 
-    $fiscalizacao = static fn (): FiscalizacaoController => new FiscalizacaoController(
-        new FiscalizacaoService(
-            new DatabaseFiscalizacaoRepository(Connection::pdo()),
-            new DatabaseRastreabilidadeRepository(Connection::pdo()),
-            new DocumentNumberGenerator(Connection::pdo()),
-            new DatabaseAuditLogger(Connection::pdo())
-        )
-    );
+    $fiscalizacao = static function () use ($container): FiscalizacaoController {
+        $root = dirname(__DIR__);
+
+        return new FiscalizacaoController(
+            new FiscalizacaoService(
+                new DatabaseFiscalizacaoRepository(Connection::pdo()),
+                new DatabaseRastreabilidadeRepository(Connection::pdo()),
+                new DocumentNumberGenerator(Connection::pdo()),
+                new DatabaseAuditLogger(Connection::pdo()),
+                new MpdfCertificateGenerator(
+                    $root . '/.certificados',
+                    $root . '/.pdf-tmp',
+                    $root . '/resources/certificados/certificado.php'
+                ),
+                new CertificateSigner()
+            )
+        );
+    };
 
     $router->get('/fiscalizacao/visitas', static function (Request $request) use ($guard, $fiscalizacao): Response {
         $context = $guard($request, 'fiscalizacao', 'read');
@@ -168,5 +180,8 @@ return static function (Router $router, Container $container): void {
     });
     $router->get('/documentos/verificar/{numero}', static function (Request $request, array $params) use ($fiscalizacao): Response {
         return $fiscalizacao()->verify($request, $params['numero'] ?? '');
+    });
+    $router->get('/documentos/{numero}/pdf', static function (Request $request, array $params) use ($fiscalizacao): Response {
+        return $fiscalizacao()->pdf($request, $params['numero'] ?? '');
     });
 };
