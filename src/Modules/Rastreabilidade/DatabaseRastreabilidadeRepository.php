@@ -101,6 +101,74 @@ final class DatabaseRastreabilidadeRepository extends Repository implements Rast
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createAnimalLot(array $data, int $userId): array
+    {
+        $uuid = $this->uuid();
+        $code = $this->code();
+        $associadoId = isset($data['associado_id']) && is_numeric($data['associado_id'])
+            ? (int) $data['associado_id'] : null;
+        $payload = [
+            'nome_lote' => (string) ($data['nome_lote'] ?? ''),
+            'especie' => (string) ($data['especie'] ?? ''),
+            'categoria' => (string) ($data['categoria'] ?? ''),
+            'quantidade' => $data['quantidade'] ?? null,
+        ];
+
+        $this->pdo->beginTransaction();
+        try {
+            $insert = $this->pdo->prepare(
+                'INSERT INTO animal_lotes
+                    (associado_id, nome_lote, especie, categoria, quantidade, descricao, excluido, criado_por)
+                 VALUES (:associado_id, :nome_lote, :especie, :categoria, :quantidade, :descricao, 0, :criado_por)'
+            );
+            $insert->execute([
+                'associado_id' => $associadoId,
+                'nome_lote' => (string) ($data['nome_lote'] ?? ''),
+                'especie' => (string) ($data['especie'] ?? ''),
+                'categoria' => (string) ($data['categoria'] ?? ''),
+                'quantidade' => $data['quantidade'] ?? null,
+                'descricao' => (string) ($data['descricao'] ?? ''),
+                'criado_por' => $userId,
+            ]);
+            $legacyId = (int) $this->pdo->lastInsertId();
+
+            $lotId = $this->insertLot(
+                $uuid,
+                'animal',
+                'animal_lotes',
+                $legacyId,
+                $code,
+                $associadoId,
+                null,
+                $payload,
+                $userId
+            );
+
+            $this->insertEvent($lotId, [
+                'tipo' => 'entrada',
+                'data_evento' => date('Y-m-d H:i:s'),
+                'local' => null,
+                'descricao' => 'Lote animal registrado.',
+                'payload' => $payload,
+            ], $userId);
+
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        $lot = $this->findByUuid($uuid);
+        if ($lot === null) {
+            throw new RuntimeException('Lote animal criado nao encontrado.');
+        }
+
+        return $lot;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createInputLot(array $data, int $userId): array
     {
         $uuid = $this->uuid();

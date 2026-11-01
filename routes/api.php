@@ -12,6 +12,8 @@ use App\Kernel\Http\Response;
 use App\Kernel\Http\Router;
 use App\Kernel\Persistence\Connection;
 use App\Kernel\Support\Logger;
+use App\Modules\Agroindustria\AgroindustriaController;
+use App\Modules\Animal\AnimalController;
 use App\Modules\Associados\AssociadosController;
 use App\Modules\Associados\DatabaseAssociadosRepository;
 use App\Modules\Fiscalizacao\DatabaseFiscalizacaoRepository;
@@ -195,5 +197,21 @@ return static function (Router $router, Container $container): void {
     });
     $router->get('/documentos/{numero}/pdf', static function (Request $request, array $params) use ($fiscalizacao): Response {
         return $fiscalizacao()->pdf($request, $params['numero'] ?? '');
+    });
+
+    $animal = static fn (): AnimalController => new AnimalController(
+        new DatabaseRastreabilidadeRepository(Connection::pdo())
+    );
+    $agroindustria = static fn (): AgroindustriaController => new AgroindustriaController(
+        new DatabaseRastreabilidadeRepository(Connection::pdo())
+    );
+
+    $router->post('/animal/lotes', static function (Request $request) use ($guard, $animal): Response {
+        $context = $guard($request, 'caderno', 'write');
+        return $context instanceof Response ? $context : $animal()->create($request, $context);
+    });
+    $router->post('/agroindustria/transformacoes', static function (Request $request) use ($guard, $agroindustria): Response {
+        $context = $guard($request, 'agroindustria', 'write');
+        return $context instanceof Response ? $context : $agroindustria()->transform($request, $context);
     });
 };

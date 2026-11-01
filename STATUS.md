@@ -40,11 +40,11 @@
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
 | 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 62 testes, 0 erros |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 63 testes, 0 erros |
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`) e **`onda3-evidencias`** (`e49c7f9`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`) e **`onda3-e2e`** (`91a8a0e`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
 - **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
@@ -83,11 +83,12 @@
 | **Documentos** | numeração `CERT-AAAA-000000`, auditoria e verificação pública | ✅ |
 | **Templates/PDF/assinatura** | PDF + hash + HMAC; ICP-Brasil não | ✅ core |
 | **Evidências/fotos** | upload/lista/download protegidos | ✅ core |
+| **E2E autenticado** | admin login, fluxo completo, evidência e PDF | ✅ |
 | **Escopo certificadora × associação** | tabela + carregamento no contexto | ✅ (mapeamentos a cadastrar) |
 
 - Relatório: [EXECUCAO-ONDA3-D3.md](docs/v5/EXECUCAO-ONDA3-D3.md).
-- Certificado real de teste: `CERT-2026-000001` (fluxo limpo em seguida).
-- Staging sincronizado em `e49c7f9`; D3/evidências sem sessão → **401**.
+- Certificado real de teste: `CERT-2026-000009` (fluxo/arquivos limpos em seguida).
+- Staging sincronizado em `91a8a0e`; D3/evidências sem sessão → **401**.
 
 ## P0 — segurança (resumo)
 
@@ -106,9 +107,9 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 
 ## Próximo passo
 
-1. Fechar templates/PDF/assinatura/evidências de D3 e o vínculo certificadora × associação.
+1. Fechar UI de D3 e assinatura ICP-Brasil, se exigida.
 2. **Onda 4:** D5 (animal) e D6 (agroindústria) reutilizando o T1.
-3. Evoluir D2 offline/insumos legados e D7.
+3. Evoluir D2 offline/insumos legados e D7; cadastrar vínculos certificadora × associação.
 4. Fechar **Resend/logs/LGPD**, fiscais/especialista, deploy de produção e push.
 
 ## Regras de ouro durante o congelamento

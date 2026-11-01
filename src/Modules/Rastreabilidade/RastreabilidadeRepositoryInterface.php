@@ -32,6 +32,19 @@ interface RastreabilidadeRepositoryInterface
      */
     public function createInputLot(array $data, int $userId): array;
 
+    /**
+     * @param array{
+     *   nome_lote: string,
+     *   especie?: string,
+     *   categoria?: string,
+     *   quantidade?: int|float|string,
+     *   descricao?: string,
+     *   associado_id?: int|null
+     * } $data
+     * @return array<string, mixed>
+     */
+    public function createAnimalLot(array $data, int $userId): array;
+
     /** @return array<string, mixed>|null */
     public function findByUuid(string $uuid): ?array;
 

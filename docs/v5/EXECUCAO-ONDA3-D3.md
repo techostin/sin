@@ -1,8 +1,8 @@
 # Execução Onda 3 — Escopo Row-Level + D3 Fiscalização
 
 > **Data:** 01/11/2026 · **Status:** fatia core + documentos + evidências entregues.
-> **Commits:** `0c67a84`, `b357201`, `e49c7f9` · **Tags:** `onda3-d3`, `onda3-documentos`,
-> `onda3-evidencias`
+> **Commits:** `0c67a84`, `b357201`, `e49c7f9`, `91a8a0e` · **Tags:** `onda3-d3`, `onda3-documentos`,
+> `onda3-evidencias`, `onda3-e2e`
 > **Nenhum dado pessoal ou segredo é exibido neste relatório.**
 
 ---
@@ -33,7 +33,7 @@ Novo serviço em `src/Kernel/Security/AccessScope.php`:
 - associação A não lê associado da associação B;
 - associação correta e dono leem normalmente.
 
-Resultado: **62 testes / 149 asserções**, PHPStan 0, Deptrac 0, PHPCS 0.
+Resultado: **63 testes / 151 asserções**, PHPStan 0, Deptrac 0, PHPCS 0.
 
 ---
 
@@ -113,9 +113,30 @@ download=200 application/pdf (17 KB)
 - Armazenamento em `.evidencias/` (ignorado no Git e bloqueado pelo `.htaccess`).
 - Registro em `fiscalizacao_evidencias` com MIME, tamanho e hash SHA-256.
 
-> O upload não foi testado fim-a-fim porque as rotas exigem sessão; as rotas sem sessão
-> retornam **401** e a validação de arquivo tem teste de ausência. O fluxo HTTP autenticado
-> deve ser coberto no E2E com o login do admin.
+> O upload foi validado no E2E autenticado (ver seção abaixo); as rotas sem sessão retornam **401**.
+
+### E2E autenticado (admin)
+
+Login real no main com a conta admin, `/me` **200** e capabilities **19/9**. O admin ID 7 tem
+`associado_id`/`certificadora_id` legados; foi necessário corrigir o `AccessScope` para que o papel
+`admin` seja **sempre global** (commit `91a8a0e`).
+
+Fluxo executado:
+
+```text
+lote=E2E-TECHOSTIN (LOTE-A59AAA60895B)
+visita=criada → em_andamento → concluida
+NC=aberta
+revisao=aprovada
+certificado=CERT-2026-000009
+PDF=gerado e baixado (200 application/pdf, 17 KB)
+evidencia=upload/lista/download (200 application/pdf, 17 KB)
+```
+
+Todos os registros e arquivos de teste foram removidos depois. A sequência de certificados
+consumiu `000009`.
+
+**Atualização:** E2E concluído, incluindo evidência real.
 
 ### Escopo certificadora × associação
 
@@ -147,7 +168,7 @@ A capability é aplicada no servidor; esconder botão na UI não é suficiente.
 | Cadeia completa | valida existência + evento; balanço de massa completo fica para D2/D5/D6 |
 | Templates/PDF/assinatura | ✅ PDF + hash + HMAC; assinatura ICP-Brasil não |
 | UI | endpoints prontos; telas ainda legadas |
-| Evidências/fotos da visita | ✅ upload/lista/download; E2E autenticado pendente |
+| Evidências/fotos da visita | ✅ upload/lista/download e E2E autenticado |
 | Escopo de certificadora | ✅ tabela + carregamento no contexto; mapeamentos reais a cadastrar |
 | Validade jurídica | depende do especialista/DPR; software não substitui certificadora |
 
@@ -155,7 +176,7 @@ A capability é aplicada no servidor; esconder botão na UI não é suficiente.
 
 ## 5. Staging
 
-- Staging sincronizado em `0c67a84`.
+- Staging sincronizado em `91a8a0e`.
 - Login **200**, health **200**, K2 **200**.
 - D1/T1/D3 sem sessão: **401**.
 - Documento inexistente: **404**.

@@ -784,8 +784,9 @@ de entrada (Android 9+), abertura < 3 s.
 > **Onda 2** (01/11/2026): D1 leitura/escrita core, T1 lotes/eventos/elos/QR, D2 vegetal e D7 insumo —
 > tag `onda2-d1-t1-d2` (`4097523`), 49 testes verdes.
 > **Onda 3** (01/11/2026): `AccessScope` row-level em D1/T1/D3, visitas/NC/revisão/certificado,
-> PDF com hash/HMAC, verificação pública e evidências — tags `onda3-d3` (`0c67a84`),
-> `onda3-documentos` (`b357201`) e `onda3-evidencias` (`e49c7f9`), 62 testes verdes.
+> PDF com hash/HMAC, verificação pública, evidências e E2E autenticado — tags `onda3-d3` (`0c67a84`),
+> `onda3-documentos` (`b357201`), `onda3-evidencias` (`e49c7f9`) e `onda3-e2e` (`91a8a0e`),
+> 63 testes verdes.
 > Evidências: [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md),
 > [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md),
 > [`EXECUCAO-ONDA1-K1-K3-L2.md`](EXECUCAO-ONDA1-K1-K3-L2.md),

@@ -28,6 +28,21 @@ final class FakeRastreabilidadeRepository implements RastreabilidadeRepositoryIn
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createAnimalLot(array $data, int $userId): array
+    {
+        $this->lastData = $data;
+
+        return [
+            'uuid' => '33333333-3333-4333-8333-333333333333',
+            'tipo' => 'animal',
+            'codigo_publico' => 'LOTE-ANI123',
+            'status' => 'ativo',
+            'eventos' => [],
+            'elos' => [],
+        ];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createInputLot(array $data, int $userId): array
     {
         $this->lastData = $data;
