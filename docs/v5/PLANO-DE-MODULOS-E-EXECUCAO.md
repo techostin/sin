@@ -786,8 +786,8 @@ de entrada (Android 9+), abertura < 3 s.
 > **Onda 3** (01/11/2026): `AccessScope` row-level em D1/T1/D3, visitas/NC/revisão/certificado,
 > PDF com hash/HMAC, verificação pública, evidências e E2E autenticado — tags `onda3-d3` (`0c67a84`),
 > `onda3-documentos` (`b357201`), `onda3-evidencias` (`e49c7f9`) e `onda3-e2e` (`91a8a0e`).
-> **Onda 4** (01/11/2026): lote animal e transformação agroindustrial no T1 — tag `onda4-d5-d6`
-> (`20d6abb`), 67 testes verdes.
+> **Onda 4** (01/11/2026): lote animal, animal individual, sanidade e transformação agroindustrial
+> no T1 — tags `onda4-d5-d6` (`20d6abb`) e `onda4-animais` (`bd7b4c6`), 68 testes verdes.
 > Evidências: [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md),
 > [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md),
 > [`EXECUCAO-ONDA1-K1-K3-L2.md`](EXECUCAO-ONDA1-K1-K3-L2.md),

@@ -1,7 +1,7 @@
 # Execução Onda 4 — D5 Animal + D6 Agroindústria (fatia inicial)
 
 > **Data:** 01/11/2026 · **Status:** fatia inicial do T1 para animal e transformação.
-> **Commit:** `20d6abb` · **Tag:** `onda4-d5-d6`
+> **Commit:** `20d6abb`, `bd7b4c6` · **Tag:** `onda4-d5-d6`, `onda4-animais`
 > **Nenhum dado pessoal ou segredo é exibido neste relatório.**
 
 ---
@@ -11,14 +11,16 @@
 | Módulo | Endpoint | Resultado |
 |---|---|---|
 | **D5** | `POST /api/v1/animal/lotes` | cria `animal_lotes` + registro T1 `animal` + evento `entrada` |
+| **D5** | `POST /animal/lotes/{uuid}/animais` | animal individual vinculado ao lote e evento T1 |
+| **D5** | `POST /animal/lotes/{uuid}/animais/{id}/sanidade` | evento sanitário + evento T1 |
 | **D6** | `POST /api/v1/agroindustria/transformacoes` | cria elo T1 `transformacao` entre dois lotes |
-| **T1** | `createAnimalLot` | lote animal no mesmo registro canônico do T1 |
+| **T1** | `createAnimalLot` / `addAnimal` / `addSanitaryEvent` | mesmo registro canônico |
 
 ### Evidências
 
 | Item | Resultado |
 |---|---:|
-| Testes | **67 / 157 asserções** |
+| Testes | **68 / 159 asserções** |
 | PHPStan / Deptrac / PHPCS | **0 / 0 / 0** |
 | Rotas sem sessão | **401** |
 | Health main/staging | **200** |
@@ -38,13 +40,24 @@ transformacao=295f9e01... -> 9c1e2b3c...
 
 Os registros de teste foram removidos em seguida.
 
+### Animais individuais e sanidade
+
+```text
+lote_animal=24233955-...
+animal_id=5 (Mimosa, Bovino)
+sanidade_id=8 (VACINACAO)
+```
+
+Ambos os dados foram limpos, incluindo `animais`, `controle_sanidade_animal`, `animal_lotes` e o
+registro T1.
+
 ---
 
 ## 3. O que ainda falta para D5/D6 completos
 
 | Item | Situação |
 |---|---|
-| Animais individuais, sanidade, reprodução, movimentação | próxima fatia D5 |
+| Animais individuais, sanidade, reprodução, movimentação | ✅ indivíduo + sanidade; reprodução/movimentação depois |
 | Ordem de produção, receita, higienização, balanço de massa | próxima fatia D6 |
 | Vínculo automático insumo → transformação → produto | parcial; o elo T1 existe |
 | UI animal/agroindústria | não iniciada |
@@ -54,7 +67,7 @@ Os registros de teste foram removidos em seguida.
 
 ## 4. Próxima etapa
 
-1. Completar D5 (animais individuais e eventos sanitários).
+1. Completar D5 (reprodução e movimentação).
 2. Completar D6 (ordem, receita, massa e rótulo).
 3. D7 (insumos legados), D8 (governança) e D4 (financeiro).
 4. Fechar UI, E2E e relatórios por persona.
