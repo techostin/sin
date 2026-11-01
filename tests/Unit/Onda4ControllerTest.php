@@ -46,6 +46,35 @@ final class Onda4ControllerTest extends TestCase
         self::assertSame(400, $response->status);
     }
 
+    public function testAddsAnimalAndSanitaryEvent(): void
+    {
+        $controller = new AnimalController(new FakeRastreabilidadeRepository());
+        $context = new ContextoUsuarioFake(['produtor'], 7, null, [], [], 'Produtor', ['caderno.write']);
+        $uuid = '33333333-3333-4333-8333-333333333333';
+
+        $animal = $controller->addAnimal(
+            Request::create('POST', '/x', [], [], null, '{"nome_animal":"Mimosa","especie":"Bovino"}'),
+            $uuid,
+            $context
+        );
+        self::assertSame(201, $animal->status);
+
+        $sanitary = $controller->sanitary(
+            Request::create(
+                'POST',
+                '/x',
+                [],
+                [],
+                null,
+                '{"tipo_tratamento":"VACINACAO","data_tratamento":"2026-11-01"}'
+            ),
+            $uuid,
+            10,
+            $context
+        );
+        self::assertSame(201, $sanitary->status);
+    }
+
     public function testCreatesAgroTransformation(): void
     {
         $controller = new AgroindustriaController(new FakeRastreabilidadeRepository());

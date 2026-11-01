@@ -42,6 +42,21 @@ final class FakeRastreabilidadeRepository implements RastreabilidadeRepositoryIn
         ];
     }
 
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addAnimal(string $lotUuid, array $data, int $userId): ?array
+    {
+        $this->lastUuid = $lotUuid;
+        $this->lastData = $data;
+
+        return ['id' => 10, 'nome_animal' => $data['nome_animal'] ?? '', 'lote_id' => 1];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addSanitaryEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array
+    {
+        return ['id' => 20, 'animal_id' => $animalId, 'tipo_tratamento' => $data['tipo_tratamento'] ?? ''];
+    }
+
     /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createInputLot(array $data, int $userId): array
     {
@@ -62,10 +77,13 @@ final class FakeRastreabilidadeRepository implements RastreabilidadeRepositoryIn
     {
         $this->lastUuid = $uuid;
 
-        if ($uuid === '11111111-1111-4111-8111-111111111111') {
+        if (
+            $uuid === '11111111-1111-4111-8111-111111111111'
+            || $uuid === '33333333-3333-4333-8333-333333333333'
+        ) {
             return [
                 'uuid' => $uuid,
-                'tipo' => 'vegetal',
+                'tipo' => $uuid === '33333333-3333-4333-8333-333333333333' ? 'animal' : 'vegetal',
                 'codigo_publico' => 'LOTE-ABC123',
                 'associado_id' => 7,
                 'associado_associacao_id' => 1,

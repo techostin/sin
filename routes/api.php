@@ -210,6 +210,15 @@ return static function (Router $router, Container $container): void {
         $context = $guard($request, 'caderno', 'write');
         return $context instanceof Response ? $context : $animal()->create($request, $context);
     });
+    $router->post('/animal/lotes/{uuid}/animais', static function (Request $request, array $params) use ($guard, $animal): Response {
+        $context = $guard($request, 'caderno', 'write');
+        return $context instanceof Response ? $context : $animal()->addAnimal($request, $params['uuid'] ?? '', $context);
+    });
+    $router->post('/animal/lotes/{uuid}/animais/{animalId}/sanidade', static function (Request $request, array $params) use ($guard, $animal): Response {
+        $context = $guard($request, 'caderno', 'write');
+        $animalId = isset($params['animalId']) && is_numeric($params['animalId']) ? (int) $params['animalId'] : 0;
+        return $context instanceof Response ? $context : $animal()->sanitary($request, $params['uuid'] ?? '', $animalId, $context);
+    });
     $router->post('/agroindustria/transformacoes', static function (Request $request) use ($guard, $agroindustria): Response {
         $context = $guard($request, 'agroindustria', 'write');
         return $context instanceof Response ? $context : $agroindustria()->transform($request, $context);

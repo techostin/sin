@@ -7,6 +7,7 @@ namespace App\Modules\Animal;
 use App\Kernel\Contracts\ContextoUsuario;
 use App\Kernel\Http\Request;
 use App\Kernel\Http\Response;
+use App\Kernel\Security\AccessScope;
 use App\Modules\Rastreabilidade\RastreabilidadeRepositoryInterface;
 use InvalidArgumentException;
 use Throwable;
@@ -41,6 +42,70 @@ final class AnimalController
         }
 
         return Response::json($lot, 201, ['requestId' => $request->requestId]);
+    }
+
+    public function addAnimal(Request $request, string $uuid, ContextoUsuario $context): Response
+    {
+        if (!$this->canAccessLot($uuid, $context)) {
+            return $this->notFound($request);
+        }
+
+        $data = $request->json();
+        $nome = isset($data['nome_animal']) && is_string($data['nome_animal']) ? trim($data['nome_animal']) : '';
+        $especie = isset($data['especie']) && is_string($data['especie']) ? trim($data['especie']) : '';
+        if ($nome === '' || $especie === '') {
+            return $this->invalid($request, 'nome_animal e especie sao obrigatorios.');
+        }
+
+        $animal = $this->repository->addAnimal($uuid, $data, (int) $context->userId());
+        if ($animal === null) {
+            return $this->notFound($request);
+        }
+
+        return Response::json($animal, 201, ['requestId' => $request->requestId]);
+    }
+
+    public function sanitary(Request $request, string $uuid, int $animalId, ContextoUsuario $context): Response
+    {
+        if (!$this->canAccessLot($uuid, $context)) {
+            return $this->notFound($request);
+        }
+
+        $data = $request->json();
+        if (!isset($data['tipo_tratamento']) || !is_string($data['tipo_tratamento'])) {
+            return $this->invalid($request, 'tipo_tratamento obrigatorio.');
+        }
+        if (
+            isset($data['data_tratamento'])
+            && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $data['data_tratamento']) !== 1
+        ) {
+            return $this->invalid($request, 'data_tratamento invalida.');
+        }
+
+        $event = $this->repository->addSanitaryEvent($uuid, $animalId, $data, (int) $context->userId());
+        if ($event === null) {
+            return $this->notFound($request);
+        }
+
+        return Response::json($event, 201, ['requestId' => $request->requestId]);
+    }
+
+    private function canAccessLot(string $uuid, ContextoUsuario $context): bool
+    {
+        $lot = $this->repository->findByUuid($uuid);
+        if ($lot === null) {
+            return false;
+        }
+
+        return AccessScope::fromContext($context)->allowsAssociado(
+            isset($lot['associado_id']) ? (int) $lot['associado_id'] : null,
+            isset($lot['associado_associacao_id']) ? (int) $lot['associado_associacao_id'] : null
+        );
+    }
+
+    private function notFound(Request $request): Response
+    {
+        return Response::error('NAO_ENCONTRADO', 'Lote ou animal nao encontrado.', 404, $request->requestId);
     }
 
     private function invalid(Request $request, string $message): Response

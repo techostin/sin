@@ -45,6 +45,32 @@ interface RastreabilidadeRepositoryInterface
      */
     public function createAnimalLot(array $data, int $userId): array;
 
+    /**
+     * @param array{
+     *   nome_animal: string,
+     *   especie: string,
+     *   raca?: string,
+     *   identificacao?: string,
+     *   sexo?: string,
+     *   data_nascimento?: string,
+     *   peso_kg?: float|int|string
+     * } $data
+     * @return array<string, mixed>|null
+     */
+    public function addAnimal(string $lotUuid, array $data, int $userId): ?array;
+
+    /**
+     * @param array{
+     *   data_tratamento: string,
+     *   tipo_tratamento: string,
+     *   produto_utilizado?: string,
+     *   motivo?: string,
+     *   dose_quantidade?: string
+     * } $data
+     * @return array<string, mixed>|null
+     */
+    public function addSanitaryEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array;
+
     /** @return array<string, mixed>|null */
     public function findByUuid(string $uuid): ?array;
 

@@ -168,6 +168,104 @@ final class DatabaseRastreabilidadeRepository extends Repository implements Rast
         return $lot;
     }
 
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addAnimal(string $lotUuid, array $data, int $userId): ?array
+    {
+        $lot = $this->fetchOne(
+            "SELECT id, referencia_id, associado_id FROM rastreabilidade_lotes
+             WHERE uuid = :uuid AND tipo = 'animal' LIMIT 1",
+            ['uuid' => $lotUuid]
+        );
+        if ($lot === null) {
+            return null;
+        }
+
+        $insert = $this->pdo->prepare(
+            'INSERT INTO animais
+                (associado_id, nome_animal, especie, raca, identificacao, sexo,
+                 data_nascimento, status, origem_conversao, lote_id, peso_kg,
+                 tipo_entrada, criado_por, excluido)
+             VALUES (:associado_id, :nome_animal, :especie, :raca, :identificacao, :sexo,
+                     :data_nascimento, :status, :origem_conversao, :lote_id, :peso_kg,
+                     :tipo_entrada, :criado_por, 0)'
+        );
+        $insert->execute([
+            'associado_id' => $lot['associado_id'] ?? null,
+            'nome_animal' => (string) ($data['nome_animal'] ?? ''),
+            'especie' => (string) ($data['especie'] ?? ''),
+            'raca' => $data['raca'] ?? null,
+            'identificacao' => $data['identificacao'] ?? null,
+            'sexo' => $data['sexo'] ?? null,
+            'data_nascimento' => $data['data_nascimento'] ?? null,
+            'status' => 'ATIVO',
+            'origem_conversao' => 'ORGANICO',
+            'lote_id' => (int) $lot['referencia_id'],
+            'peso_kg' => $data['peso_kg'] ?? null,
+            'tipo_entrada' => 'NASCIDO_PROPRIEDADE',
+            'criado_por' => $userId,
+        ]);
+        $animalId = (int) $this->pdo->lastInsertId();
+
+        $this->insertEvent((int) $lot['id'], [
+            'tipo' => 'animal_adicionado',
+            'data_evento' => date('Y-m-d H:i:s'),
+            'descricao' => 'Animal individual vinculado ao lote.',
+            'payload' => ['animal_id' => $animalId, 'nome' => $data['nome_animal'] ?? ''],
+        ], $userId);
+
+        return $this->fetchOne('SELECT * FROM animais WHERE id = :id LIMIT 1', ['id' => $animalId]);
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addSanitaryEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array
+    {
+        $lot = $this->fetchOne(
+            "SELECT id, referencia_id, associado_id FROM rastreabilidade_lotes
+             WHERE uuid = :uuid AND tipo = 'animal' LIMIT 1",
+            ['uuid' => $lotUuid]
+        );
+        if ($lot === null) {
+            return null;
+        }
+
+        $animal = $this->fetchOne(
+            'SELECT id FROM animais WHERE id = :id AND lote_id = :lote AND excluido = 0 LIMIT 1',
+            ['id' => $animalId, 'lote' => (int) $lot['referencia_id']]
+        );
+        if ($animal === null) {
+            return null;
+        }
+
+        $insert = $this->pdo->prepare(
+            'INSERT INTO controle_sanidade_animal
+                (associado_id, animal_id, lote_id, data_tratamento, tipo_tratamento,
+                 produto_utilizado, motivo, dose_quantidade, produto_normatizado, criado_por, excluido)
+             VALUES (:associado_id, :animal_id, :lote_id, :data_tratamento, :tipo_tratamento,
+                     :produto_utilizado, :motivo, :dose_quantidade, 0, :criado_por, 0)'
+        );
+        $insert->execute([
+            'associado_id' => $lot['associado_id'] ?? null,
+            'animal_id' => $animalId,
+            'lote_id' => (int) $lot['referencia_id'],
+            'data_tratamento' => (string) ($data['data_tratamento'] ?? date('Y-m-d')),
+            'tipo_tratamento' => (string) ($data['tipo_tratamento'] ?? 'PREVENTIVO'),
+            'produto_utilizado' => $data['produto_utilizado'] ?? null,
+            'motivo' => $data['motivo'] ?? null,
+            'dose_quantidade' => $data['dose_quantidade'] ?? null,
+            'criado_por' => $userId,
+        ]);
+        $sanitaryId = (int) $this->pdo->lastInsertId();
+
+        $this->insertEvent((int) $lot['id'], [
+            'tipo' => 'sanidade',
+            'data_evento' => (string) ($data['data_tratamento'] ?? date('Y-m-d')),
+            'descricao' => 'Evento sanitario registrado.',
+            'payload' => ['animal_id' => $animalId, 'tipo' => $data['tipo_tratamento'] ?? ''],
+        ], $userId);
+
+        return $this->fetchOne('SELECT * FROM controle_sanidade_animal WHERE id = :id LIMIT 1', ['id' => $sanitaryId]);
+    }
+
     /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createInputLot(array $data, int $userId): array
     {
