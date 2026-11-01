@@ -58,6 +58,26 @@ final class FakeRastreabilidadeRepository implements RastreabilidadeRepositoryIn
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createRecipe(array $data, int $userId): array
+    {
+        return ['id' => 99, 'nome_produto_final' => $data['nome_produto_final'] ?? '', 'ingredientes' => []];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createAgroOrder(array $data, int $userId): array
+    {
+        return [
+            'uuid' => '44444444-4444-4444-8444-444444444444',
+            'tipo' => 'agroindustria',
+            'codigo_publico' => 'LOTE-AGR999',
+            'status' => 'ativo',
+            'eventos' => [['tipo' => 'processamento']],
+            'elos' => [],
+            'entrada_total' => 10.0,
+        ];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createInputLot(array $data, int $userId): array
     {
         $this->lastData = $data;

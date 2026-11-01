@@ -71,6 +71,30 @@ interface RastreabilidadeRepositoryInterface
      */
     public function addSanitaryEvent(string $lotUuid, int $animalId, array $data, int $userId): ?array;
 
+    /**
+     * @param array{
+     *   nome_produto_final: string,
+     *   percentual_organico_calculado: float|int|string,
+     *   selo_autorizado: string,
+     *   ingredientes: list<array{nome_ingrediente: string, eh_organico: int, proporcao_porcentagem: float|int|string}>
+     * } $data
+     * @return array<string, mixed>
+     */
+    public function createRecipe(array $data, int $userId): array;
+
+    /**
+     * @param array{
+     *   receita_id: int,
+     *   lote_processado_final: string,
+     *   data_processamento: string,
+     *   quantidade_final_obtida: float|int|string,
+     *   unidade_medida: string,
+     *   lotes_entrada?: list<array{uuid: string, quantidade?: float|int|string, unidade?: string}>
+     * } $data
+     * @return array<string, mixed>
+     */
+    public function createAgroOrder(array $data, int $userId): array;
+
     /** @return array<string, mixed>|null */
     public function findByUuid(string $uuid): ?array;
 

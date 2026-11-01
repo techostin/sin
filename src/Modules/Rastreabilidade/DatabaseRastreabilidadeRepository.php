@@ -267,6 +267,190 @@ final class DatabaseRastreabilidadeRepository extends Repository implements Rast
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createRecipe(array $data, int $userId): array
+    {
+        $selo = (string) ($data['selo_autorizado'] ?? 'SEM_SELO');
+        if (!in_array($selo, ['PRODUTO_ORGANICO_BRASIL', 'INGREDIENTES_ORGANICOS', 'SEM_SELO'], true)) {
+            throw new InvalidArgumentException('Selo invalido.');
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $insert = $this->pdo->prepare(
+                'INSERT INTO receitas_agroindustria
+                    (nome_produto_final, descricao, percentual_organico_calculado, selo_autorizado,
+                     associado_id, status, excluido, criado_por)
+                 VALUES (:nome, :descricao, :percentual, :selo, :associado_id, :status, 0, :criado_por)'
+            );
+            $insert->execute([
+                'nome' => (string) ($data['nome_produto_final'] ?? ''),
+                'descricao' => $data['descricao'] ?? null,
+                'percentual' => $data['percentual_organico_calculado'] ?? 0,
+                'selo' => $selo,
+                'associado_id' => $data['associado_id'] ?? null,
+                'status' => 'Ativa',
+                'criado_por' => $userId,
+            ]);
+            $recipeId = (int) $this->pdo->lastInsertId();
+
+            $ingredients = $data['ingredientes'] ?? [];
+            if (is_array($ingredients)) {
+                $ingredientInsert = $this->pdo->prepare(
+                    'INSERT INTO ingredientes_receita
+                        (receita_id, nome_ingrediente, eh_organico, proporcao_porcentagem)
+                     VALUES (:receita_id, :nome, :organico, :proporcao)'
+                );
+                foreach ($ingredients as $ingredient) {
+                    if (!is_array($ingredient)) {
+                        continue;
+                    }
+                    $ingredientInsert->execute([
+                        'receita_id' => $recipeId,
+                        'nome' => (string) ($ingredient['nome_ingrediente'] ?? ''),
+                        'organico' => (int) ($ingredient['eh_organico'] ?? 0),
+                        'proporcao' => $ingredient['proporcao_porcentagem'] ?? 0,
+                    ]);
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        $recipe = $this->fetchOne('SELECT * FROM receitas_agroindustria WHERE id = :id LIMIT 1', ['id' => $recipeId]);
+        if ($recipe === null) {
+            throw new RuntimeException('Receita criada nao encontrada.');
+        }
+        $recipe['ingredientes'] = $this->fetchAll(
+            'SELECT * FROM ingredientes_receita WHERE receita_id = :id',
+            ['id' => $recipeId]
+        );
+
+        return $recipe;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public function createAgroOrder(array $data, int $userId): array
+    {
+        $recipeId = (int) ($data['receita_id'] ?? 0);
+        $recipe = $this->fetchOne(
+            'SELECT id, percentual_organico_calculado, selo_autorizado
+             FROM receitas_agroindustria WHERE id = :id AND excluido = 0 LIMIT 1',
+            ['id' => $recipeId]
+        );
+        if ($recipe === null) {
+            throw new InvalidArgumentException('Receita invalida.');
+        }
+
+        $uuid = $this->uuid();
+        $code = $this->code();
+        $associadoId = isset($data['associado_id']) && is_numeric($data['associado_id'])
+            ? (int) $data['associado_id'] : null;
+        $payload = [
+            'receita_id' => $recipeId,
+            'lote_processado_final' => (string) ($data['lote_processado_final'] ?? ''),
+            'quantidade_final_obtida' => $data['quantidade_final_obtida'] ?? 0,
+            'unidade_medida' => (string) ($data['unidade_medida'] ?? 'kg'),
+        ];
+        $inputTotal = 0.0;
+        $inputs = is_array($data['lotes_entrada'] ?? null) ? $data['lotes_entrada'] : [];
+
+        $this->pdo->beginTransaction();
+        try {
+            $insert = $this->pdo->prepare(
+                'INSERT INTO ordens_producao
+                    (receita_id, higienizacao_previa_id, lote_processado_final, data_processamento,
+                     quantidade_final_obtida, unidade_medida, status_auditoria, percentual_organico,
+                     selo_autorizado, associado_id, observacoes, excluido, criado_por)
+                 VALUES (:receita_id, :higienizacao_id, :lote_final, :data_processamento,
+                         :quantidade, :unidade, :status, :percentual, :selo, :associado_id,
+                         :observacoes, 0, :criado_por)'
+            );
+            $insert->execute([
+                'receita_id' => $recipeId,
+                'higienizacao_id' => $data['higienizacao_previa_id'] ?? null,
+                'lote_final' => (string) ($data['lote_processado_final'] ?? ''),
+                'data_processamento' => (string) ($data['data_processamento'] ?? date('Y-m-d H:i:s')),
+                'quantidade' => $data['quantidade_final_obtida'] ?? 0,
+                'unidade' => (string) ($data['unidade_medida'] ?? 'kg'),
+                'status' => 'EM_ANALISE',
+                'percentual' => $data['percentual_organico'] ?? $recipe['percentual_organico_calculado'],
+                'selo' => $data['selo_autorizado'] ?? $recipe['selo_autorizado'],
+                'associado_id' => $associadoId,
+                'observacoes' => $data['observacoes'] ?? null,
+                'criado_por' => $userId,
+            ]);
+            $orderId = (int) $this->pdo->lastInsertId();
+
+            $lotId = $this->insertLot(
+                $uuid,
+                'agroindustria',
+                'ordens_producao',
+                $orderId,
+                $code,
+                $associadoId,
+                null,
+                $payload,
+                $userId
+            );
+
+            $this->insertEvent($lotId, [
+                'tipo' => 'processamento',
+                'data_evento' => (string) ($data['data_processamento'] ?? date('Y-m-d H:i:s')),
+                'descricao' => 'Ordem de producao agroindustrial registrada.',
+                'payload' => $payload,
+            ], $userId);
+
+            $link = $this->pdo->prepare(
+                'INSERT INTO rastreabilidade_elos
+                    (origem_lote_id, destino_lote_id, tipo, quantidade, unidade, payload_json, created_by)
+                 VALUES (:origem, :destino, :tipo, :quantidade, :unidade, :payload, :created_by)'
+            );
+            foreach ($inputs as $input) {
+                if (!is_array($input) || !isset($input['uuid']) || !is_string($input['uuid'])) {
+                    continue;
+                }
+                $origin = $this->fetchOne(
+                    'SELECT id FROM rastreabilidade_lotes WHERE uuid = :uuid LIMIT 1',
+                    ['uuid' => $input['uuid']]
+                );
+                if ($origin === null) {
+                    throw new InvalidArgumentException('Lote de entrada inexistente.');
+                }
+                $link->execute([
+                    'origem' => (int) $origin['id'],
+                    'destino' => $lotId,
+                    'tipo' => 'transformacao',
+                    'quantidade' => $input['quantidade'] ?? null,
+                    'unidade' => $input['unidade'] ?? null,
+                    'payload' => $this->encodeJson(['ordem_id' => $orderId]),
+                    'created_by' => $userId,
+                ]);
+                $inputTotal += (float) ($input['quantidade'] ?? 0);
+            }
+
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        $lot = $this->findByUuid($uuid);
+        if ($lot === null) {
+            throw new RuntimeException('Ordem agroindustrial criada nao encontrada.');
+        }
+        $lot['entrada_total'] = $inputTotal;
+
+        return $lot;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
     public function createInputLot(array $data, int $userId): array
     {
         $uuid = $this->uuid();

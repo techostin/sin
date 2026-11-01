@@ -105,4 +105,39 @@ final class Onda4ControllerTest extends TestCase
         );
         self::assertSame(400, $response->status);
     }
+
+    public function testCreatesRecipeAndOrder(): void
+    {
+        $controller = new AgroindustriaController(new FakeRastreabilidadeRepository());
+        $context = new ContextoUsuarioFake(['agroindustria'], 13, null, [], [], 'Agro', ['agroindustria.write']);
+
+        $recipe = $controller->recipe(
+            Request::create(
+                'POST',
+                '/agroindustria/receitas',
+                [],
+                [],
+                null,
+                '{"nome_produto_final":"Molho","percentual_organico_calculado":95,'
+                . '"selo_autorizado":"INGREDIENTES_ORGANICOS"}'
+            ),
+            $context
+        );
+        self::assertSame(201, $recipe->status);
+
+        $order = $controller->order(
+            Request::create(
+                'POST',
+                '/agroindustria/ordens',
+                [],
+                [],
+                null,
+                '{"receita_id":99,"lote_processado_final":"LOTE-AGR-999","data_processamento":"2026-11-01 10:00:00",'
+                . '"quantidade_final_obtida":10,"unidade_medida":"kg","lotes_entrada":[]}'
+            ),
+            $context
+        );
+        self::assertSame(201, $order->status);
+        self::assertStringContainsString('LOTE-AGR999', $order->body);
+    }
 }

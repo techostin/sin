@@ -223,4 +223,12 @@ return static function (Router $router, Container $container): void {
         $context = $guard($request, 'agroindustria', 'write');
         return $context instanceof Response ? $context : $agroindustria()->transform($request, $context);
     });
+    $router->post('/agroindustria/receitas', static function (Request $request) use ($guard, $agroindustria): Response {
+        $context = $guard($request, 'agroindustria', 'write');
+        return $context instanceof Response ? $context : $agroindustria()->recipe($request, $context);
+    });
+    $router->post('/agroindustria/ordens', static function (Request $request) use ($guard, $agroindustria): Response {
+        $context = $guard($request, 'agroindustria', 'write');
+        return $context instanceof Response ? $context : $agroindustria()->order($request, $context);
+    });
 };
