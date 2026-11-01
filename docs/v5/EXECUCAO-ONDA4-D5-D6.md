@@ -1,7 +1,7 @@
 # Execução Onda 4 — D5 Animal + D6 Agroindústria (fatia inicial)
 
 > **Data:** 01/11/2026 · **Status:** fatia inicial do T1 para animal e transformação.
-> **Commit:** `20d6abb`, `bd7b4c6` · **Tag:** `onda4-d5-d6`, `onda4-animais`
+> **Commit:** `20d6abb`, `bd7b4c6`, `7699553` · **Tag:** `onda4-d5-d6`, `onda4-animais`, `onda4-d6-completo`
 > **Nenhum dado pessoal ou segredo é exibido neste relatório.**
 
 ---
@@ -14,13 +14,15 @@
 | **D5** | `POST /animal/lotes/{uuid}/animais` | animal individual vinculado ao lote e evento T1 |
 | **D5** | `POST /animal/lotes/{uuid}/animais/{id}/sanidade` | evento sanitário + evento T1 |
 | **D6** | `POST /api/v1/agroindustria/transformacoes` | cria elo T1 `transformacao` entre dois lotes |
-| **T1** | `createAnimalLot` / `addAnimal` / `addSanitaryEvent` | mesmo registro canônico |
+| **D6** | `POST /agroindustria/receitas` | receita + ingredientes |
+| **D6** | `POST /agroindustria/ordens` | ordem de produção + lote T1 agroindústria + vínculo dos lotes de entrada |
+| **T1** | `createRecipe` / `createAgroOrder` | receita/ordem e elos no mesmo registro canônico |
 
 ### Evidências
 
 | Item | Resultado |
 |---|---:|
-| Testes | **68 / 159 asserções** |
+| Testes | **69 / 162 asserções** |
 | PHPStan / Deptrac / PHPCS | **0 / 0 / 0** |
 | Rotas sem sessão | **401** |
 | Health main/staging | **200** |
@@ -51,6 +53,18 @@ sanidade_id=8 (VACINACAO)
 Ambos os dados foram limpos, incluindo `animais`, `controle_sanidade_animal`, `animal_lotes` e o
 registro T1.
 
+### D6 — receita e ordem
+
+```text
+receita_id=9 (E2E Molho)
+ordem_uuid=aca539b2-...
+codigo=LOTE-4ACA3EC8957D
+entrada_total=18 kg
+elos=1 (lote de entrada -> ordem)
+```
+
+Receita, ingredientes, ordem, lotes e vínculos foram removidos após o teste.
+
 ---
 
 ## 3. O que ainda falta para D5/D6 completos
@@ -58,7 +72,7 @@ registro T1.
 | Item | Situação |
 |---|---|
 | Animais individuais, sanidade, reprodução, movimentação | ✅ indivíduo + sanidade; reprodução/movimentação depois |
-| Ordem de produção, receita, higienização, balanço de massa | próxima fatia D6 |
+| Ordem de produção, receita, higienização, balanço de massa | ✅ receita/ordem/vínculo; higienização e perdas finas depois |
 | Vínculo automático insumo → transformação → produto | parcial; o elo T1 existe |
 | UI animal/agroindústria | não iniciada |
 | Relatórios de cadeia animal/agro | via L1, depois |
@@ -68,7 +82,7 @@ registro T1.
 ## 4. Próxima etapa
 
 1. Completar D5 (reprodução e movimentação).
-2. Completar D6 (ordem, receita, massa e rótulo).
+2. Completar D6 (higienização, perdas finas e rótulo).
 3. D7 (insumos legados), D8 (governança) e D4 (financeiro).
 4. Fechar UI, E2E e relatórios por persona.
 
