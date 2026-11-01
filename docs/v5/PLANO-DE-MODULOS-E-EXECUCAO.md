@@ -788,8 +788,10 @@ de entrada (Android 9+), abertura < 3 s.
 > `onda3-documentos` (`b357201`), `onda3-evidencias` (`e49c7f9`) e `onda3-e2e` (`91a8a0e`).
 > **Onda 4** (01/11/2026): animal, sanidade, reprodução, movimentação, transformação, receita/ordem,
 > higienização, insumos legados, governança e financeiro — tags `onda4-d5-d6` (`20d6abb`),
-> `onda4-animais` (`bd7b4c6`), `onda4-d6-completo` (`7699553`) e `onda4-d7-d8-d4` (`7bf19d1`),
-> 72 testes verdes.
+> `onda4-animais` (`bd7b4c6`), `onda4-d6-completo` (`7699553`) e `onda4-d7-d8-d4` (`7bf19d1`).
+> **Onda 5** (01/11/2026): L1 `relatorios/resumo`, L2 `portal/dashboard` por capability e menu
+> filtrado — tag `onda5-l1-l2` (`349383c`), 74 testes verdes. Pendências externas em
+> [`PENDENCIAS-FECHAMENTO.md`](PENDENCIAS-FECHAMENTO.md).
 > Evidências: [`EXECUCAO-F1-FUNDACAO.md`](EXECUCAO-F1-FUNDACAO.md),
 > [`EXECUCAO-F1-K2-D1.md`](EXECUCAO-F1-K2-D1.md),
 > [`EXECUCAO-ONDA1-K1-K3-L2.md`](EXECUCAO-ONDA1-K1-K3-L2.md),

@@ -40,11 +40,11 @@
 | 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
 | 1.5 | Connection, UnitOfWork, Repository base | ✅ |
 | 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
-| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 72 testes, 0 erros |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 74 testes, 0 erros |
 | 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
 | 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
 
-- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`), **`onda3-e2e`** (`91a8a0e`), **`onda4-d5-d6`** (`20d6abb`), **`onda4-animais`** (`bd7b4c6`), **`onda4-d6-completo`** (`7699553`) e **`onda4-d7-d8-d4`** (`7bf19d1`); branch `feat/f1-kernel`.
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`), **`onda3-e2e`** (`91a8a0e`), **`onda4-d5-d6`** (`20d6abb`), **`onda4-animais`** (`bd7b4c6`), **`onda4-d6-completo`** (`7699553`), **`onda4-d7-d8-d4`** (`7bf19d1`) e **`onda5-l1-l2`** (`349383c`); branch `feat/f1-kernel`.
 - Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
 - Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
 - **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
@@ -121,12 +121,32 @@ Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO
 - E2E real de D5/D6/D7/D8/D4; dados limpos.
 - Staging sincronizado em `7bf19d1`.
 
+## Onda 5 — Relatórios, Portal e UI por persona (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **L1** | `GET /relatorios/resumo` com contagens reais | ✅ core |
+| **L2** | `GET /portal/dashboard` com cards por capability | ✅ core |
+| **UI** | menu legado filtra links pelo manifesto `/me/capabilities` | ✅ inicial |
+| Exportação PDF/Excel | próxima fatia | ⏳ |
+| Telas redesenhadas por persona | próxima fatia | ⏳ |
+
+- Relatório: [EXECUCAO-ONDA5-L1-L2.md](docs/v5/EXECUCAO-ONDA5-L1-L2.md).
+- Fechamento de pendências: [PENDENCIAS-FECHAMENTO.md](docs/v5/PENDENCIAS-FECHAMENTO.md).
+- Staging sincronizado em `349383c`.
+
 ## Próximo passo
 
-1. Completar D7/D8/D4 (listagens, votos/presença, planos/caixa).
-2. **Onda 5:** L1 relatórios e L2 UI/dashboards por persona.
-3. E2E autenticado por persona e integração do menu/capabilities.
-4. Fechar **Resend/logs/LGPD**, fiscais/especialista, deploy de produção e push.
+As pendências técnicas executáveis foram fechadas até a Onda 5. Restam **itens externos/humanos**:
+
+1. Resend: criar nova chave e revogar a antiga.
+2. Logs de produção do período 20–27/10.
+3. Decisão LGPD assinada.
+4. Fiscais e especialista nomeados.
+5. Push/deploy de produção conforme sua decisão.
+6. Backlog de evolução (exportações, votos/presença, caixa, telas por persona).
+
+Checklist completo: [PENDENCIAS-FECHAMENTO.md](docs/v5/PENDENCIAS-FECHAMENTO.md).
 
 ## Regras de ouro durante o congelamento
 

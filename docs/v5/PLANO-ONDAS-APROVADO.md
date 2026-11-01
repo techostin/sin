@@ -6,7 +6,8 @@
 > **Status:** Onda 0 ✅ · Onda 1 ✅ (`089f246`) · Onda 2 ✅ fatia vertical (`4097523`) ·
 > Onda 3 ✅ core + documentos/evidências/E2E (`0c67a84`, `b357201`, `e49c7f9`, `91a8a0e`) ·
 > Onda 4 ✅ animal, sanidade, transformação, receita/ordem, insumos, governança e financeiro
-> (`20d6abb`, `bd7b4c6`, `7699553`, `7bf19d1`) · próxima: Onda 5 (L1/L2/UI).
+> (`20d6abb`, `bd7b4c6`, `7699553`, `7bf19d1`) ·
+> Onda 5 ✅ L1 relatórios + L2 portal/UI (`349383c`) · restam pendências externas/humanas.
 
 ## 1. Unidades lógicas (14)
 
