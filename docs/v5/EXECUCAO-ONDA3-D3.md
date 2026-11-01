@@ -1,7 +1,8 @@
 # Execução Onda 3 — Escopo Row-Level + D3 Fiscalização
 
-> **Data:** 01/11/2026 · **Status:** fatia core entregue.
-> **Commit:** `0c67a84` · **Tag:** `onda3-d3`
+> **Data:** 01/11/2026 · **Status:** fatia core + documentos + evidências entregues.
+> **Commits:** `0c67a84`, `b357201`, `e49c7f9` · **Tags:** `onda3-d3`, `onda3-documentos`,
+> `onda3-evidencias`
 > **Nenhum dado pessoal ou segredo é exibido neste relatório.**
 
 ---
@@ -32,7 +33,7 @@ Novo serviço em `src/Kernel/Security/AccessScope.php`:
 - associação A não lê associado da associação B;
 - associação correta e dono leem normalmente.
 
-Resultado: **60 testes / 146 asserções**, PHPStan 0, Deptrac 0, PHPCS 0.
+Resultado: **62 testes / 149 asserções**, PHPStan 0, Deptrac 0, PHPCS 0.
 
 ---
 
@@ -103,6 +104,26 @@ assinatura=51373cdb...
 download=200 application/pdf (17 KB)
 ```
 
+### Evidências da visita
+
+- `POST /fiscalizacao/visitas/{uuid}/evidencias` — upload multipart `arquivo`.
+- `GET /fiscalizacao/visitas/{uuid}/evidencias` — lista metadados.
+- `GET /fiscalizacao/evidencias/{uuid}` — download autenticado.
+- Validação: 5 MB, JPEG/PNG/PDF via `UploadValidator`.
+- Armazenamento em `.evidencias/` (ignorado no Git e bloqueado pelo `.htaccess`).
+- Registro em `fiscalizacao_evidencias` com MIME, tamanho e hash SHA-256.
+
+> O upload não foi testado fim-a-fim porque as rotas exigem sessão; as rotas sem sessão
+> retornam **401** e a validação de arquivo tem teste de ausência. O fluxo HTTP autenticado
+> deve ser coberto no E2E com o login do admin.
+
+### Escopo certificadora × associação
+
+- Tabela `certificadora_associacoes`.
+- `DatabaseIdentityRepository` carrega os IDs de associação do certificador.
+- `UsuarioContexto` mescla esses IDs em `visibleAssociations`; `AccessScope` passa a usá-los.
+- Ainda é necessário **cadastrar os vínculos reais** no banco.
+
 ---
 
 ## 3. Separação de funções
@@ -126,8 +147,8 @@ A capability é aplicada no servidor; esconder botão na UI não é suficiente.
 | Cadeia completa | valida existência + evento; balanço de massa completo fica para D2/D5/D6 |
 | Templates/PDF/assinatura | ✅ PDF + hash + HMAC; assinatura ICP-Brasil não |
 | UI | endpoints prontos; telas ainda legadas |
-| Evidências/fotos da visita | ainda não; próxima fatia |
-| Escopo de certificadora | depende do vínculo certificadora × associação, ainda não modelado |
+| Evidências/fotos da visita | ✅ upload/lista/download; E2E autenticado pendente |
+| Escopo de certificadora | ✅ tabela + carregamento no contexto; mapeamentos reais a cadastrar |
 | Validade jurídica | depende do especialista/DPR; software não substitui certificadora |
 
 ---
@@ -143,6 +164,6 @@ A capability é aplicada no servidor; esconder botão na UI não é suficiente.
 
 ## 6. Próxima etapa
 
-1. Fechar evidências/fotos da visita e assinatura ICP-Brasil (se exigida).
-2. Modelar certificadora × associação para escopo completo.
+1. E2E autenticado de D3/evidências e assinatura ICP-Brasil, se exigida.
+2. Cadastrar os vínculos reais certificadora × associação.
 3. **Onda 4:** D5 (animal) e D6 (agroindústria) usando o mesmo T1.

@@ -4,7 +4,7 @@
 > A evolução é por **capacidades**, não por uma lista solta de módulos.
 >
 > **Status:** Onda 0 ✅ · Onda 1 ✅ (`089f246`) · Onda 2 ✅ fatia vertical (`4097523`) ·
-> Onda 3 ✅ core + documentos (`0c67a84`, `b357201`) · Onda 4 próxima (D5/D6).
+> Onda 3 ✅ core + documentos/evidências (`0c67a84`, `b357201`, `e49c7f9`) · Onda 4 próxima (D5/D6).
 
 ## 1. Unidades lógicas (14)
 
