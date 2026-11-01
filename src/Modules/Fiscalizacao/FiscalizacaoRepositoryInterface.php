@@ -39,4 +39,16 @@ interface FiscalizacaoRepositoryInterface
 
     /** @return array<string, mixed>|null */
     public function findDocumentByNumber(string $number): ?array;
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>|null
+     */
+    public function addEvidence(string $visitUuid, array $data, int $userId): ?array;
+
+    /** @return list<array<string, mixed>> */
+    public function listEvidence(string $visitUuid): array;
+
+    /** @return array<string, mixed>|null */
+    public function findEvidence(string $uuid): ?array;
 }

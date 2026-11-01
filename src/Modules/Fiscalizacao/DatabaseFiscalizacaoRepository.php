@@ -195,6 +195,57 @@ final class DatabaseFiscalizacaoRepository extends Repository implements Fiscali
         );
     }
 
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addEvidence(string $visitUuid, array $data, int $userId): ?array
+    {
+        $visit = $this->findVisit($visitUuid);
+        if ($visit === null) {
+            return null;
+        }
+
+        $uuid = $this->uuid();
+        $insert = $this->pdo->prepare(
+            'INSERT INTO fiscalizacao_evidencias
+                (uuid, visita_id, nome_arquivo, mime, tamanho, hash_arquivo, arquivo, uploaded_by)
+             VALUES (:uuid, :visita_id, :nome_arquivo, :mime, :tamanho, :hash_arquivo, :arquivo, :uploaded_by)'
+        );
+        $insert->execute([
+            'uuid' => $uuid,
+            'visita_id' => (int) $visit['id'],
+            'nome_arquivo' => (string) ($data['nome_arquivo'] ?? ''),
+            'mime' => (string) ($data['mime'] ?? ''),
+            'tamanho' => (int) ($data['tamanho'] ?? 0),
+            'hash_arquivo' => (string) ($data['hash_arquivo'] ?? ''),
+            'arquivo' => (string) ($data['arquivo'] ?? ''),
+            'uploaded_by' => $userId,
+        ]);
+
+        return $this->findEvidence($uuid);
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listEvidence(string $visitUuid): array
+    {
+        return $this->fetchAll(
+            'SELECT e.* FROM fiscalizacao_evidencias e
+             JOIN fiscalizacao_visitas v ON v.id = e.visita_id
+             WHERE v.uuid = :uuid ORDER BY e.created_at DESC',
+            ['uuid' => $visitUuid]
+        );
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findEvidence(string $uuid): ?array
+    {
+        return $this->fetchOne(
+            'SELECT e.*, v.uuid AS visita_uuid
+             FROM fiscalizacao_evidencias e
+             JOIN fiscalizacao_visitas v ON v.id = e.visita_id
+             WHERE e.uuid = :uuid LIMIT 1',
+            ['uuid' => $uuid]
+        );
+    }
+
     private function uuid(): string
     {
         $bytes = random_bytes(16);

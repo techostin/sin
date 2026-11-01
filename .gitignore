@@ -36,6 +36,7 @@ Thumbs.db
 # Certificados gerados e temporarios de PDF (nunca versionar)
 /.certificados/
 /.pdf-tmp/
+/.evidencias/
 
 # Cache do Deptrac
 .deptrac.cache

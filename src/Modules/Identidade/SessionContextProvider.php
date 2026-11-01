@@ -54,6 +54,7 @@ final class SessionContextProvider implements ContextoUsuarioProvider
             $roles,
             $permissions,
             $areas,
+            $loaded['association_ids'],
         );
     }
 }

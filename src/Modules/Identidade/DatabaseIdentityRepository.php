@@ -14,7 +14,7 @@ final class DatabaseIdentityRepository extends Repository implements IdentityRep
         parent::__construct($pdo);
     }
 
-    /** @return array{user: array<string, mixed>, roles: list<array{code: string, scope_type: string, scope_id: int}>, permissions: list<string>}|null */
+    /** @return array{user: array<string, mixed>, roles: list<array{code: string, scope_type: string, scope_id: int}>, permissions: list<string>, association_ids: list<int>}|null */
     public function load(int $userId): ?array
     {
         $user = $this->fetchOne(
@@ -37,6 +37,7 @@ final class DatabaseIdentityRepository extends Repository implements IdentityRep
             'user' => $user,
             'roles' => $roles,
             'permissions' => $this->loadPermissions($userId),
+            'association_ids' => $this->loadAssociationIds($userId),
         ];
     }
 
@@ -102,5 +103,33 @@ final class DatabaseIdentityRepository extends Repository implements IdentityRep
         };
 
         return ['code' => $code, 'scope_type' => 'global', 'scope_id' => 0];
+    }
+
+    /** @return list<int> */
+    private function loadAssociationIds(int $userId): array
+    {
+        $ids = [];
+
+        $scoped = $this->fetchAll(
+            "SELECT escopo_id FROM usuario_papel
+             WHERE usuario_id = :id AND ativo = 1 AND escopo_tipo = 'associacao' AND escopo_id > 0",
+            ['id' => $userId]
+        );
+        foreach ($scoped as $row) {
+            $ids[] = (int) $row['escopo_id'];
+        }
+
+        $certifier = $this->fetchAll(
+            'SELECT DISTINCT ca.associacao_id
+             FROM usuario_papel up
+             JOIN certificadora_associacoes ca ON ca.certificadora_id = up.escopo_id
+             WHERE up.usuario_id = :id AND up.ativo = 1 AND up.escopo_tipo = \'certificadora\'',
+            ['id' => $userId]
+        );
+        foreach ($certifier as $row) {
+            $ids[] = (int) $row['associacao_id'];
+        }
+
+        return array_values(array_unique($ids));
     }
 }

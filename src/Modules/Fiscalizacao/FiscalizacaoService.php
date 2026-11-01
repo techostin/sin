@@ -10,12 +10,16 @@ use App\Kernel\Documents\CertificateGeneratorInterface;
 use App\Kernel\Documents\CertificateSigner;
 use App\Kernel\Documents\DocumentNumberGeneratorInterface;
 use App\Kernel\Security\AccessScope;
+use App\Kernel\Security\UploadValidator;
 use App\Modules\Rastreabilidade\RastreabilidadeRepositoryInterface;
 use InvalidArgumentException;
 use RuntimeException;
 
 final class FiscalizacaoService
 {
+    private readonly UploadValidator $uploads;
+    private readonly string $evidenceDirectory;
+
     public function __construct(
         private readonly FiscalizacaoRepositoryInterface $repository,
         private readonly RastreabilidadeRepositoryInterface $traceability,
@@ -23,7 +27,11 @@ final class FiscalizacaoService
         private readonly AuditLogger $audit,
         private readonly ?CertificateGeneratorInterface $pdf = null,
         private readonly ?CertificateSigner $signer = null,
+        ?UploadValidator $uploads = null,
+        ?string $evidenceDirectory = null,
     ) {
+        $this->uploads = $uploads ?? new UploadValidator();
+        $this->evidenceDirectory = $evidenceDirectory ?? dirname(__DIR__, 3) . '/.evidencias';
     }
 
     /**
@@ -214,6 +222,100 @@ final class FiscalizacaoService
     public function verifyDocument(string $number): ?array
     {
         return $this->repository->findDocumentByNumber($number);
+    }
+
+    /**
+     * @param array{error?: int, size?: int, tmp_name?: string, name?: string} $file
+     * @return array<string, mixed>
+     */
+    public function storeEvidence(ContextoUsuario $context, string $visitUuid, array $file): array
+    {
+        $this->findVisit($context, $visitUuid);
+        if ($file === [] || !isset($file['tmp_name'])) {
+            throw new InvalidArgumentException('Arquivo de evidencia obrigatorio.');
+        }
+
+        $this->uploads->validate($file);
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file((string) $file['tmp_name']);
+        $extensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'application/pdf' => 'pdf',
+        ];
+        if (!is_string($mime) || !isset($extensions[$mime])) {
+            throw new InvalidArgumentException('Tipo de evidencia nao permitido.');
+        }
+
+        $uuid = $this->uuid();
+        $directory = $this->evidenceDirectory . DIRECTORY_SEPARATOR . $visitUuid;
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new RuntimeException('Diretorio de evidencias indisponivel.');
+        }
+
+        $path = $directory . DIRECTORY_SEPARATOR . $uuid . '.' . $extensions[$mime];
+        if (!move_uploaded_file((string) $file['tmp_name'], $path)) {
+            throw new RuntimeException('Falha ao armazenar a evidencia.');
+        }
+
+        $hash = hash_file('sha256', $path);
+        if ($hash === false) {
+            throw new RuntimeException('Falha ao calcular hash da evidencia.');
+        }
+
+        $evidence = $this->repository->addEvidence($visitUuid, [
+            'nome_arquivo' => mb_substr((string) ($file['name'] ?? 'evidencia'), 0, 255),
+            'mime' => $mime,
+            'tamanho' => (int) ($file['size'] ?? 0),
+            'hash_arquivo' => $hash,
+            'arquivo' => $path,
+        ], (int) $context->userId());
+        if ($evidence === null) {
+            throw new InvalidArgumentException('Visita nao encontrada.');
+        }
+
+        $this->audit->record('anexar_evidencia', 'fiscalizacao_evidencias', (string) ($evidence['uuid'] ?? ''), [
+            'visita' => $visitUuid,
+        ]);
+
+        return $evidence;
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listEvidence(ContextoUsuario $context, string $visitUuid): array
+    {
+        $this->findVisit($context, $visitUuid);
+
+        return $this->repository->listEvidence($visitUuid);
+    }
+
+    /** @return array<string, mixed> */
+    public function findEvidence(ContextoUsuario $context, string $uuid): array
+    {
+        $evidence = $this->repository->findEvidence($uuid);
+        if ($evidence === null) {
+            throw new InvalidArgumentException('Evidencia nao encontrada.');
+        }
+        $this->findVisit($context, (string) ($evidence['visita_uuid'] ?? ''));
+
+        return $evidence;
+    }
+
+    private function uuid(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+        $hex = bin2hex($bytes);
+
+        return sprintf(
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12)
+        );
     }
 
     /** @param array<string, mixed> $visit */

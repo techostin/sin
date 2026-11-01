@@ -170,6 +170,18 @@ return static function (Router $router, Container $container): void {
         $context = $guard($request, 'fiscalizacao', 'write');
         return $context instanceof Response ? $context : $fiscalizacao()->status($request, $params['uuid'] ?? '', $context);
     });
+    $router->post('/fiscalizacao/visitas/{uuid}/evidencias', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'write');
+        return $context instanceof Response ? $context : $fiscalizacao()->evidence($request, $params['uuid'] ?? '', $context);
+    });
+    $router->get('/fiscalizacao/visitas/{uuid}/evidencias', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'read');
+        return $context instanceof Response ? $context : $fiscalizacao()->evidenceList($request, $params['uuid'] ?? '', $context);
+    });
+    $router->get('/fiscalizacao/evidencias/{uuid}', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
+        $context = $guard($request, 'fiscalizacao', 'read');
+        return $context instanceof Response ? $context : $fiscalizacao()->evidenceDownload($request, $params['uuid'] ?? '', $context);
+    });
     $router->post('/fiscalizacao/visitas/{uuid}/revisar', static function (Request $request, array $params) use ($guard, $fiscalizacao): Response {
         $context = $guard($request, 'fiscalizacao', 'review');
         return $context instanceof Response ? $context : $fiscalizacao()->review($request, $params['uuid'] ?? '', $context);

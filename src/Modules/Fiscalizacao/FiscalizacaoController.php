@@ -155,6 +155,63 @@ final class FiscalizacaoController
         ], $body);
     }
 
+    public function evidence(Request $request, string $uuid, ContextoUsuario $context): Response
+    {
+        $file = $_FILES['arquivo'] ?? null;
+        if (!is_array($file)) {
+            return $this->invalid($request, 'Arquivo de evidencia obrigatorio.');
+        }
+
+        try {
+            $evidence = $this->service->storeEvidence($context, $uuid, $file);
+        } catch (InvalidArgumentException $exception) {
+            return $this->invalid($request, $exception->getMessage());
+        } catch (\Throwable $exception) {
+            return Response::error('ERRO_ARQUIVO', 'Falha ao armazenar a evidencia.', 500, $request->requestId);
+        }
+
+        return Response::json($evidence, 201, ['requestId' => $request->requestId]);
+    }
+
+    public function evidenceList(Request $request, string $uuid, ContextoUsuario $context): Response
+    {
+        try {
+            $items = $this->service->listEvidence($context, $uuid);
+        } catch (InvalidArgumentException $exception) {
+            return $this->notFound($request);
+        }
+
+        return Response::json($items, 200, ['requestId' => $request->requestId]);
+    }
+
+    public function evidenceDownload(Request $request, string $uuid, ContextoUsuario $context): Response
+    {
+        try {
+            $evidence = $this->service->findEvidence($context, $uuid);
+        } catch (InvalidArgumentException $exception) {
+            return $this->notFound($request);
+        }
+
+        $path = (string) ($evidence['arquivo'] ?? '');
+        $base = realpath(dirname(__DIR__, 3) . '/.evidencias');
+        $real = $path !== '' ? realpath($path) : false;
+        if ($base === false || $real === false || !str_starts_with($real, $base) || !is_file($real)) {
+            return $this->notFound($request);
+        }
+
+        $body = file_get_contents($real);
+        if ($body === false) {
+            return $this->notFound($request);
+        }
+
+        $fileName = basename((string) ($evidence['nome_arquivo'] ?? 'evidencia'));
+
+        return new Response(200, [
+            'Content-Type' => (string) ($evidence['mime'] ?? 'application/octet-stream'),
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+        ], $body);
+    }
+
     private function invalid(Request $request, string $message): Response
     {
         return Response::error('VALIDACAO', $message, 400, $request->requestId);

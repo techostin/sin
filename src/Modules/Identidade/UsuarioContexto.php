@@ -12,6 +12,7 @@ final class UsuarioContexto implements ContextoUsuario
      * @param list<array{code: string, scope_type: string, scope_id: int}> $roles
      * @param list<string> $permissions
      * @param list<string> $areas
+     * @param list<int> $visibleAssociationIds
      */
     public function __construct(
         private readonly int $id,
@@ -21,6 +22,7 @@ final class UsuarioContexto implements ContextoUsuario
         private readonly array $roles,
         private readonly array $permissions,
         private readonly array $areas = [],
+        private readonly array $visibleAssociationIds = [],
     ) {
     }
 
@@ -58,7 +60,7 @@ final class UsuarioContexto implements ContextoUsuario
     /** @return list<int> */
     public function visibleAssociations(): array
     {
-        $ids = [];
+        $ids = $this->visibleAssociationIds;
         foreach ($this->roles as $role) {
             if ($role['scope_type'] === 'associacao' && $role['scope_id'] > 0) {
                 $ids[] = $role['scope_id'];

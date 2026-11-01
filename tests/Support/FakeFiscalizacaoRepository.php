@@ -107,4 +107,27 @@ final class FakeFiscalizacaoRepository implements FiscalizacaoRepositoryInterfac
     {
         return $this->documents[$number] ?? null;
     }
+
+    /** @param array<string, mixed> $data @return array<string, mixed>|null */
+    public function addEvidence(string $visitUuid, array $data, int $userId): ?array
+    {
+        return [
+            'uuid' => '55555555-5555-4555-8555-555555555555',
+            'visita_uuid' => $visitUuid,
+            'nome_arquivo' => $data['nome_arquivo'] ?? '',
+            'mime' => $data['mime'] ?? '',
+        ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listEvidence(string $visitUuid): array
+    {
+        return [];
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findEvidence(string $uuid): ?array
+    {
+        return null;
+    }
 }

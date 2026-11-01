@@ -146,4 +146,14 @@ final class FiscalizacaoServiceTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->service->findVisit($otherProducer, '11111111-1111-4111-8111-111111111111');
     }
+
+    public function testEvidenceRequiresFile(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->service->storeEvidence(
+            $this->fiscal,
+            '11111111-1111-4111-8111-111111111111',
+            []
+        );
+    }
 }
