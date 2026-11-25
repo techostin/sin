@@ -20,7 +20,9 @@ $fichaModalAssociado = false;
 if (isset($_SESSION['user_id'])) {
     $tabelaFicha = $_SESSION['user_table'] ?? '';
     $nivelFicha  = (int)($_SESSION['user_nivel'] ?? 0);
-    $fichaModalAssociado = in_array($tabelaFicha, ['usuarios', 'associados'], true)
+    // Sessões antigas/admin podem não ter user_table preenchido; nesse caso a
+    // própria API de status decide (aprovada x pendente x sem ficha).
+    $fichaModalAssociado = ($tabelaFicha === '' || in_array($tabelaFicha, ['usuarios', 'associados'], true))
         && $nivelFicha === NIVEL_USUARIO;
 } elseif (!empty($_SESSION['associado_id'])) {
     $fichaModalAssociado = true;
@@ -29,6 +31,13 @@ if (isset($_SESSION['user_id'])) {
 if (!$fichaModalAssociado) {
     return;
 }
+
+// Exibe a ficha apenas no primeiro acesso após o login (flag criada em
+// login.php). Assim ela não reaparece a cada clique/navegação.
+if (empty($_SESSION['mostrar_ficha_modal'])) {
+    return;
+}
+unset($_SESSION['mostrar_ficha_modal']);
 ?>
 <style>
     .ficha-adesao-modal .modal-header { background: linear-gradient(135deg, #1b6b43 0%, #2f9e6f 100%); color:#fff; border-bottom: 4px solid #f0b429; }
@@ -62,6 +71,7 @@ if (!$fichaModalAssociado) {
                     <h4 class="mt-1">FICHA DE CADASTRO DE ASSOCIADO</h4>
                     <div class="ficha-org">Ficha de Adesão ao Quadro Associativo &bull; Rev. 2025</div>
                 </div>
+                <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
 
@@ -89,9 +99,11 @@ if (!$fichaModalAssociado) {
                                 <div class="small fw-semibold mb-1">TIPO DE ASSOCIADO <span class="text-danger">*</span></div>
                                 <div class="ficha-radio-group">
                                     <div class="form-check"><input class="form-check-input" type="radio" name="tipo_associado" id="ta-familiar" value="agricultor_familiar"><label class="form-check-label small" for="ta-familiar">Agricultor(a) Familiar</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="tipo_associado" id="ta-produtor-agroindustria" value="produtor_agroindustria"><label class="form-check-label small" for="ta-produtor-agroindustria">Produtor(a)/Agroindústria</label></div>
                                     <div class="form-check"><input class="form-check-input" type="radio" name="tipo_associado" id="ta-colaborador" value="colaborador"><label class="form-check-label small" for="ta-colaborador">Colaborador(a)</label></div>
                                     <div class="form-check"><input class="form-check-input" type="radio" name="tipo_associado" id="ta-honorario" value="honorario"><label class="form-check-label small" for="ta-honorario">Honorário(a)</label></div>
                                     <div class="form-check"><input class="form-check-input" type="radio" name="tipo_associado" id="ta-institucional" value="institucional"><label class="form-check-label small" for="ta-institucional">Institucional</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="tipo_associado" id="ta-consumidor" value="consumidor"><label class="form-check-label small" for="ta-consumidor">Consumidor(a) / Cliente</label></div>
                                 </div>
                             </div>
                         </div>
@@ -736,11 +748,11 @@ if (!$fichaModalAssociado) {
             .then(function (resp) {
                 if (!resp || !resp.success || !resp.mostrar) return;
 
+                // A ficha deve reaparecer a cada acesso enquanto não estiver
+                // aprovada — inclusive para um usuário recém-criado. Não usar
+                // sessionStorage aqui (a chave antiga era compartilhada entre
+                // contas do mesmo navegador e suprimia a ficha do novo usuário).
                 var status = resp.status;
-                var chave = STORAGE_PREFIX + status;
-                try {
-                    if (sessionStorage.getItem(chave) === '1') return;
-                } catch (e) {}
 
                 if (status === 'pendente') {
                     var sub = resp.ficha && resp.ficha.data_submissao

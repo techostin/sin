@@ -26,10 +26,30 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Tentativa de autenticação no Portal: não herda a sessão de portal anterior.
+// Antes, um POST de login com CPF de outra pessoa era redirecionado de volta
+// para a área do associado antigo por causa do redirect abaixo.
+$acaoPortalPost = is_string($_POST['acao'] ?? null) ? $_POST['acao'] : '';
+$tentativaPortal = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+    && in_array($acaoPortalPost, ['login_cpf', 'solicitar_magic_link', 'verificar_token', 'consultar_cpf'], true);
+
+$limparSessaoPortal = static function (): void {
+    foreach ([
+        'associado_id', 'associado_nome', 'associado_cpf', 'associado_email',
+        'portal_acesso_via', 'portal_acesso_por',
+    ] as $chavePortal) {
+        unset($_SESSION[$chavePortal]);
+    }
+};
+
 // Verificar se já tem sessão de portal ativa
 if (isset($_SESSION['associado_id'])) {
-    header('Location: ' . SITE_URL . '/portal/area');
-    exit;
+    if (!$tentativaPortal) {
+        header('Location: ' . SITE_URL . '/portal/area');
+        exit;
+    }
+    // A tentativa de login sempre começa sem a identidade de portal anterior.
+    $limparSessaoPortal();
 }
 
 // Verificar se usuário está logado no sistema principal (admin/gestor/diretoria)
@@ -118,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Cria a sessão de portal do associado consultado, mantendo
                     // a sessão principal do Admin/Diretoria (auditada).
                     session_regenerate_id(true);
+                    $limparSessaoPortal();
                     $_SESSION['associado_id'] = $associado['id'];
                     $_SESSION['associado_nome'] = $associado['nome'] . ' ' . $associado['sobrenome'];
                     $_SESSION['associado_cpf'] = $associado['cpf'];
@@ -155,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Evita fixação de sessão no momento da autenticação
                     session_regenerate_id(true);
+                    $limparSessaoPortal();
 
                     // Login bem-sucedido
                     $_SESSION['associado_id'] = $associado['id'];
@@ -286,6 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($reset) {
                     // Evita fixação de sessão no momento da autenticação
                     session_regenerate_id(true);
+                    $limparSessaoPortal();
 
                     // Logar associado
                     $_SESSION['associado_id'] = $reset['associado_id'];

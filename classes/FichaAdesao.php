@@ -23,9 +23,11 @@ class FichaAdesao
 
     public const TIPOS_ASSOCIADO = [
         'agricultor_familiar' => 'Agricultor(a) Familiar',
+        'produtor_agroindustria' => 'Produtor(a)/Agroindústria',
         'colaborador'         => 'Colaborador(a)',
         'honorario'           => 'Honorário(a)',
         'institucional'       => 'Institucional',
+        'consumidor'          => 'Consumidor(a) / Cliente',
     ];
 
     public const ZONAS = [
@@ -848,10 +850,12 @@ class FichaAdesao
 
         // Mapeamentos entre os enums da ficha e do cadastro
         $mapaTipoAssociado = [
-            'agricultor_familiar' => 'Efetivo',
-            'colaborador'         => 'Efetivo',
-            'honorario'           => 'Honorario',
-            'institucional'       => 'Benemerito',
+            'agricultor_familiar'   => 'Efetivo',
+            'produtor_agroindustria' => 'Efetivo',
+            'colaborador'           => 'Efetivo',
+            'honorario'             => 'Honorario',
+            'institucional'         => 'Benemerito',
+            'consumidor'            => 'Efetivo',
         ];
         $tipoAssociado = $mapaTipoAssociado[(string)($ficha['tipo_associado'] ?? '')] ?? 'Efetivo';
         $mapaCertificacao = [

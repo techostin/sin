@@ -57,6 +57,22 @@ class User {
                 return false;
             }
 
+            // Antes de autenticar outra conta, descarta qualquer identidade
+            // anterior. Isso evita que uma sessão antiga continue válida após
+            // uma tentativa de login com credenciais inválidas.
+            foreach ([
+                'user_id', 'user_nivel', 'user_nome', 'user_tipo', 'user_tipo_usuario',
+                'user_table', 'user_orgao', 'user_setor', 'user_especialidade',
+                'user_area_producao', 'login_temp', 'mostrar_modal_eventos',
+                'primeiro_acesso', 'associado_id', 'associado_nome', 'associado_cpf',
+                'associado_email', 'portal_acesso_via', 'portal_acesso_por',
+            ] as $chaveSessao) {
+                unset($_SESSION[$chaveSessao]);
+            }
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_regenerate_id(true);
+            }
+
             // O mesmo e-mail pode existir nas duas tabelas: valida o hash nas
             // duas e prefere a conta de sistema (usuarios), para que a linha de
             // "associados" não esconda (nem rebaixe) uma conta de equipe.

@@ -1,5 +1,7 @@
 Options +FollowSymLinks -MultiViews -Indexes
-DirectoryIndex index.php index.html
+# A raiz /app/ continua sendo o SISTEMA ATUAL (index.php), garantindo o acesso
+# do admin/criador. A landing page nova fica no caminho explícito /app/inicio.php.
+DirectoryIndex index.php inicio.php index.html
 
 # WAF: limita o corpo da requisicao a 32 MB (compensa abuso de OOM/CVE-2026-109618)
 LimitRequestBody 33554432
@@ -23,7 +25,7 @@ RewriteRule ^ - [F,L]
 RewriteCond %{HTTP_USER_AGENT} (sqlmap|nikto|nmap|masscan|zgrab|acunetix|nessus|dirbuster|gobuster|wpscan) [NC]
 RewriteRule ^ - [F,L]
 
-RewriteRule ^(vendor|dev-utils|sql|tmp|storage|logs|config|node_modules|api/legacy|\.certificados|\.pdf-tmp|\.evidencias)(/|$) - [F,L,NC]
+RewriteRule ^(vendor|dev-utils|sql|tmp|storage|logs|config|node_modules|api/legacy|src|tests|\.certificados|\.pdf-tmp|\.evidencias)(/|$) - [F,L,NC]
 
 # API v1 (fundacao modular): front controller proprio em api/v1/index.php
 RewriteRule ^api/v1(/.*)?$ api/v1/index.php [QSA,L]
@@ -35,6 +37,16 @@ RewriteRule ^ - [L]
 # Regras para URLs amigáveis de relatórios
 # Exemplo: /app/relatorios/associados/pdf -> /app/relatorios/associados.php?tipo=pdf
 RewriteRule ^relatorios/([a-z-]+)/(pdf|excel)$ relatorios/$1.php?tipo=$2 [NC,L,QSA]
+
+# ---------------------------------------------------------------------------
+# Landing page com URL amigável: /app/site (sem alterar /app/, que é o sistema atual)
+# - /app/site        -> serve inicio.php (URL permanece /app/site)
+# - /app/site/       -> redireciona para /app/site (evita caminho relativo quebrado)
+# - /app/site/<algo> -> remove o prefixo para assets/links relativos
+# ---------------------------------------------------------------------------
+RewriteRule ^site$ inicio.php [L]
+RewriteRule ^site/$ /app/site [R=301,L]
+RewriteRule ^site/(.*)$ $1 [L]
 
 # Se a requisição não for para um arquivo que existe
 RewriteCond %{REQUEST_FILENAME} !-f

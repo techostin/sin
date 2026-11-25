@@ -6,8 +6,34 @@ require_once 'classes/Database.php';
 $user = new User();
 $error_message = '';
 
+// Tentativa de login com OUTRA conta enquanto já existe sessão. Antes o
+// redirecionamento abaixo acontecia antes de validar as credenciais, e o
+// usuário continuava autenticado na conta anterior (ex.: cici@gmail.com).
+// Qualquer POST de credenciais descarta TODA a identidade anterior antes de
+// validar a nova conta — inclusive quando a nova senha está errada.
+$tentativaLogin = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+    && (!isset($_POST['etapa']) || $_POST['etapa'] !== '2')
+    && (array_key_exists('email', $_POST) || array_key_exists('senha', $_POST)
+        || array_key_exists('identificador', $_POST));
+
+if ($tentativaLogin) {
+    $chavesIdentidadeLegada = [
+        'user_id', 'user_nivel', 'user_nome', 'user_tipo', 'user_tipo_usuario',
+        'user_table', 'user_orgao', 'user_setor', 'user_especialidade',
+        'user_area_producao', 'login_temp', 'mostrar_modal_eventos',
+        'primeiro_acesso', 'associado_id', 'associado_nome', 'associado_cpf',
+        'associado_email', 'portal_acesso_via', 'portal_acesso_por',
+    ];
+    foreach ($chavesIdentidadeLegada as $chaveSessao) {
+        unset($_SESSION[$chaveSessao]);
+    }
+    // Anti fixação: a sessão antiga (possivelmente de outra pessoa) não pode
+    // ser reaproveitada pela sessão que está tentando autenticar.
+    session_regenerate_id(true);
+}
+
 // Se o usuário já estiver logado, redireciona para o dashboard apropriado
-if ($user->isLoggedIn()) {
+if (!$tentativaLogin && $user->isLoggedIn()) {
     if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
         header("Location: " . SITE_URL . "/caderno-campo/dashboard-agricultor");
     } else {
@@ -113,6 +139,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!isset($_POST['etapa']) || $_POST[
             if ($userData) {
                 // Anti fixação de sessão: novo ID de sessão ao autenticar.
                 session_regenerate_id(true);
+                // A ficha de adesão do nível usuário deve aparecer apenas no
+                // primeiro acesso após o login, não a cada clique/navegação.
+                $_SESSION['mostrar_ficha_modal'] = true;
 
                 // Gestor: solicitar órgão/especialidade apenas no primeiro acesso
                 if ((int)$userData['nivel'] === NIVEL_GESTOR) {
