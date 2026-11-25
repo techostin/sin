@@ -1,0 +1,193 @@
+/* =====================================================================
+   SINPORG — Gestor/Técnico | Layout Moderno & Suave
+   Paleta exclusiva para gestores e técnicos (índigo/azul/teal).
+   Escopado via .gestor-modern. Apenas estilo visual; NÃO altera lógica.
+   ===================================================================== */
+
+:root {
+    --gm-bg:         #eef1f8;
+    --gm-bg-soft:    #f7f9fd;
+    --gm-surface:    #ffffff;
+    --gm-primary:    #4f5bd5;
+    --gm-primary-d:  #3a43b0;
+    --gm-teal:       #2f9db3;
+    --gm-indigo:     #5a6acf;
+    --gm-gold:       #f0b95c;
+    --gm-coral:      #ef7a67;
+    --gm-ink:        #26324a;
+    --gm-muted:      #7c8aa5;
+    --gm-border:     #e2e6f0;
+    --gm-shadow:     0 10px 30px -12px rgba(45, 54, 110, 0.30);
+    --gm-shadow-sm:  0 6px 18px -10px rgba(45, 54, 110, 0.24);
+    --gm-radius:     20px;
+    --gm-radius-sm:  14px;
+}
+
+.gestor-modern {
+    color: var(--gm-ink);
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+}
+.gestor-modern .page-bg {
+    background:
+        radial-gradient(1200px 500px at 100% -10%, rgba(248, 185, 92, 0.10), transparent 60%),
+        radial-gradient(1000px 500px at -10% 0%, rgba(47, 157, 179, 0.13), transparent 55%),
+        linear-gradient(180deg, var(--gm-bg) 0%, var(--gm-bg-soft) 42%, var(--gm-surface) 100%);
+}
+
+/* ── Hero header ─────────────────────────────────────────────── */
+.gestor-modern .gestor-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 2rem 2rem 1.6rem;
+    border-radius: var(--gm-radius);
+    background:
+        radial-gradient(600px 200px at 100% 0%, rgba(79,91,213,.18), transparent 60%),
+        radial-gradient(400px 200px at 0% 100%, rgba(47,157,179,.16), transparent 55%),
+        linear-gradient(135deg, #ffffff 0%, #f2f4fd 55%, #e9eefb 100%);
+    border: 1px solid rgba(79,91,213,0.18);
+    box-shadow: var(--gm-shadow);
+    margin-bottom: 1.5rem;
+}
+.gestor-modern .gestor-hero::after {
+    content: '';
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79,91,213,0.14), transparent 70%);
+    pointer-events: none;
+}
+.gestor-modern .gestor-hero h1 {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--gm-ink);
+    letter-spacing: -0.02em;
+}
+.gestor-modern .gestor-hero p { color: var(--gm-muted); font-size: 0.98rem; }
+.gestor-modern .gestor-hero .btn,
+.gestor-modern .btn { border-radius: 999px; font-weight: 600; }
+.gestor-modern .btn-assoc-primary {
+    background: linear-gradient(135deg, var(--gm-primary), var(--gm-teal));
+    border: none; color: #fff; box-shadow: var(--gm-shadow-sm);
+}
+.gestor-modern .btn-assoc-success {
+    background: linear-gradient(135deg, #5a8fd5, #4f7cc4);
+    border: none; color: #fff; box-shadow: var(--gm-shadow-sm);
+}
+.gestor-modern .btn-assoc-ghost {
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(79,91,213,0.3);
+    color: var(--gm-primary-d);
+}
+.gestor-modern .btn-primary {
+    background: linear-gradient(135deg, var(--gm-primary), var(--gm-indigo));
+    border: none; box-shadow: var(--gm-shadow-sm);
+}
+.gestor-modern .btn-success {
+    background: linear-gradient(135deg, #4f9fd5, #3f86c4);
+    border: none; box-shadow: var(--gm-shadow-sm);
+}
+.gestor-modern .btn-info {
+    background: linear-gradient(135deg, #41b3c9, #2f9db3);
+    border: none; color: #fff;
+}
+.gestor-modern .btn-secondary,
+.gestor-modern .btn-outline-secondary {
+    background: #eef1f8; border: 1px solid var(--gm-border); color: var(--gm-ink);
+}
+.gestor-modern .btn-outline-danger { border-color: #f2b9ae; color: #d05a4a; }
+
+/* ── Stat chips ──────────────────────────────────────────────── */
+.gestor-modern .gestor-stats {
+    display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 1.2rem;
+}
+.gestor-modern .gestor-stat {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    padding: 0.5rem 1rem; border-radius: 999px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(79,91,213,0.18);
+    box-shadow: var(--gm-shadow-sm);
+    font-size: 0.86rem; font-weight: 600; color: var(--gm-ink);
+}
+.gestor-modern .gestor-stat .icone {
+    width: 30px; height: 30px; display: grid; place-items: center;
+    border-radius: 50%; color: #fff; font-size: 0.95rem;
+}
+.gestor-modern .gestor-stat .num { font-size: 1.05rem; font-weight: 800; }
+
+/* ── Cards KPI ──────────────────────────────────────────────── */
+.gestor-modern .gm-kpi {
+    position: relative;
+    border: none;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--gm-primary), var(--gm-indigo));
+    color: #fff;
+    box-shadow: var(--gm-shadow);
+    overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+.gestor-modern .kpi-link:hover .gm-kpi-card {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px -14px rgba(45,54,110,.42);
+}
+.gestor-modern .gm-kpi-card .kpi-ico {
+    position: absolute; right: -8px; top: -8px;
+    font-size: 3.6rem; opacity: 0.16; transform: rotate(-12deg);
+}
+
+/* ---------- Alertas / cards / tabela / forms ---------- */
+.gestor-modern .alert {
+    border-radius: var(--gm-radius-sm); border: 0; box-shadow: var(--gm-shadow-sm);
+}
+.gestor-modern .alert-success { background: #e6f4fb; color: #1c6b8a; }
+.gestor-modern .alert-danger  { background: #fdebe9; color: #bf4a3d; }
+.gestor-modern .alert-warning { background: #fdf3e0; color: #9a6d13; }
+.gestor-modern .alert-info    { background: #e5f2f6; color: #17697a; }
+
+.gestor-modern .gm-card {
+    border: 1px solid rgba(79,91,213,0.14);
+    border-radius: var(--gm-radius);
+    background: var(--gm-surface);
+    box-shadow: var(--gm-shadow);
+    overflow: hidden;
+}
+.gestor-modern .gm-card .card-head {
+    padding: 1rem 1.4rem;
+    background: linear-gradient(90deg, rgba(79,91,213,0.08), rgba(47,157,179,0.04));
+    border-bottom: 1px solid rgba(79,91,213,0.12);
+    font-weight: 700;
+}
+.gestor-modern .form-label { font-weight: 600; font-size: 0.85rem; color: var(--gm-ink); }
+.gestor-modern .form-control,
+.gestor-modern .form-select {
+    border-radius: 12px; border: 1px solid var(--gm-border); padding: 0.62rem 0.9rem;
+    background: #fbfdfe; transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.gestor-modern .form-control:focus,
+.gestor-modern .form-select:focus {
+    border-color: var(--gm-primary); background: #fff;
+    box-shadow: 0 0 0 4px rgba(79,91,213,0.14);
+}
+.gestor-modern .table { --bs-table-hover-bg: #eef2fb; font-size: 0.92rem; }
+.gestor-modern .table thead th {
+    font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--gm-muted); border-bottom: 2px solid rgba(79,91,213,0.18);
+    padding: 0.9rem 0.75rem; background: #fbfcfe;
+}
+.gestor-modern .table td { padding: 0.85rem 0.75rem; vertical-align: middle; }
+.gestor-modern .table tbody tr { transition: background .18s ease, transform .18s ease; }
+.gestor-modern .table tbody tr:hover { background: #f1f4fb; }
+.gestor-modern .badge { border-radius: 999px; padding: 0.42em 0.75em; font-weight: 600; }
+.gestor-modern .modal-content { border: 0; border-radius: var(--gm-radius); box-shadow: var(--gm-shadow); }
+.gestor-modern .dataTables_filter input,
+.gestor-modern .dataTables_length select {
+    border-radius: 999px; border: 2px solid var(--gm-border); padding: 0.35rem 0.8rem; background: #fff;
+}
+.gestor-modern .dt-buttons .btn { border-radius: 999px; font-size: 0.8rem; }
+
+@media (max-width: 768px) {
+    .gestor-modern .gestor-hero { padding: 1.4rem; }
+    .gestor-modern .gestor-hero h1 { font-size: 1.3rem; }
+}

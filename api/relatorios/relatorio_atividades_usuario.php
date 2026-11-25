@@ -74,10 +74,10 @@ try {
     $db = Database::getInstance()->getConnection();
     
     // Montar WHERE condicional: apenas usuários comuns são filtrados
-    $whereClause = '';
+    $whereClause = 'WHERE ad.excluido = 0';
     $bindParams = [];
     if (!$is_gestor) {
-        $whereClause = 'WHERE ad.associado_id = :associado_id';
+        $whereClause = 'WHERE ad.associado_id = :associado_id AND ad.excluido = 0';
         $bindParams[':associado_id'] = $associado_id;
     }
 

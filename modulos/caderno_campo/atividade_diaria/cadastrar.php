@@ -6,6 +6,9 @@ require_once __DIR__ . '/../../../classes/AtividadeDiaria.php';
 require_once __DIR__ . '/../../../classes/Lavoura.php';
 require_once __DIR__ . '/../../../classes/Propriedade.php';
 require_once __DIR__ . '/../../../classes/CategoriaAtividade.php';
+require_once __DIR__ . '/../../../classes/InsumoValidador.php';
+require_once __DIR__ . '/../../../classes/AuditLog.php';
+require_once __DIR__ . '/../../../classes/ImageUploader.php';
 
 if (!$user->isLoggedIn()) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
@@ -63,7 +66,7 @@ try {
     $categorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Buscar insumos
-    $stmt = $db->prepare("SELECT id, nome FROM insumos ORDER BY nome ASC");
+    $stmt = $db->prepare("SELECT id, nome FROM insumos WHERE excluido = 0 ORDER BY nome ASC");
     $stmt->execute();
     $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -73,6 +76,9 @@ try {
 
 $mensagem = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!CSRFProtection::validatePostRequest()) {
+        $mensagem = '<div class="alert alert-danger">Requisição inválida (token de segurança ausente ou expirado). Por favor, tente novamente.</div>';
+    } else {
     $nome = $_POST['nome'] ?? '';
     $descricao = $_POST['descricao'] ?? '';
     $data_atividade = $_POST['data_atividade'] ?? '';
@@ -88,21 +94,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $observacoes = $_POST['observacoes'] ?? '';
     $imagem_path = '';
     
-    // Processar upload da imagem
+    // Processar upload da imagem (apenas imagens válidas, re-encodadas via GD)
     if (isset($_FILES['imagem_diaria']) && $_FILES['imagem_diaria']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = __DIR__ . '/../../../../uploads/atividades/';
-        if (!file_exists($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
-        }
-        
-        $file_extension = pathinfo($_FILES['imagem_diaria']['name'], PATHINFO_EXTENSION);
-        $file_name = uniqid('atividade_') . '.' . $file_extension;
-        $target_path = $upload_dir . $file_name;
-        
-        if (move_uploaded_file($_FILES['imagem_diaria']['tmp_name'], $target_path)) {
-            $imagem_path = 'uploads/atividades/' . $file_name;
+        $uploader = new ImageUploader(__DIR__ . '/../../../uploads/atividades/');
+        $uploader->setConfig(['maxWidth' => 1600, 'maxHeight' => 1200]);
+        $uploadResult = $uploader->uploadImage($_FILES['imagem_diaria'], 'atividade');
+        if ($uploadResult['success']) {
+            $imagem_path = 'uploads/atividades/' . $uploadResult['filename'];
         } else {
-            $mensagem = '<div class="alert alert-warning">Aviso: Não foi possível fazer o upload da imagem.</div>';
+            $mensagem = '<div class="alert alert-warning">Aviso: ' . htmlspecialchars($uploadResult['message']) . ' A atividade será salva sem imagem.</div>';
         }
     }
     
@@ -111,12 +111,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hora_fim = null;
     }
 
+    // IDOR: não-gestores só podem registrar para o próprio associado e suas propriedades
+    if (!$user->hasPermission(NIVEL_GESTOR) && isset($db)) {
+        $meuAssociado = $user->getAssociadoId();
+        if (!$meuAssociado) $meuAssociado = -1;
+        $associado_id = (int)$meuAssociado;
+        if ($propriedade_id) {
+            $stmt = $db->prepare('SELECT id FROM propriedades WHERE id = ? AND associado_id = ?');
+            $stmt->execute([$propriedade_id, $meuAssociado]);
+            if (!$stmt->fetch()) $propriedade_id = null;
+        }
+        if ($lavoura_id && $propriedade_id) {
+            $stmt = $db->prepare('SELECT l.id FROM lavouras l INNER JOIN propriedades p ON l.propriedade_id = p.id WHERE l.id = ? AND l.propriedade_id = ? AND p.associado_id = ?');
+            $stmt->execute([$lavoura_id, $propriedade_id, $meuAssociado]);
+            if (!$stmt->fetch()) $lavoura_id = null;
+        }
+    }
+
     try {
-        $stmt = $db->prepare("INSERT INTO atividades_diarias (nome, descricao, data_atividade, hora_inicio, hora_fim, tipo_atividade, status, propriedade_id, lavoura_id, associado_id, categoria_id, insumo_utilisado, observações, imagem_diaria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$nome, $descricao, $data_atividade, $hora_inicio, $hora_fim, $tipo_atividade, $status, $propriedade_id, $lavoura_id, $associado_id, $categoria_id, $insumo_utilisado, $observacoes, $imagem_path]);
-        $mensagem = '<div class="alert alert-success">Atividade cadastrada com sucesso!</div>';
+        // Gerar UUID se ainda não existir (usado nos links de edição/imagens)
+        $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+
+        // RF06: bloqueio impeditivo de insumos não permitidos
+        if (!empty($insumo_utilisado)) {
+            $validador = new InsumoValidador();
+            if (!$validador->permitido($insumo_utilisado)) {
+                $mensagem = '<div class="alert alert-danger">Insumo "' . htmlspecialchars($insumo_utilisado) . '" NÃO está na lista de permitidos (Portaria 52/2021). O registro da atividade foi bloqueado por conformidade.</div>';
+            } else {
+                $stmt = $db->prepare("INSERT INTO atividades_diarias (uuid, nome, descricao, data_atividade, hora_inicio, hora_fim, tipo_atividade, status, propriedade_id, lavoura_id, associado_id, categoria_id, insumo_utilisado, observações, imagem_diaria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$uuid, $nome, $descricao, $data_atividade, $hora_inicio, $hora_fim, $tipo_atividade, $status, $propriedade_id, $lavoura_id, $associado_id, $categoria_id, $insumo_utilisado, $observacoes, $imagem_path]);
+                AuditLog::registrar('ATIVIDADE_CADASTRADA', 'atividades_diarias', (int)$db->lastInsertId(), 'Atividade: ' . $nome . ' | Insumo: ' . $insumo_utilisado);
+                $mensagem = '<div class="alert alert-success">Atividade cadastrada com sucesso!</div>';
+            }
+        } else {
+            $stmt = $db->prepare("INSERT INTO atividades_diarias (uuid, nome, descricao, data_atividade, hora_inicio, hora_fim, tipo_atividade, status, propriedade_id, lavoura_id, associado_id, categoria_id, insumo_utilisado, observações, imagem_diaria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$uuid, $nome, $descricao, $data_atividade, $hora_inicio, $hora_fim, $tipo_atividade, $status, $propriedade_id, $lavoura_id, $associado_id, $categoria_id, $insumo_utilisado, $observacoes, $imagem_path]);
+            AuditLog::registrar('ATIVIDADE_CADASTRADA', 'atividades_diarias', (int)$db->lastInsertId(), 'Atividade: ' . $nome);
+            $mensagem = '<div class="alert alert-success">Atividade cadastrada com sucesso!</div>';
+        }
     } catch (PDOException $e) {
-        $mensagem = '<div class="alert alert-danger">Erro ao cadastrar: ' . $e->getMessage() . '</div>';
+        $mensagem = '<div class="alert alert-danger">Erro ao cadastrar: ' . htmlspecialchars($e->getMessage()) . '</div>';
+    }
     }
 }
 ?>
@@ -126,6 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card">
     <div class="card-body">
         <form method="post" enctype="multipart/form-data">
+            <?php echo CSRFProtection::getTokenField(); ?>
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
@@ -269,33 +311,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[method="post"]');
     const insumoSelect = document.getElementById('insumo_utilisado');
     const feedbackDiv = document.getElementById('insumo-atividade-feedback');
+    let estadoInsumo = { nome: '', valido: false };
+
+    function validarInsumo(nome) {
+        if (!nome || nome.length < 2) {
+            estadoInsumo = { nome: '', valido: false };
+            feedbackDiv.innerHTML = '';
+            return;
+        }
+
+        feedbackDiv.innerHTML = '<span class="text-muted small"><i class="bi bi-hourglass-split"></i> Validando insumo...</span>';
+
+        fetch('<?php echo SITE_URL; ?>/modulos/caderno_campo/validar_insumo.php?nome=' + encodeURIComponent(nome))
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.status === 'success') {
+                    estadoInsumo = { nome: nome, valido: true };
+                    feedbackDiv.innerHTML = '<span class="text-success small"><i class="bi bi-check-circle-fill"></i> ' + data.message + '</span>';
+                } else if (data.status === 'warning') {
+                    estadoInsumo = { nome: nome, valido: false };
+                    feedbackDiv.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> BLOQUEADO: ' + data.message + '</span>';
+                } else {
+                    estadoInsumo = { nome: nome, valido: false };
+                    feedbackDiv.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> BLOQUEADO: ' + data.message + '</span>';
+                }
+            })
+            .catch(function() {
+                estadoInsumo = { nome: '', valido: false };
+                feedbackDiv.innerHTML = '<span class="text-warning small">Não foi possível validar o insumo. Tente novamente.</span>';
+            });
+    }
 
     if (insumoSelect && feedbackDiv) {
         insumoSelect.addEventListener('change', function() {
-            const nome = this.value;
-            if (!nome || nome.length < 2) {
-                feedbackDiv.innerHTML = '';
-                return;
-            }
+            validarInsumo(this.value);
+        });
+    }
 
-            feedbackDiv.innerHTML = '<span class="text-muted small"><i class="bi bi-hourglass-split"></i> Validando insumo...</span>';
-
-            fetch('<?php echo SITE_URL; ?>/modulos/caderno_campo/validar_insumo.php?nome=' + encodeURIComponent(nome))
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    if (data.status === 'success') {
-                        feedbackDiv.innerHTML = '<span class="text-success small"><i class="bi bi-check-circle-fill"></i> ' + data.message + '</span>';
-                    } else if (data.status === 'warning') {
-                        feedbackDiv.innerHTML = '<span class="text-warning small"><i class="bi bi-exclamation-triangle-fill"></i> ' + data.message + '</span>';
+    if (form && insumoSelect) {
+        form.addEventListener('submit', function(e) {
+            const nomeInsumo = insumoSelect.value.trim();
+            if (!nomeInsumo) return;
+            if (estadoInsumo.nome !== nomeInsumo) {
+                e.preventDefault();
+                validarInsumo(nomeInsumo);
+                setTimeout(function() {
+                    if (estadoInsumo.valido && estadoInsumo.nome === nomeInsumo) {
+                        form.submit();
                     } else {
-                        feedbackDiv.innerHTML = '<span class="text-muted small"><i class="bi bi-question-circle-fill"></i> ' + data.message + '</span>';
+                        feedbackDiv.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> Insumo não permitido. Cadastro bloqueado por conformidade (Portaria 52/2021).</span>';
                     }
-                })
-                .catch(function() {
-                    feedbackDiv.innerHTML = '';
-                });
+                }, 300);
+            } else if (!estadoInsumo.valido) {
+                e.preventDefault();
+                feedbackDiv.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> Insumo não permitido. Cadastro bloqueado por conformidade (Portaria 52/2021).</span>';
+            }
         });
     }
 });

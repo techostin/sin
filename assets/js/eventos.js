@@ -21,7 +21,7 @@ function visualizarEvento(eventoId) {
     modalTitle.innerHTML = '<i class="bi bi-hourglass-split"></i> Carregando...';
     modalBody.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p class="mt-2">Carregando detalhes do evento...</p></div>';
     
-    const bootstrapModal = new bootstrap.Modal(modal);
+    const bootstrapModal = bootstrap.Modal.getOrCreateInstance(modal);
     bootstrapModal.show();
     
     // URL da requisição
@@ -96,6 +96,7 @@ function togglePresenca(eventoId) {
     const url = window.SITE_URL + '/api/toggle_presenca.php';
     const formData = new FormData();
     formData.append('evento_id', eventoId);
+    formData.append('csrf_token', window.CSRF_TOKEN);
     
     // Pegar o botão que disparou o evento (se houver)
     const btn = event ? event.currentTarget : null;
@@ -103,9 +104,7 @@ function togglePresenca(eventoId) {
     
     fetch(url, {
         method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
+        headers: Object.assign({'X-Requested-With': 'XMLHttpRequest'}, window.csrfHeaders()),
         body: formData
     })
     .then(response => response.json())

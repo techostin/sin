@@ -25,6 +25,17 @@ if (!$lote) {
     exit;
 }
 
+// Anti-IDOR: o lote pertence a um associado (lotes_producao.associado_id),
+// com os dados da propriedade de origem. Admin/Gestor rastreiam qualquer lote;
+// nível 3 somente os lotes do próprio associado.
+$donoLote = (int) ($lote['associado_id'] ?? 0);
+if (!$user->isGestorOuAdmin()
+    && ($donoLote <= 0 || $donoLote !== (int) $user->getAssociadoIdResolvido())) {
+    echo "<div class='alert alert-danger mt-4'>Acesso negado: este lote pertence a outro produtor.</div>";
+    require_once __DIR__ . '/../../../includes/footer.php';
+    exit;
+}
+
 $produto_obj = new Produto();
 $produto = $produto_obj->getById($lote['produto_id']);
 

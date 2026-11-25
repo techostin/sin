@@ -2,13 +2,15 @@
 $page_title = "Editar Fornecedor";
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
-require_once __DIR__ . '/../../classes/Database.php';
+require_once __DIR__ . '/../../classes/Fornecedor.php';
 require_once __DIR__ . '/../../classes/Associado.php';
+require_once __DIR__ . '/../../classes/Produto.php';
 
 $message = '';
 $message_type = '';
+$tiposLabels = ['propriedade' => 'Propriedade', 'agroindustria' => 'Agroindústria', 'animal' => 'Criação Animal'];
 
-if (!$user->hasPermission(NIVEL_GESTOR)) {
+if (!$user->isLoggedIn()) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
     require_once __DIR__ . '/../../includes/footer.php';
     exit;
@@ -21,30 +23,84 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 
 $id = intval($_GET['id']);
+$fornecedorClass = new Fornecedor();
 
 // Buscar dados atuais
-try {
-    $db = Database::getInstance()->getConnection();
-    $stmt = $db->prepare("SELECT * FROM fornecedores WHERE id = :id");
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $stmt->execute();
-    $fornecedor = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$fornecedor) {
-        echo "<div class='alert alert-danger'>Fornecedor não encontrado.</div>";
+$fornecedor = $fornecedorClass->getById($id);
+if (!$fornecedor) {
+    echo "<div class='alert alert-danger'>Fornecedor não encontrado.</div>";
+    require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
+
+// IDOR Check: gestor/admin OK; usuário comum precisa ter o fornecedor no escopo
+if (!$user->hasPermission(NIVEL_GESTOR)) {
+    $associado_id = $user->getAssociadoId() ?? -1;
+    $visiveis = $fornecedorClass->getVisiveisParaAssociado($associado_id);
+    $podeEditar = false;
+    foreach ($visiveis as $v) {
+        if ((int)$v['id'] === $id) { $podeEditar = true; break; }
+    }
+    if (!$podeEditar) {
+        echo "<div class='alert alert-danger'>Acesso Negado: Este fornecedor não está vinculado às suas unidades.</div>";
         require_once __DIR__ . '/../../includes/footer.php';
         exit;
     }
-} catch (PDOException $e) {
-    echo "<div class='alert alert-danger'>Erro ao buscar fornecedor.</div>";
-    require_once __DIR__ . '/../../includes/footer.php';
-    exit;
+}
+
+// Unidades acessíveis ao usuário para o bloco "Atende às unidades"
+$produtoClass = new Produto();
+if ($user->hasPermission(NIVEL_GESTOR)) {
+    // Gestor/Admin: lista todas as unidades para reatribuir o fornecedor
+    $unidadesDisponiveis = $fornecedorClass->getTodasUnidades();
+    $todosTipos = ['propriedade', 'agroindustria', 'animal'];
+    $tipoPadrao = '';
+} else {
+    $unidadesDisponiveis = $produtoClass->getUnidadesDoAssociado($user->getAssociadoId() ?? -1);
+    $todosTipos = array_values(array_unique(array_filter(array_map(function ($u) {
+        return $u['tipo'] ?? '';
+    }, $unidadesDisponiveis))));
+    $perfil = $user->perfilDashboard();
+    if (in_array('agroindustria', $todosTipos, true) && $perfil === 'agroindustria') {
+        $tipoPadrao = 'agroindustria';
+    } elseif (in_array('propriedade', $todosTipos, true)) {
+        $tipoPadrao = 'propriedade';
+    } elseif (count($todosTipos) === 1) {
+        $tipoPadrao = $todosTipos[0];
+    } else {
+        $tipoPadrao = $todosTipos[0] ?? '';
+    }
+}
+
+$unidadesVinculadas = $fornecedorClass->getUnidadesPorFornecedor($id);
+
+// Para usuário comum: separa as unidades que ele acessa (pode alterar) das de
+// outros associados (apenas leitura — preservadas no salvamento).
+$vinculadasGerenciaveis = [];
+$vinculadasAlheias = [];
+if (!$user->hasPermission(NIVEL_GESTOR)) {
+    $chavesPermitidas = [];
+    foreach ($unidadesDisponiveis as $ud) {
+        $chavesPermitidas[($ud['tipo'] ?? '') . ':' . (int)($ud['id'] ?? 0)] = true;
+    }
+    foreach ($unidadesVinculadas as $uv) {
+        $chave = ($uv['unidade_tipo'] ?? '') . ':' . (int)($uv['unidade_id'] ?? 0);
+        if (isset($chavesPermitidas[$chave])) {
+            $vinculadasGerenciaveis[] = $uv;
+        } else {
+            $vinculadasAlheias[] = $uv;
+        }
+    }
+} else {
+    $vinculadasGerenciaveis = $unidadesVinculadas;
 }
 
 $associado_helper = new Associado();
 $estados = $associado_helper->getEstados();
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') == 'POST') {
     try {
+        $db = Database::getInstance()->getConnection();
         $sql = "UPDATE fornecedores SET nome = :nome, representante = :representante, razao_social = :razao_social, cnpj = :cnpj, telefone = :telefone, email = :email, endereco = :endereco, bairro = :bairro, cidade = :cidade, estado = :estado, produto_fornecido = :produto_fornecido WHERE id = :id";
         $stmt = $db->prepare($sql);
         $stmt->bindParam(':nome', $_POST['nome']);
@@ -59,16 +115,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt->bindParam(':estado', $_POST['estado']);
         $stmt->bindParam(':produto_fornecido', $_POST['produto_fornecido']);
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        if ($stmt->execute()) {
-            $message = "Fornecedor atualizado com sucesso!";
+if ($stmt->execute()) {
+                // Gravar vínculos de unidades (multi-tipo).
+                // VALIDAÇÃO: só aceita unidades que o usuário realmente acessa.
+                $permitidas = [];
+                foreach ($unidadesDisponiveis as $ud) {
+                    $permitidas[($ud['tipo'] ?? '') . ':' . (int)($ud['id'] ?? 0)] = true;
+                }
+                $vincular = [];
+                $vt = $_POST['unidade_tipo'] ?? [];
+                $vi = $_POST['unidade_id'] ?? [];
+                foreach ((array)$vt as $i => $tipo) {
+                    $tipo = strtolower(trim((string)$tipo));
+                    $uid = (int)($vi[$i] ?? 0);
+                    if ($tipo === '' || $uid <= 0) continue;
+                    if (isset($permitidas[$tipo . ':' . $uid])) {
+                        $vincular[] = ['tipo' => $tipo, 'id' => $uid];
+                    }
+                }
+if (!$user->hasPermission(NIVEL_GESTOR)) {
+                    // Preserva os vínculos de unidades de OUTROS associados,
+                    // que não aparecem nos selects do usuário atual.
+                    foreach ($vinculadasAlheias as $uvAlheia) {
+                        $vincular[] = ['tipo' => $uvAlheia['unidade_tipo'], 'id' => $uvAlheia['unidade_id']];
+                    }
+                }
+                $fornecedorClass->substituirUnidades($id, $vincular, $user->getAssociadoId() ?? null);
+
+                $message = "Fornecedor atualizado com sucesso!";
             $message_type = "success";
             // Atualizar dados exibidos
             $fornecedor = array_merge($fornecedor, $_POST);
-        } else {
+            $unidadesVinculadas = $fornecedorClass->getUnidadesPorFornecedor($id);
+} else {
             $message = "Erro ao atualizar fornecedor.";
             $message_type = "danger";
         }
     } catch (PDOException $e) {
+        error_log("Erro ao atualizar fornecedor: " . $e->getMessage());
         $message = "Erro ao atualizar fornecedor.";
         $message_type = "danger";
     }
@@ -137,10 +221,144 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </select>
     </div>
     <div class="col-12 mt-4">
+        <h5 class="fw-bold">Unidades que este fornecedor atende</h5>
+        <p class="text-muted">Selecione em qual(is) unidade(s) produtiva(s) este fornecedor fornece produtos/serviços. Somente os associados das unidades selecionadas verão este fornecedor nas telas.</p>
+        <?php if (!empty($vinculadasAlheias)): ?>
+        <div class="alert alert-info py-2 small">
+            <i class="bi bi-info-circle me-1"></i>
+            Este fornecedor também atende <strong><?php echo count($vinculadasAlheias); ?> unidade(s)</strong> de outros associados, que não podem ser alteradas aqui.
+            <?php foreach ($vinculadasAlheias as $una): echo ' <span class="badge bg-secondary">' . htmlspecialchars($una['nome_unidade']) . '</span>'; endforeach; ?>
+        </div>
+        <?php endif; ?>
+        <div id="unidade-lista">
+            <?php if (!empty($vinculadasGerenciaveis)): ?>
+                <?php foreach ($vinculadasGerenciaveis as $uv): ?>
+                <div class="input-group mb-2 unidade-linha">
+                    <select name="unidade_tipo[]" class="form-select unidade-tipo" aria-label="Tipo de unidade">
+                        <?php foreach ($todosTipos as $t): ?>
+                            <option value="<?php echo $t; ?>" <?php echo ($t === ($uv['unidade_tipo'] ?? '')) ? 'selected' : ''; ?>><?php echo $tiposLabels[$t] ?? $t; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="unidade_id[]" class="form-select unidade-select" aria-label="Unidade">
+                        <option value="">Selecione a unidade...</option>
+                        <?php foreach ($todosTipos as $t): ?>
+                            <optgroup label="<?php echo $tiposLabels[$t] ?? $t; ?>" data-tipo="<?php echo $t; ?>">
+                                <?php foreach ($unidadesDisponiveis as $ud): ?>
+                                    <?php if (($ud['tipo'] ?? '') === $t): ?>
+                                        <option value="<?php echo $ud['id']; ?>" data-tipo="<?php echo $ud['tipo']; ?>"
+                                            <?php echo (($uv['unidade_tipo'] ?? '') === $t && $uv['unidade_id'] == $ud['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($ud['nome']); ?></option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" class="btn btn-outline-danger remover-unidade" aria-label="Remover linha">Remover</button>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="input-group mb-2 unidade-linha">
+                    <select name="unidade_tipo[]" class="form-select unidade-tipo" aria-label="Tipo de unidade">
+                        <?php foreach ($todosTipos as $t): ?>
+                            <option value="<?php echo $t; ?>" <?php echo ($t === $tipoPadrao) ? 'selected' : ''; ?>><?php echo $tiposLabels[$t] ?? $t; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="unidade_id[]" class="form-select unidade-select" aria-label="Unidade">
+                        <option value="">Selecione a unidade...</option>
+                        <?php foreach ($todosTipos as $t): ?>
+                            <optgroup label="<?php echo $tiposLabels[$t] ?? $t; ?>" data-tipo="<?php echo $t; ?>">
+                                <?php foreach ($unidadesDisponiveis as $ud): ?>
+                                    <?php if (($ud['tipo'] ?? '') === $t): ?>
+                                        <option value="<?php echo $ud['id']; ?>" data-tipo="<?php echo $ud['tipo']; ?>"><?php echo htmlspecialchars($ud['nome']); ?></option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" class="btn btn-outline-danger remover-unidade" aria-label="Remover linha">Remover</button>
+                </div>
+            <?php endif; ?>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="add-unidade">+ Adicionar unidade</button>
+        <p class="text-muted small">Deixe vazio para que este fornecedor fique visível apenas a administradores/gestores.</p>
+    </div>
+    <div class="col-12 mt-4">
         <button type="submit" class="btn btn-primary">Salvar Alterações</button>
         <a href="<?php echo SITE_URL; ?>/fornecedor" class="btn btn-secondary">Cancelar</a>
     </div>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const unidadeLista = document.getElementById('unidade-lista');
+    const addBtn = document.getElementById('add-unidade');
+    const todosTipos = <?php echo json_encode($todosTipos); ?>;
+    const todosTiposLabels = <?php echo json_encode($tiposLabels); ?>;
+    const unidadesDisponiveis = <?php echo json_encode($unidadesDisponiveis); ?>;
+
+    function mostraGrupos(selectTipo, selectUnid) {
+        const tipo = selectTipo.value;
+        selectUnid.querySelectorAll('optgroup').forEach(function(g) {
+            g.hidden = Boolean(tipo) && g.dataset.tipo !== tipo;
+        });
+        // Se a opção selecionada não pertence mais ao tipo visível, limpa
+        const opt = selectUnid.options[selectUnid.selectedIndex];
+        if (opt && opt.dataset && opt.dataset.tipo && tipo && opt.dataset.tipo !== tipo) {
+            selectUnid.value = '';
+        }
+    }
+
+    unidadeLista.addEventListener('change', function(e) {
+        if (e.target.classList.contains('unidade-tipo')) {
+            const linha = e.target.closest('.unidade-linha');
+            mostraGrupos(e.target, linha.querySelector('.unidade-select'));
+        }
+    });
+
+    unidadeLista.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remover-unidade')) {
+            e.target.closest('.unidade-linha').remove();
+        }
+    });
+
+    addBtn.addEventListener('click', function() {
+        const linha = document.createElement('div');
+        linha.className = 'input-group mb-2 unidade-linha';
+        let optsTipo = '';
+        todosTipos.forEach(function(t) {
+            optsTipo += '<option value="' + t + '"' + (t === (todosTipos[0] || '') ? ' selected' : '') + '>' + (todosTiposLabels[t] || t) + '</option>';
+        });
+        linha.innerHTML = '<select name="unidade_tipo[]" class="form-select unidade-tipo" aria-label="Tipo de unidade">' + optsTipo + '</select>' +
+            '<select name="unidade_id[]" class="form-select unidade-select" aria-label="Unidade"><option value="">Selecione a unidade...</option></select>' +
+            '<button type="button" class="btn btn-outline-danger remover-unidade" aria-label="Remover linha">Remover</button>';
+        unidadeLista.appendChild(linha);
+        const selTipo = linha.querySelector('.unidade-tipo');
+        const selUnid = linha.querySelector('.unidade-select');
+        todosTipos.forEach(function(t) {
+            const g = document.createElement('optgroup');
+            g.label = todosTiposLabels[t] || t;
+            g.dataset.tipo = t;
+            unidadesDisponiveis.forEach(function(u) {
+                if (u.tipo === t) {
+                    const o = document.createElement('option');
+                    o.value = u.id;
+                    o.dataset.tipo = u.tipo;
+                    o.textContent = u.nome;
+                    g.appendChild(o);
+                }
+            });
+            selUnid.appendChild(g);
+        });
+        mostraGrupos(selTipo, selUnid);
+    });
+
+    // Aplica o filtro inicial (a partir do tipo pré-selecionado de cada linha)
+    document.querySelectorAll('.unidade-linha').forEach(function(linha) {
+        const selTipo = linha.querySelector('.unidade-tipo');
+        const selUnid = linha.querySelector('.unidade-select');
+        if (selTipo && selUnid) mostraGrupos(selTipo, selUnid);
+    });
+});
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

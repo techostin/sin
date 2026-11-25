@@ -63,7 +63,7 @@ if ($user->hasPermission(NIVEL_GESTOR)) {
 } else {
     $associado_id = $user->getAssociadoId();
     if (!$associado_id) $associado_id = -1;
-    $produtos = $produto_obj->getByAssociadoId($associado_id);
+    $produtos = $produto_obj->getProdutosDoAssociado($associado_id);
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <select class="form-select" id="produto_id" name="produto_id" required>
             <option value="">Selecione um Produto</option>
             <?php foreach ($produtos as $prod): ?>
-                <option value="<?php echo $prod['id']; ?>" <?php if ($lote['produto_id'] == $prod['id']) echo 'selected'; ?>><?php echo $prod['nome']; ?></option>
+                <option value="<?php echo $prod['id']; ?>" <?php if ($lote['produto_id'] == $prod['id']) echo 'selected'; ?>><?php echo htmlspecialchars($prod['nome'] . (isset($prod['nome_unidade']) && $prod['nome_unidade'] ? ' (' . $prod['nome_unidade'] . ')' : '')); ?></option>
             <?php endforeach; ?>
         </select>
     </div>

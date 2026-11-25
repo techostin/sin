@@ -29,13 +29,14 @@ class LoteProducao {
                 );
             }
 
-            $sql = "INSERT INTO lotes_producao (uuid, nome_lote, produto_id, data_producao, quantidade, unidade_medida, observacoes, criado_em) 
-                    VALUES (:uuid, :nome_lote, :produto_id, :data_producao, :quantidade, :unidade_medida, :observacoes, NOW())";
+            $sql = "INSERT INTO lotes_producao (uuid, nome_lote, produto_id, associado_id, data_producao, quantidade, unidade_medida, observacoes, criado_em) 
+                    VALUES (:uuid, :nome_lote, :produto_id, :associado_id, :data_producao, :quantidade, :unidade_medida, :observacoes, NOW())";
             $stmt = $this->db->prepare($sql);
 
             $stmt->bindParam(':uuid', $dados_sanitizados['uuid']);
             $stmt->bindParam(':nome_lote', $dados_sanitizados['nome_lote']);
             $stmt->bindParam(':produto_id', $dados_sanitizados['produto_id']);
+            $stmt->bindValue(':associado_id', isset($dados_sanitizados['associado_id']) && $dados_sanitizados['associado_id'] !== '' ? (int)$dados_sanitizados['associado_id'] : null);
             $stmt->bindParam(':data_producao', $dados_sanitizados['data_producao']);
             $stmt->bindParam(':quantidade', $dados_sanitizados['quantidade']);
             $stmt->bindParam(':unidade_medida', $dados_sanitizados['unidade_medida']);
@@ -57,6 +58,7 @@ class LoteProducao {
             $sql = "SELECT lp.id, lp.uuid, lp.nome_lote, lp.data_producao, lp.quantidade, lp.unidade_medida, p.nome as produto_nome
                     FROM lotes_producao lp
                     LEFT JOIN produtos p ON lp.produto_id = p.id
+                    WHERE lp.excluido = 0
                     ORDER BY lp.data_producao DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
@@ -79,7 +81,8 @@ class LoteProducao {
                     LEFT JOIN produtos pr ON lp.produto_id = pr.id
                     LEFT JOIN lavouras l ON pr.lavoura_id = l.id
                     LEFT JOIN propriedades p ON l.propriedade_id = p.id
-                    WHERE p.associado_id = :associado_id
+                    WHERE lp.excluido = 0
+                      AND (lp.associado_id = :associado_id OR (lp.associado_id IS NULL AND p.associado_id = :associado_id))
                     ORDER BY lp.data_producao DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':associado_id', $associado_id, PDO::PARAM_INT);
@@ -98,7 +101,7 @@ class LoteProducao {
      */
     public function getByUuid($uuid) {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM lotes_producao WHERE uuid = :uuid");
+            $stmt = $this->db->prepare("SELECT * FROM lotes_producao WHERE uuid = :uuid AND excluido = 0");
             $stmt->bindParam(':uuid', $uuid);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -115,7 +118,7 @@ class LoteProducao {
      */
     public function getById($id) {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM lotes_producao WHERE id = :id");
+            $stmt = $this->db->prepare("SELECT * FROM lotes_producao WHERE id = :id AND excluido = 0");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -136,7 +139,7 @@ class LoteProducao {
                     FROM lotes_producao lp
                     JOIN produtos p ON lp.produto_id = p.id
                     JOIN atividades_diarias ad ON p.lavoura_id = ad.lavoura_id
-                    WHERE lp.id = :lote_id
+                    WHERE lp.id = :lote_id AND ad.excluido = 0
                     ORDER BY ad.data_atividade ASC, ad.hora_inicio ASC";
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':lote_id', $lote_id, PDO::PARAM_INT);
@@ -159,7 +162,7 @@ class LoteProducao {
                     FROM lotes_producao lp
                     JOIN produtos p ON lp.produto_id = p.id
                     JOIN atividades_diarias ad ON p.lavoura_id = ad.lavoura_id
-                    WHERE lp.id = :lote_id AND ad.insumo_utilisado IS NOT NULL AND ad.insumo_utilisado != ''
+                    WHERE lp.id = :lote_id AND ad.excluido = 0 AND ad.insumo_utilisado IS NOT NULL AND ad.insumo_utilisado != ''
                     ORDER BY ad.data_atividade ASC";
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':lote_id', $lote_id, PDO::PARAM_INT);
@@ -197,13 +200,13 @@ class LoteProducao {
     }
 
     /**
-     * Exclui um lote de produção.
+     * Exclui (soft delete) um lote de produção.
      * @param int $id O ID do lote.
      * @return bool Retorna true em caso de sucesso, false em caso de falha.
      */
     public function delete($id) {
         try {
-            $stmt = $this->db->prepare("DELETE FROM lotes_producao WHERE id = :id");
+            $stmt = $this->db->prepare("UPDATE lotes_producao SET excluido = 1 WHERE id = :id");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             return $stmt->execute();
         } catch (PDOException $e) {

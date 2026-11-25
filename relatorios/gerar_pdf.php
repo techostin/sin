@@ -1,8 +1,6 @@
 <?php
-// Habilitar exibição de erros para desenvolvimento
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../config/error_config.php';
 
 // Incluir autoload do Composer para mPDF
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -31,13 +29,15 @@ try {
     // Conectar ao banco
     $db = Database::getInstance()->getConnection();
 
-    // Buscar associados com dados da associação
+    // Buscar associados com dados de cidade e estado
     $sql = "
         SELECT 
-            a.*,
-            ass.nome as associacao_nome
+            a.id, a.nome, a.sobrenome, a.email, a.telefone,
+            a.cpf_cnpj, a.rg, a.status,
+            ci.nome as cidade_nome, es.uf as estado_uf
         FROM associados a
-        LEFT JOIN associacoes ass ON a.vinculo = ass.id
+        LEFT JOIN cidades ci ON a.cidade = ci.id
+        LEFT JOIN estados es ON ci.estado = es.id
         ORDER BY a.nome, a.sobrenome ASC
     ";
     
@@ -46,10 +46,10 @@ try {
 
     // Estatísticas
     $total_associados = count($associados);
-    $associados_com_vinculo = count(array_filter($associados, function($a) {
-        return !empty($a['associacao_nome']);
+    $associados_com_rg = count(array_filter($associados, function($a) {
+        return !empty($a['rg']);
     }));
-    $associados_sem_vinculo = $total_associados - $associados_com_vinculo;
+    $associados_sem_rg = $total_associados - $associados_com_rg;
 
     // Incluir o template
     ob_start();

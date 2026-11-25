@@ -1,14 +1,25 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    die('Acesso negado. Por favor, faça login para acessar este relatório.');
+}
+
 // Incluir autoload do Composer para mPDF
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
 // Incluir configuração do banco
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../classes/Database.php';
+require_once __DIR__ . '/../../../classes/User.php';
 
 use Mpdf\Mpdf;
 
 try {
+    $user = new User();
+
     // Criar instância do mPDF
     $mpdf = new Mpdf([
         'mode' => 'utf-8',
@@ -21,6 +32,18 @@ try {
 
     // Conectar ao banco
     $db = Database::getInstance()->getConnection();
+
+    // Filtro de escopo: não-gestores só veem lotes das próprias propriedades
+    $params = [];
+    $where = ["lp.excluido = 0"];
+    if (($_SESSION['user_nivel'] ?? NIVEL_USUARIO) > NIVEL_GESTOR) {
+        $assoc_id = $user->getAssociadoId();
+        if ($assoc_id) {
+            $where[] = "prop.associado_id = :associado_id";
+            $params[':associado_id'] = $assoc_id;
+        }
+    }
+    $where_clause = implode(' AND ', $where);
 
     // Buscar dados dos lotes com rastreabilidade completa
     $sql = "SELECT 
@@ -38,10 +61,12 @@ try {
         LEFT JOIN produtos p ON lp.produto_id = p.id
         LEFT JOIN lavouras l ON p.lavoura_id = l.id
         LEFT JOIN propriedades prop ON l.propriedade_id = prop.id
-        LEFT JOIN associados a ON l.associado_id = a.id
+        LEFT JOIN associados a ON prop.associado_id = a.id
+        WHERE $where_clause
         ORDER BY lp.data_producao DESC";
     
-    $stmt = $db->query($sql);
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $lotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Estatísticas
@@ -81,6 +106,7 @@ try {
     </style>
 
     <div class="header">
+        <img src="' . SINPORG_LOGO_PATH . '" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="height:58px; margin-bottom:6px;" />
         <div class="title">Relatório de Lotes de Produção</div>
         <div class="subtitle">Caderno de Campo - Sistema Integrado da Produção Orgânica</div>
         <div class="subtitle">Gerado em: ' . date('d/m/Y H:i:s') . '</div>

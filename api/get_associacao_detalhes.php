@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../classes/Associacao.php';
+require_once __DIR__ . '/../classes/ApiAuth.php';
+
+// Seguranca: o endpoint devolvia dados cadastrais de qualquer associacao a visitantes
+// anonimos. A pagina chamadora (modulos/associacoes/listar.php) exige usuario logado.
+ApiAuth::exigirLogin();
 
 header('Content-Type: application/json');
 

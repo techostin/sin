@@ -1,8 +1,6 @@
 <?php
-// Habilitar exibição de erros para desenvolvimento
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/config/error_config.php';
 
 // Incluir arquivos necessários
 require_once 'config/config.php';
@@ -45,6 +43,7 @@ $pageDescription = 'Acesse todos os relatórios do sistema';
 
 // Incluir cabeçalho
 require_once 'includes/header.php';
+require_once 'includes/menu.php';
 
 // Verificar se o usuário tem permissão para acessar a página
 // Permissão de acesso básico (todos os usuários logados podem acessar a central)
@@ -152,6 +151,40 @@ $reportCategories = [
                 'url' => 'relatorios/financeiro/contas-receber'
             ]
         ]
+    ],
+    'associacao' => [
+        'title' => 'Associação',
+        'icon' => 'people-fill',
+        'reports' => [
+            'inadimplencia' => [
+                'title' => 'Inadimplência',
+                'description' => 'Inadimplência por mês e por categoria de associado',
+                'icon' => 'exclamation-triangle',
+                'level' => 2,
+                'url' => 'relatorios/associacao/inadimplencia'
+            ],
+            'pagamentos-por-forma' => [
+                'title' => 'Pagamentos por Forma',
+                'description' => 'Receitas por forma de pagamento (PIX, boleto, etc.)',
+                'icon' => 'credit-card-2-front',
+                'level' => 2,
+                'url' => 'relatorios/associacao/pagamentos-por-forma'
+            ],
+            'previsao-receita' => [
+                'title' => 'Previsão de Receita',
+                'description' => 'Previsão de receitas das mensalidades (3 meses)',
+                'icon' => 'graph-up-arrow',
+                'level' => 2,
+                'url' => 'relatorios/associacao/previsao-receita'
+            ],
+            'fluxo-caixa-realizado-previsto' => [
+                'title' => 'Fluxo de Caixa Realizado × Previsto',
+                'description' => 'Comparativo entre o realizado e o previsto das mensalidades e caixa',
+                'icon' => 'arrow-left-right',
+                'level' => 2,
+                'url' => 'relatorios/associacao/fluxo-caixa-realizado-previsto'
+            ]
+        ]
     ]
 ];
 
@@ -186,6 +219,127 @@ if ($requestedReport) {
         require_once 'includes/footer.php';
         exit();
     }
+}
+
+// Página de relatório específico: filtros + conteúdo carregado via AJAX
+if ($requestedReport && $reportData) {
+    ?>
+    <div class="container-fluid px-4 py-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="h3 mb-1"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i><?php echo htmlspecialchars($reportData['title']); ?></h1>
+                <span class="text-muted"><?php echo htmlspecialchars($reportData['description']); ?></span>
+            </div>
+            <a href="<?php echo SITE_URL; ?>/relatorios" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Todos os relatórios</a>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-dark text-white"><i class="bi bi-funnel me-1"></i>Filtros</div>
+            <div class="card-body">
+                <form id="reportFilters" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Data Início</label>
+                        <input type="date" name="dataInicio" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Data Fim</label>
+                        <input type="date" name="dataFim" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold mb-1">Associado</label>
+                        <select name="filtro_associado_id" id="filtro_associado_id" class="form-select form-select-sm">
+                            <option value="">Todos os associados</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Filtrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="reportContent">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Carregando dados do relatório...</p>
+            </div>
+        </div>
+    </div>
+
+    <link href="https://cdn.datatables.net/buttons/1.7.1/css/buttons.dataTables.min.css" rel="stylesheet">
+    <script src="https://cdn.datatables.net/buttons/1.7.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.print.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script>
+    $(document).ready(function() {
+        var reportUrl = 'api/relatorios/<?php echo $requestedReport; ?>.php';
+
+        function loadReportData() {
+            $.ajax({
+                url: reportUrl,
+                method: 'GET',
+                data: $('#reportFilters').serialize(),
+                beforeSend: function() {
+                    $('#reportContent').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Carregando dados do relatório...</p></div>');
+                },
+                success: function(response) {
+                    $('#reportContent').html(response);
+                    if ($.fn.DataTable.isDataTable('#reportTable')) {
+                        $('#reportTable').DataTable().destroy();
+                    }
+                    $('#reportTable').DataTable({
+                        language: { url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' },
+                        responsive: true,
+                        dom: 'Bfrtip',
+                        buttons: ['copy', 'csv', 'excel', {
+                            extend: 'pdfHtml5', orientation: 'landscape', pageSize: 'A4',
+                            customize: function(doc) {
+                                if (doc.content[1] && doc.content[1].table) {
+                                    doc.content[1].table.widths = Array(doc.content[1].table.body[0].length + 1).join('*').split('');
+                                }
+                                doc.defaultStyle.fontSize = 10;
+                                doc.styles.tableHeader.fontSize = 11;
+                            }
+                        }, 'print']
+                    });
+                },
+                error: function() {
+                    $('#reportContent').html('<div class="alert alert-danger">Ocorreu um erro ao carregar o relatório. Tente novamente mais tarde.</div>');
+                }
+            });
+        }
+
+        $.ajax({
+            url: 'api/associados/listar.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success' && response.data && response.data.length > 0) {
+                    var options = '<option value="">Todos os associados</option>';
+                    $.each(response.data, function(index, associado) {
+                        options += '<option value="' + associado.id + '">' + (associado.nome || '') + '</option>';
+                    });
+                    $('#filtro_associado_id').html(options);
+                }
+            },
+            error: function() {
+                console.error('Erro ao carregar associados para o filtro.');
+            }
+        });
+
+        $('#reportFilters').on('submit', function(e) {
+            e.preventDefault();
+            loadReportData();
+        });
+        loadReportData();
+    });
+    </script>
+    <?php
+    require_once 'includes/footer.php';
+    exit();
 }
 
 ?>
@@ -256,6 +410,35 @@ $resumo = $reportManager->getResumoGeral();
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Categorias de Relatórios -->
+    <h4 class="mb-4 fw-bold">Categorias de Relatórios</h4>
+    <div class="row g-4 mb-5">
+        <?php foreach ($reportCategories as $catKey => $cat): ?>
+        <div class="col-md-4">
+            <div class="card report-card h-100">
+                <div class="card-header bg-dark text-white py-2">
+                    <i class="bi bi-<?php echo $cat['icon']; ?> me-1"></i> <?php echo $cat['title']; ?>
+                </div>
+                <div class="card-body p-2">
+                    <div class="list-group list-group-flush">
+                        <?php foreach ($cat['reports'] as $slug => $rep):
+                            if ($userLevel > $rep['level']) { continue; }
+                        ?>
+                        <a href="<?php echo SITE_URL; ?>/<?php echo $rep['url']; ?>" class="list-group-item list-group-item-action py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-semibold"><i class="bi bi-<?php echo $rep['icon']; ?> me-2 text-primary"></i><?php echo $rep['title']; ?></span>
+                                <i class="bi bi-chevron-right text-muted"></i>
+                            </div>
+                            <div class="small text-muted mt-1"><?php echo htmlspecialchars($rep['description']); ?></div>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
     </div>
 
     <!-- Gerar Relatórios -->

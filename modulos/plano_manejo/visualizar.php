@@ -41,22 +41,27 @@ $stmtC->execute([$id]);
 $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <h1>Detalhes do Plano de Manejo</h1>
-        <div class="btn-group">
-            <a href="<?php echo SITE_URL; ?>/planos-manejo" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Voltar
-            </a>
-            <button class="btn btn-primary" onclick="window.print()">
-                <i class="bi bi-printer"></i> Imprimir
-            </button>
-            <?php $statusNormalizado = trim((string) ($plano['status'] ?? '')); $statusNormalizado = strtolower(str_replace(['_', '-'], ' ', $statusNormalizado)); ?>
-            <?php if (($statusNormalizado === 'em análise' || $statusNormalizado === 'em analise' || $statusNormalizado === 'em analise') && $user->hasPermission(NIVEL_GESTOR)): ?>
-                <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo $id; ?>/aprovar" class="btn btn-success">
-                    <i class="bi bi-check-lg"></i> Aprovar Plano
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <h1 class="mb-1"><i class="bi bi-journal-check me-2" style="color:var(--gm-primary);"></i>Detalhes do Plano de Manejo</h1>
+            <div class="btn-group">
+                <a href="<?php echo SITE_URL; ?>/planos-manejo" class="btn btn-assoc-ghost">
+                    <i class="bi bi-arrow-left"></i> Voltar
                 </a>
-            <?php endif; ?>
+                <button class="btn btn-assoc-primary" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Imprimir
+                </button>
+                <?php $statusNormalizado = trim((string) ($plano['status'] ?? '')); $statusNormalizado = strtolower(str_replace(['_', '-'], ' ', $statusNormalizado)); ?>
+                <?php if (($statusNormalizado === 'em análise' || $statusNormalizado === 'em analise' || $statusNormalizado === 'em analise') && $user->hasPermission(NIVEL_GESTOR)): ?>
+                    <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo $id; ?>/aprovar" class="btn btn-assoc-success">
+                        <i class="bi bi-check-lg"></i> Aprovar Plano
+                    </a>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
@@ -73,8 +78,8 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
             $statusColor = 'warning';
         }
     ?>
-    <div class="card mb-4 border-start border-4 border-<?php echo $statusColor; ?>">
-        <div class="card-body d-flex justify-content-between align-items-center">
+    <div class="gm-card mb-4 border-start border-4 border-<?php echo $statusColor; ?>">
+        <div class="p-4 d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-muted small">STATUS ATUAL:</span>
                 <span class="h5 mb-0 ms-2"><?php echo htmlspecialchars($statusLabel ?: 'Rascunho'); ?></span>
@@ -89,11 +94,11 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
     <div class="row">
         <!-- Coluna da Esquerda: Informações Gerais -->
         <div class="col-lg-8">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-white fw-bold">
-                    <i class="bi bi-info-circle me-1 text-primary"></i> 1. Caracterização da Unidade de Produção
+            <div class="gm-card mb-4">
+                <div class="card-head">
+                    <i class="bi bi-info-circle me-1" style="color:var(--gm-primary);"></i> 1. Caracterização da Unidade de Produção
                 </div>
-                <div class="card-body">
+                <div class="p-4">
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="text-muted small d-block">Propriedade</label>
@@ -130,63 +135,31 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-white fw-bold">
-                    <i class="bi bi-tools me-1 text-success"></i> 2. Práticas de Manejo e Conservação
+            <div class="gm-card mb-4">
+                <div class="card-head">
+                    <i class="bi bi-tools me-1" style="color:var(--gm-primary);"></i> 2. Práticas de Manejo e Conservação
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-bug"></i> MANEJO DE PRAGAS</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['manejo_pragas']) ?: 'Nenhuma prática específica registrada.'; ?></p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-virus"></i> MANEJO DE DOENÇAS</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['manejo_doencas']) ?: 'Nenhuma prática específica registrada.'; ?></p>
-                        </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <label class="fw-bold text-success small">MANEJO DE PRAGAS E DOENÇAS</label>
+                        <p class="border-start border-3 border-light ps-3"><?php echo nl2br($plano['manejo_pragas']) ?: 'Nenhuma prática específica registrada.'; ?></p>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-tree"></i> PRÁTICAS DE CONSERVAÇÃO</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['praticas_conservacao']) ?: 'Nenhuma prática específica registrada.'; ?></p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-arrow-repeat"></i> ROTAÇÃO DE CULTURAS</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['rotacao_culturas']) ?: 'Não informado.'; ?></p>
-                        </div>
+                    <div class="mb-4">
+                        <label class="fw-bold text-success small">MANEJO DE SOLO E ADUBAÇÃO</label>
+                        <p class="border-start border-3 border-light ps-3"><?php echo nl2br($plano['adubacao_verde']) ?: 'Nenhuma prática específica registrada.'; ?></p>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-flower2"></i> COMPOSTAGEM / ADUBAÇÃO VERDE</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['compostagem']) ?: 'Não informado.'; ?></p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-droplet"></i> BIOFERTILIZANTES</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['biofertilizantes']) ?: 'Não informado.'; ?></p>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-droplet-half"></i> FONTES DE ÁGUA</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['fonte_agua']) ?: 'Não informado.'; ?></p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold text-success small"><i class="bi bi-sun"></i> CLIMA / MICROCLIMA</label>
-                            <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['clima']) ?: 'Não informado.'; ?></p>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="fw-bold text-success small"><i class="bi bi-heart-pulse"></i> MANEJO DE SOLO E ADUBAÇÃO</label>
-                        <p class="border-start border-3 border-success ps-3 small"><?php echo nl2br($plano['adubacao_verde']) ?: 'Nenhuma prática específica registrada.'; ?></p>
+                    <div>
+                        <label class="fw-bold text-success small">ROTAÇÃO DE CULTURAS E COMPOSTAGEM</label>
+                        <p class="border-start border-3 border-light ps-3"><?php echo nl2br($plano['compostagem']) ?: 'Não informado.'; ?></p>
                     </div>
                 </div>
             </div>
 
-            <div class="card shadow-sm">
-                <div class="card-header bg-white fw-bold">
-                    <i class="bi bi-flower1 me-1 text-warning"></i> 3. Planejamento de Cultivos
+            <div class="gm-card mb-4">
+                <div class="card-head">
+                    <i class="bi bi-flower1 me-1" style="color:var(--gm-primary);"></i> 3. Planejamento de Cultivos
                 </div>
-                <div class="card-body">
+                <div class="p-4">
                     <table class="table table-sm table-hover">
                         <thead class="bg-light">
                             <tr>
@@ -213,11 +186,11 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
 
         <!-- Coluna da Direita: Croqui e Assinaturas -->
         <div class="col-lg-4">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-white fw-bold">
-                    <i class="bi bi-map me-1 text-info"></i> Croqui da Propriedade
+            <div class="gm-card mb-4">
+                <div class="card-head">
+                    <i class="bi bi-map me-1" style="color:var(--gm-primary);"></i> Croqui da Propriedade
                 </div>
-                <div class="card-body text-center">
+                <div class="p-4 text-center">
                     <?php if ($plano['croqui_propriedade_url']): ?>
                         <img src="<?php echo $plano['croqui_propriedade_url']; ?>" class="img-fluid rounded mb-2" alt="Croqui">
                     <?php else: ?>
@@ -233,11 +206,11 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <div class="card shadow-sm">
-                <div class="card-header bg-white fw-bold">
-                    <i class="bi bi-file-earmark-check me-1 text-dark"></i> Autenticação Tecnica
+            <div class="gm-card mb-4">
+                <div class="card-head">
+                    <i class="bi bi-file-earmark-check me-1"></i> Autenticação Tecnica
                 </div>
-                <div class="card-body small">
+                <div class="p-4 small">
                     <ul class="list-unstyled">
                         <li class="mb-2"><strong>Versão:</strong> <?php echo $plano['versao']; ?></li>
                         <li class="mb-2"><strong>Criado em:</strong> <?php echo date('d/m/Y H:i', strtotime($plano['created_at'])); ?></li>
@@ -248,7 +221,9 @@ $cultivos = $stmtC->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <style>
 @media print {

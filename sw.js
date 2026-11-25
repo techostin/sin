@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'sinporg-v3';
+const CACHE_VERSION = 'sinporg-v5';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
@@ -39,6 +39,20 @@ self.addEventListener('activate', event => {
       )
     ).then(() => self.clients.claim())
   );
+});
+
+// ---- Background Sync: enviar formulários salvos offline ----
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-forms') {
+    event.waitUntil(
+      self.clients.matchAll().then(clients => {
+        // Notificar todos os clientes abertos para executar a sincronização
+        clients.forEach(client => {
+          client.postMessage({ type: 'TRIGGER_SYNC' });
+        });
+      })
+    );
+  }
 });
 
 // ---- Fetch: estratégias diferenciadas por tipo de recurso ----

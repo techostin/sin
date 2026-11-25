@@ -1,10 +1,19 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    die('Acesso negado. Por favor, faça login para acessar este relatório.');
+}
+
 // Incluir autoload do Composer para PhpSpreadsheet
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
 // Incluir configuração do banco
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../classes/Database.php';
+require_once __DIR__ . '/../../../classes/User.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -13,8 +22,22 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 try {
+    $user = new User();
+
     // Conectar ao banco
     $db = Database::getInstance()->getConnection();
+
+    // Filtro de escopo: não-gestores só veem os próprios insumos
+    $params = [];
+    $where = ["i.excluido = 0"];
+    if (($_SESSION['user_nivel'] ?? NIVEL_USUARIO) > NIVEL_GESTOR) {
+        $assoc_id = $user->getAssociadoId();
+        if ($assoc_id) {
+            $where[] = "i.associado_id = :associado_id";
+            $params[':associado_id'] = $assoc_id;
+        }
+    }
+    $where_clause = implode(' AND ', $where);
 
     // Buscar dados dos insumos
     $sql = "SELECT 
@@ -24,11 +47,13 @@ try {
         f.telefone as fornecedor_telefone,
         f.email as fornecedor_email
         FROM insumos i
-        LEFT JOIN associados a ON i.associado_id = a.id
-        LEFT JOIN fornecedores f ON i.fornecedor_id = f.id
-        ORDER BY i.nome ASC";
+LEFT JOIN associados a ON i.associado_id = a.id
+LEFT JOIN fornecedores f ON i.fornecedor_id = f.id
+WHERE $where_clause
+ORDER BY i.nome ASC";
 
-    $stmt = $db->query($sql);
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Estatísticas

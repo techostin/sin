@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../classes/Database.php';
 require_once __DIR__ . '/../../../classes/CSRFProtection.php';
 require_once __DIR__ . '/../../../classes/User.php';
+require_once __DIR__ . '/../../../classes/Produto.php';
 
 $user = new User();
 if (!$user->isLoggedIn()) {
@@ -18,17 +19,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !CSRFProtection::validatePostReques
 
 try {
     $db = Database::getInstance()->getConnection();
-    
+
     // IDOR Check
     if (!$user->hasPermission(NIVEL_GESTOR)) {
-        $stmt_check = $db->prepare("SELECT p.associado_id 
-                                    FROM produtos pr 
-                                    INNER JOIN lavouras l ON pr.lavoura_id = l.id 
-                                    INNER JOIN propriedades p ON l.propriedade_id = p.id 
-                                    WHERE pr.id = ?");
-        $stmt_check->execute([(int)$id]);
-        $res = $stmt_check->fetch(PDO::FETCH_ASSOC);
-        if (!$res || $res['associado_id'] != $user->getAssociadoId()) {
+        $produto_obj = new Produto();
+        $associado_id = $user->getAssociadoId() ?? -1;
+        $acessivel = $produto_obj->getProdutosDoAssociado($associado_id);
+        $podeAcessar = false;
+        foreach ($acessivel as $p) {
+            if ((int)$p['id'] === (int)$id) { $podeAcessar = true; break; }
+        }
+        if (!$podeAcessar) {
             header('Location: ' . SITE_URL . '/caderno-campo/produtos?erro=acesso_negado');
             exit;
         }

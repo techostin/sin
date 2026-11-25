@@ -3,6 +3,14 @@ require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
 require_once __DIR__ . '/../../classes/Associacao.php';
 
+// Dado GLOBAL gerido pela equipe: edição restrita a Admin/Gestor.
+// Antes, qualquer usuário logado (nível 3) abria e alterava associações.
+if (!$user->isGestorOuAdmin()) {
+    echo "<div class='alert alert-danger mt-4'>Acesso negado: você não tem permissão para editar associações.</div>";
+    require_once __DIR__ . '/../../includes/footer.php';
+    exit;
+}
+
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     echo "<div class='alert alert-danger'>ID não informado.</div>";
     require_once __DIR__ . '/../../includes/footer.php';

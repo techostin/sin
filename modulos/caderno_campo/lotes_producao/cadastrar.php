@@ -22,15 +22,20 @@ if ($user->hasPermission(NIVEL_GESTOR)) {
 } else {
     $associado_id = $user->getAssociadoId();
     if (!$associado_id) $associado_id = -1;
-    $produtos = $produto_obj->getByAssociadoId($associado_id);
+    $produtos = $produto_obj->getProdutosDoAssociado($associado_id);
 }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') == 'POST') {
     $lote = new LoteProducao();
     
     $dados_lote = [];
     foreach ($_POST as $key => $value) {
         $dados_lote[$key] = htmlspecialchars(strip_tags(trim($value)));
+    }
+
+    $assoc_id_lote = $user->getAssociadoId();
+    if ($assoc_id_lote) {
+        $dados_lote['associado_id'] = $assoc_id_lote;
     }
 
     if ($lote->create($dados_lote)) {
@@ -63,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <select class="form-select" id="produto_id" name="produto_id" required>
             <option value="">Selecione um Produto</option>
             <?php foreach ($produtos as $prod): ?>
-                <option value="<?php echo $prod['id']; ?>"><?php echo $prod['nome']; ?></option>
+                <option value="<?php echo $prod['id']; ?>"><?php echo htmlspecialchars($prod['nome'] . (isset($prod['nome_unidade']) && $prod['nome_unidade'] ? ' (' . $prod['nome_unidade'] . ')' : '')); ?></option>
             <?php endforeach; ?>
         </select>
     </div>

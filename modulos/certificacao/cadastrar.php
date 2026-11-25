@@ -1,27 +1,35 @@
 <?php
-$page_title = isset($_GET['id']) ? "Editar Certificação" : "Nova Certificação";
-require_once __DIR__ . '/../../includes/header.php';
-require_once __DIR__ . '/../../includes/menu.php';
+/**
+ * Cadastrar/Editar Certificação - Padrão Unificado
+ */
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../classes/User.php';
 require_once __DIR__ . '/../../classes/Database.php';
+require_once __DIR__ . '/../../classes/CSRFProtection.php';
 
-// Verificar autenticação
+$user = new User();
+$message = '';
+$message_type = '';
+
+// Verificação de autenticação
 if (!$user->isLoggedIn()) {
-    echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
-    require_once __DIR__ . '/../../includes/footer.php';
+    header("Location: " . SITE_URL . "/login");
     exit;
 }
 
 // Apenas Admin/Gestor podem cadastrar ou editar certificações
 if (!$user->hasPermission(NIVEL_GESTOR)) {
-    echo "<div class='alert alert-danger'>Acesso restrito a gestores e administradores.</div>";
-    require_once __DIR__ . '/../../includes/footer.php';
-    exit;
+    $message = 'Acesso restrito a gestores e administradores.';
+    $message_type = 'danger';
+    $hasAccess = false;
+} else {
+    $hasAccess = true;
 }
 
 $isEdit = isset($_GET['id']) && is_numeric($_GET['id']);
-$certificacaoId = $isEdit ? $_GET['id'] : null;
+$certificacaoId = $isEdit ? (int)$_GET['id'] : null;
 
-// Se for edição, buscar dados existentes
+// Buscar certificação se edição
 $certificacao = null;
 if ($isEdit) {
     $db = Database::getInstance()->getConnection();
@@ -30,9 +38,9 @@ if ($isEdit) {
     $certificacao = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$certificacao) {
-        echo "<div class='alert alert-danger'>Certificação não encontrada.</div>";
-        require_once __DIR__ . '/../../includes/footer.php';
-        exit;
+        $message = 'Certificação não encontrada.';
+        $message_type = 'danger';
+        $hasAccess = false;
     }
 }
 
@@ -40,183 +48,263 @@ if ($isEdit) {
 $db = Database::getInstance()->getConnection();
 $stmtAssociados = $db->query("SELECT id, nome, sobrenome FROM associados ORDER BY nome");
 $associados = $stmtAssociados->fetchAll(PDO::FETCH_ASSOC);
-?>
 
-<h1 class="mt-4"><?php echo $page_title; ?></h1>
-<p>Registro de certificação orgânica - Portaria MAPA 52/2021</p>
+// Buscar certificadoras para o select
+$stmtCertificadoras = $db->query("SELECT id, nome FROM certificadoras ORDER BY nome");
+$certificadoras = $stmtCertificadoras->fetchAll(PDO::FETCH_ASSOC);
 
-<div class="card">
-    <div class="card-header">
-        <span><?php echo $isEdit ? 'Editar Certificação' : 'Cadastrar Nova Certificação'; ?></span>
-    </div>
-    <div class="card-body">
-        <form id="formCertificacao">
-            <?php if ($isEdit): ?>
-                <input type="hidden" name="id" value="<?php echo $certificacaoId; ?>">
-            <?php endif; ?>
+// Determinar sigla da certificadora vinculada ao gestor (se aplicável)
+$gestorCertificadoraSigla = '';
+if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_GESTOR) {
+    $currentUser = $user->getCurrentUser();
+    if ($currentUser && isset($currentUser['certificadora_id'])) {
+        foreach ($certificadoras as $cert) {
+            if ($cert['id'] == $currentUser['certificadora_id']) {
+                $gestorCertificadoraSigla = $cert['sigla'];
+                break;
+            }
+        }
+    }
+}
+
+// --- PROCESSAMENTO DO FORMULÁRIO (POST) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $hasAccess) {
+    if (!CSRFProtection::validatePostRequest()) {
+        $message = 'Erro de segurança: token inválido.';
+        $message_type = 'danger';
+    } else {
+        $db = Database::getInstance()->getConnection();
+        try {
+            $dados = $_POST;
             
-            <!-- Informações Básicas -->
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="associado_id" class="form-label">Associado <span class="text-danger">*</span></label>
-                    <select class="form-select" id="associado_id" name="associado_id" required>
-                        <option value="">Selecione...</option>
-                        <?php foreach ($associados as $assoc): ?>
-                            <option value="<?php echo $assoc['id']; ?>" 
-                                    <?php echo ($certificacao && $certificacao['associado_id'] == $assoc['id']) ? 'selected' : ''; ?>>
-                                <?php echo $assoc['nome'] . ' ' . $assoc['sobrenome']; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="text-muted">Agricultor titular da certificação</small>
-                </div>
+            if ($isEdit) {
+                // Atualizar
+                $sets = [];
+                $params = [':id' => $certificacaoId];
                 
-                <div class="col-md-6 mb-3">
-                    <label for="tipo_certificacao" class="form-label">Tipo de Certificação <span class="text-danger">*</span></label>
-                    <select class="form-select" id="tipo_certificacao" name="tipo_certificacao" required>
-                        <option value="SPG" <?php echo ($certificacao && $certificacao['tipo_certificacao'] == 'SPG') ? 'selected' : ''; ?>>SPG (Sistema Participativo de Garantia)</option>
-                        <option value="OCS" <?php echo ($certificacao && $certificacao['tipo_certificacao'] == 'OCS') ? 'selected' : ''; ?>>OCS (Organização de Controle Social)</option>
-                        <option value="Rede Ecovida" <?php echo ($certificacao && $certificacao['tipo_certificacao'] == 'Rede Ecovida') ? 'selected' : ''; ?>>Rede Ecovida</option>
-                        <option value="Outro" <?php echo ($certificacao && $certificacao['tipo_certificacao'] == 'Outro') ? 'selected' : ''; ?>>Outro</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Dados da Certificação -->
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label for="numero_certificado" class="form-label">Nº do Certificado</label>
-                    <input type="text" class="form-control" id="numero_certificado" name="numero_certificado" 
-                           value="<?php echo $certificacao['numero_certificado'] ?? ''; ?>">
-                </div>
+                $campos = ['associado_id', 'certificadora_id', 'numero_certificado', 'tipo_certificacao', 
+                          'data_emissao', 'data_vencimento', 'status', 'escopo', 'documento_url',
+                          'declaracao_compromisso_url', 'observacoes'];
                 
-                <div class="col-md-4 mb-3">
-                    <label for="data_emissao" class="form-label">Data de Emissão</label>
-                    <input type="date" class="form-control" id="data_emissao" name="data_emissao" 
-                           value="<?php echo $certificacao['data_emissao'] ?? ''; ?>">
-                </div>
+                foreach ($campos as $campo) {
+                    if (isset($dados[$campo])) {
+                        $sets[] = "$campo = :$campo";
+                        $params[":$campo"] = $dados[$campo];
+                    }
+                }
                 
-                <div class="col-md-4 mb-3">
-                    <label for="data_validade" class="form-label">Data de Validade</label>
-                    <input type="date" class="form-control" id="data_validade" name="data_validade" 
-                           value="<?php echo $certificacao['data_validade'] ?? ''; ?>">
-                    <small class="text-muted">Certificações SPG geralmente têm validade de 1 ano</small>
-                </div>
-            </div>
-
-            <!-- Status e Organismo -->
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                    <select class="form-select" id="status" name="status" required>
-                        <option value="Em Conversão" <?php echo ($certificacao && $certificacao['status'] == 'Em Conversão') ? 'selected' : ''; ?>>Em Conversão</option>
-                        <option value="Ativa" <?php echo ($certificacao && $certificacao['status'] == 'Ativa') ? 'selected' : ''; ?>>Ativa</option>
-                        <option value="Vencida" <?php echo ($certificacao && $certificacao['status'] == 'Vencida') ? 'selected' : ''; ?>>Vencida</option>
-                        <option value="Suspensa" <?php echo ($certificacao && $certificacao['status'] == 'Suspensa') ? 'selected' : ''; ?>>Suspensa</option>
-                        <option value="Cancelada" <?php echo ($certificacao && $certificacao['status'] == 'Cancelada') ? 'selected' : ''; ?>>Cancelada</option>
-                    </select>
-                    <small class="text-muted">Período de conversão: mínimo 12 meses (Portaria 52/2021)</small>
-                <// div>
+                $sql = "UPDATE certificacao_participativa SET " . implode(', ', $sets) . " WHERE id = :id";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
                 
-                <div class="col-md-6 mb-3">
-                    <label for="organismo_certificador" class="form-label">Organismo Certificador/SPG</label>
-                    <input type="text" class="form-control" id="organismo_certificador" name="organismo_certificador" 
-                           value="<?php echo $certificacao['organismo_certificador'] ?? ''; ?>" 
-                           placeholder="Ex: SPG Orgânicos do Vale">
-                </div>
-            </div>
-
-            <!-- Grupo (para SPG) -->
-            <div class="row">
-                <div class="col-md-12 mb-3">
-                    <label for="nome_grupo" class="form-label">Nome do Grupo (SPG)</label>
-                    <input type="text" class="form-control" id="nome_grupo" name="nome_grupo" 
-                           value="<?php echo $certificacao['nome_grupo'] ?? ''; ?>" 
-                           placeholder="Nome do grupo de agricultores do SPG">
-                    <small class="text-muted">Aplicável para certificações SPG</small>
-                </div>
-            </div>
-
-            <!-- URLs de Documentos -->
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="documento_url" class="form-label">URL do Certificado</label>
-                    <input type="url" class="form-control" id="documento_url" name="documento_url" 
-                           value="<?php echo $certificacao['documento_url'] ?? ''; ?>" 
-                           placeholder="https://exemplo.com/certificado.pdf">
-                </div>
+                $message = 'Certificação atualizada com sucesso!';
+                $message_type = 'success';
+            } else {
+                // Inserir nova
+                $campos = ['associado_id', 'certificadora_id', 'numero_certificado', 'tipo_certificacao', 
+                          'data_emissao', 'data_vencimento', 'status', 'escopo', 'documento_url',
+                          'declaracao_compromisso_url', 'observacoes'];
                 
-                <div class="col-md-6 mb-3">
-                    <label for="declaracao_compromisso_url" class="form-label">URL da Declaração de Compromisso</label>
-                    <input type="url" class="form-control" id="declaracao_compromisso_url" name="declaracao_compromisso_url" 
-                           value="<?php echo $certificacao['declaracao_compromisso_url'] ?? ''; ?>" 
-                           placeholder="https://exemplo.com/declaracao.pdf">
-                </div>
-            </div>
+                $sets = [];
+                $params = [];
+                
+                foreach ($campos as $campo) {
+                    if (isset($dados[$campo])) {
+                        $sets[] = ":$campo";
+                        $params[":$campo"] = $dados[$campo];
+                    }
+                }
+                
+                $sql = "INSERT INTO certificacao_participativa (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $sets) . ")";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $certificacaoId = $db->lastInsertId();
+                
+                $message = 'Certificação cadastrada com sucesso!';
+                $message_type = 'success';
+            }
+        } catch (PDOException $e) {
+            $message = 'Erro ao salvar: ' . $e->getMessage();
+            $message_type = 'danger';
+        }
+    }
+}
 
-            <!-- Observações -->
-            <div class="row">
-                <div class="col-md-12 mb-3">
-                    <label for="observacoes" class="form-label">Observações</label>
-                    <textarea class="form-control" id="observacoes" name="observacoes" rows="4"><?php echo $certificacao['observacoes'] ?? ''; ?></textarea>
-                </div>
-            </div>
+// Preparar dados para o formulário
+$produtosSelecionados = [];
+if ($isEdit) {
+    try {
+        $stmt = $db->prepare("SELECT produto_id FROM certificacao_produtos WHERE certificacao_id = ?");
+        $stmt->execute([$certificacaoId]);
+        $produtosSelecionados = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        // Tabela certificacao_produtos não existe, ignora silenciosamente
+        $produtosSelecionados = [];
+    }
+}
 
-            <!-- Botões de Ação -->
-            <div class="row">
-                <div class="col-md-12">
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle"></i> <?php echo $isEdit ? 'Atualizar' : 'Cadastrar'; ?>
-                    </button>
-                    <a href="<?php echo SITE_URL; ?>/certificacoes" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> Cancelar
-                    </a>
-                </div>
-            </div>
-        </form>
+// Configuração da página
+$page_title = $isEdit ? 'Editar Certificação' : 'Nova Certificação';
+$page_subtitle = 'Preencha os dados da certificação participativa.';
+$formAction = $isEdit ? SITE_URL . "/certificacao/{$certificacaoId}/editar" : SITE_URL . '/certificacao/novo';
+$cancelUrl = SITE_URL . '/certificacoes';
+$submitLabel = $isEdit ? 'Atualizar' : 'Cadastrar';
+$message = $message ?? '';
+$message_type = $message_type ?? 'danger';
+$hasAccess = $hasAccess ?? true;
+
+$formFields = [
+    'row1' => [
+        ['associado_id', 'select', 'Associado Produtor', ['required' => true, 'col' => 'md-6', 'options' => array_column($associados, 'nome', 'id')]],
+        ['certificadora_id', 'select', 'Organismo  Certificador', ['required' => true, 'col' => 'md-6', 'options' => array_column($certificadoras, 'nome', 'id')]],
+    ],
+    'row2' => [
+        ['numero_certificado', 'text', 'Número do Certificado', ['required' => true, 'col' => 'md-6']],
+        ['tipo_certificacao', 'select', 'Tipo de Certificação', ['required' => true, 'col' => 'md-6', 'options' => [
+            'OCS' => 'OCS - Organismo de Certificação Social',
+            'SPG' => 'SPG - Sistema Participativo de Garantia',
+        ]]],
+    ],
+    'row3' => [
+        ['data_emissao', 'date', 'Data de Emissão', ['required' => true, 'col' => 'md-6']],
+        ['data_vencimento', 'date', 'Data de Vencimento', ['required' => true, 'col' => 'md-6']],
+    ],
+    'row4' => [
+        ['status', 'select', 'Status', ['required' => true, 'col' => 'md-4', 'options' => [
+            'Ativa' => 'Ativa',
+            'Suspensa' => 'Suspensa',
+            'Cancelada' => 'Cancelada',
+            'Vencida' => 'Vencida',
+        ]]],
+        ['escopo', 'select', 'Escopo', ['required' => true, 'col' => 'md-4', 'options' => [
+            'Producao' => 'Produção',
+            'Processamento' => 'Processamento',
+            'Comercializacao' => 'Comercialização',
+            'Completo' => 'Completo (Produção + Processamento + Comercialização)',
+        ]]],
+    ],
+];
+
+$page_title = $isEdit ? 'Editar Certificação' : 'Nova Certificação';
+$page_subtitle = 'Preencha os dados da certificação participativa.';
+$formAction = $isEdit ? SITE_URL . "/certificacao/{$certificacaoId}/editar" : SITE_URL . '/certificacao/novo';
+$cancelUrl = SITE_URL . '/certificacoes';
+$submitLabel = $isEdit ? 'Atualizar' : 'Cadastrar';
+$message = $message ?? '';
+$message_type = $message_type ?? 'danger';
+$hasAccess = $hasAccess ?? true;
+
+$page_title = $isEdit ? 'Editar Certificação' : 'Nova Certificação';
+require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/menu.php';
+?>
+<div class="container-fluid px-4 py-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1"><i class="bi bi-award me-2"></i><?php echo htmlspecialchars($page_title); ?></h1>
+            <p class="text-muted mb-0"><?php echo htmlspecialchars($page_subtitle); ?></p>
+        </div>
+        <a href="<?php echo htmlspecialchars($cancelUrl); ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
     </div>
+
+    <?php if ($message): ?>
+    <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show">
+        <?php echo $message; ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!$hasAccess): ?>
+    <div class="alert alert-danger">Acesso negado.</div>
+    <?php else: ?>
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-award me-2"></i><?php echo htmlspecialchars($page_title); ?></h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="<?php echo htmlspecialchars($formAction); ?>" class="row g-3 needs-validation" novalidate>
+                <?php echo CSRFProtection::getTokenField(); ?>
+
+                <?php foreach ($formFields as $rowName => $fields): ?>
+                    <div class="row g-3">
+                        <?php foreach ($fields as $field): 
+                            [$name, $type, $label, $options] = array_pad($field, 4, []);
+                            $required = !empty($options['required']) ? 'required' : '';
+                            $col = $options['col'] ?? 'md-6';
+                            $placeholder = $options['placeholder'] ?? '';
+                            $readonly = !empty($options['readonly']) ? 'readonly' : '';
+                            $value = isset($certificacao[$name]) ? htmlspecialchars($certificacao[$name]) : htmlspecialchars($_POST[$name] ?? '');
+                            $id = $options['id'] ?? $name;
+                        ?>
+                        <div class="col-<?php echo $col; ?>">
+                            <label for="<?php echo $id; ?>" class="form-label"><?php echo htmlspecialchars($label); ?></label>
+                            <?php if ($type === 'select'): ?>
+                                <select class="form-select" id="<?php echo $id; ?>" name="<?php echo $name; ?>" <?php echo $required; ?>>
+                                    <option value="">Selecione...</option>
+                                    <?php foreach ($options['options'] as $val => $optLabel): ?>
+                                        <option value="<?php echo $val; ?>" <?php echo (($certificacao[$name] ?? $_POST[$name] ?? '') == $val) ? 'selected' : ''; ?>><?php echo htmlspecialchars($optLabel); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php elseif ($type === 'textarea'): ?>
+                                <textarea class="form-control" id="<?php echo $id; ?>" name="<?php echo $name; ?>" rows="3" <?php echo $required; ?>><?php echo $value; ?></textarea>
+                            <?php else: ?>
+                                <?php $inputType = in_array($type, ['email', 'password', 'date', 'url']) ? $type : 'text'; ?>
+                                <input type="<?php echo $inputType; ?>" class="form-control" id="<?php echo $id; ?>" name="<?php echo $name; ?>" value="<?php echo $value; ?>" <?php echo $required; ?> placeholder="<?php echo htmlspecialchars($options['placeholder'] ?? ''); ?>">
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
+
+                <!-- Escopo (condicional) -->
+                <div class="row g-3" id="secaoEscopo">
+                    <div class="col-md-6">
+                        <label for="escopo" class="form-label">Escopo</label>
+                        <select class="form-select" id="escopo" name="escopo" required>
+                            <option value="">Selecione...</option>
+                            <?php foreach (['Producao' => 'Produção', 'Processamento' => 'Processamento', 'Comercializacao' => 'Comercialização', 'Completo' => 'Completo'] as $val => $label): ?>
+                                <option value="<?php echo $val; ?>" <?php echo (($certificacao['escopo'] ?? $_POST['escopo'] ?? '') == $val) ? 'selected' : ''; ?>><?php echo $label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- URLs de Documentos -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="documento_url" class="form-label">URL do Certificado</label>
+                        <input type="url" class="form-control" id="documento_url" name="documento_url" value="<?php echo htmlspecialchars($certificacao['documento_url'] ?? ''); ?>" placeholder="https://exemplo.com/certificado.pdf">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="declaracao_compromisso_url" class="form-label">URL da Declaração de Compromisso</label>
+                        <input type="url" class="form-control" id="declaracao_compromisso_url" name="declaracao_compromisso_url" value="<?php echo htmlspecialchars($certificacao['declaracao_compromisso_url'] ?? ''); ?>" placeholder="https://exemplo.com/declaracao.pdf">
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="observacoes" class="form-label">Observações</label>
+                        <textarea class="form-control" id="observacoes" name="observacoes" rows="4"><?php echo htmlspecialchars($certificacao['observacoes'] ?? ''); ?></textarea>
+                    </div>
+                </div>
+
+                <div class="col-12 mt-3">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i> <?php echo htmlspecialchars($submitLabel); ?>
+                        </button>
+                        <a href="<?php echo htmlspecialchars($cancelUrl); ?>" class="btn btn-outline-secondary">
+                            <i class="bi bi-x me-1"></i> Cancelar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
-
-<script>
-$(document).ready(function() {
-    $('#formCertificacao').on('submit', function(e) {
-        e.preventDefault();
-        
-        const isEdit = <?php echo $isEdit ? 'true' : 'false'; ?>;
-        const formData = {};
-        
-        // Coletar dados do formulário
-        $(this).serializeArray().forEach(item => {
-            formData[item.name] = item.value;
-        });
-        
-        // Configurar requisição
-        const url = '<?php echo SITE_URL; ?>/api/certificacao/controller.php';
-        const method = isEdit ? 'PUT' : 'POST';
-        
-       // Enviar dados
-        fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(isEdit ? 'Certificação atualizada com sucesso!' : 'Certificação cadastrada com sucesso!');
-                window.location.href = '<?php echo SITE_URL; ?>/certificacoes';
-            } else {
-                alert('Erro: ' + (data.error || 'Erro desconhecido'));
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro ao processar requisição');
-        });
-    });
-});
-</script>

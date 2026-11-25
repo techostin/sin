@@ -1,15 +1,36 @@
 /**
  * SINPORG - Estilo Agricultura Familiar & Mobile-First
- * 
+ *
  * Focado em acessibilidade no campo, contraste elevado e alvos de toque grandes.
  */
 
+/* Previne zoom automático em inputs no iOS */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 :root {
+    /* Cores orgânicas */
     --organic-green: #198754;
+    --organic-green-light: #20c997;
     --organic-earth: #6d4c41;
     --organic-sun: #ffc107;
     --organic-sky: #e3f2fd;
+
+    /* Alvos de toque */
     --touch-target: 48px;
+
+    /* Safe area insets (iOS notch / home indicator) */
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+
+    /* Dimensões de layout */
+    --bottom-nav-height: 64px;
+    --top-bar-height: 56px;
+    --sidebar-width: 280px;
 }
 
 body {
@@ -17,7 +38,9 @@ body {
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Alvos de toque maiores para Mobile */
+/* =============================================
+   Botões — Touch-friendly
+   ============================================= */
 .btn {
     min-height: var(--touch-target);
     display: inline-flex;
@@ -29,13 +52,20 @@ body {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
     border-radius: 8px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:active {
+    transform: scale(0.97);
 }
 
 .btn-sm {
     min-height: 36px;
 }
 
-/* Cartões com aspecto orgânico */
+/* =============================================
+   Cards com aspecto orgânico
+   ============================================= */
 .card {
     border: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -50,12 +80,16 @@ body {
     color: var(--organic-earth);
 }
 
-/* Inputs otimizados */
+/* =============================================
+   Inputs otimizados para mobile
+   ============================================= */
 .form-control, .form-select {
     min-height: 44px;
     border-radius: 8px;
     border: 1px solid #ced4da;
     padding: 0.5rem 1rem;
+    /* Previne zoom automático no iOS (min 16px) */
+    font-size: 1rem;
 }
 
 .form-control:focus {
@@ -63,7 +97,23 @@ body {
     box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.15);
 }
 
-/* Labels mais legíveis */
+/* Evitar zoom no iOS em inputs */
+@supports (-webkit-touch-callout: none) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* =============================================
+   Labels mais legíveis
+   ============================================= */
 .form-label {
     font-weight: 600;
     color: #495057;
@@ -71,14 +121,18 @@ body {
     font-size: 0.9rem;
 }
 
-/* Badges modernos */
+/* =============================================
+   Badges modernos
+   ============================================= */
 .badge {
     padding: 0.5em 0.8em;
     font-weight: 600;
     border-radius: 6px;
 }
 
-/* Wizard / Timeline Style */
+/* =============================================
+   Wizard / Timeline Style
+   ============================================= */
 .step-circle {
     box-shadow: 0 0 0 4px #fff, 0 0 0 6px #f0f0f0;
 }
@@ -87,23 +141,305 @@ body {
     box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--organic-green);
 }
 
-/* Utilitários de cor orgânica */
+/* =============================================
+   Utilitários de cor orgânica
+   ============================================= */
 .text-organic { color: var(--organic-green); }
 .bg-organic { background-color: var(--organic-green); }
 
-/* Ajustes para telas pequenas (smartphones) */
-@media (max-width: 576px) {
-    h1 { font-size: 1.75rem; }
-    .card-body { padding: 1rem; }
-    .btn { width: 100%; margin-bottom: 0.5rem; }
-    .btn-group { display: flex; flex-direction: column; width: 100%; }
-    .btn-group .btn { border-radius: 8px !important; margin-bottom: 4px; }
-}
-
-/* Glassmorphism sutil para Modais */
+/* =============================================
+   Glassmorphism para Modais
+   ============================================= */
 .modal-content {
     border: none;
     border-radius: 16px;
     backdrop-filter: blur(10px);
     background-color: rgba(255, 255, 255, 0.95);
 }
+
+/* Modal bottom-sheet no mobile */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-width: 100%;
+    }
+
+    .modal-content {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+    }
+
+    /* Handle visual */
+    .modal-content::before {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 4px;
+        background: #dee2e6;
+        border-radius: 2px;
+        margin: 10px auto 0;
+    }
+}
+
+/* =============================================
+   Ajustes para smartphones (< 576px)
+   ============================================= */
+@media (max-width: 576px) {
+    h1 { font-size: 1.75rem; }
+    .card-body { padding: 1rem; }
+
+    /* Botões ficam full-width, mas NÃO em grupos do bottom nav,
+       nem em células de tabela, nem botões de ícone */
+    .btn:not(.bottom-nav-item):not(.btn-icon):not(td .btn):not(.actions-cell .btn):not(.btn-group .btn) {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Exceto botões em células de tabela */
+    td .btn,
+    .actions-cell .btn {
+        width: auto !important;
+        margin-bottom: 2px;
+        min-height: 36px;
+    }
+
+    /* Grupo de botões vira coluna */
+    .btn-group:not(.btn-group-inline) {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-group:not(.btn-group-inline) .btn {
+        border-radius: 8px !important;
+        margin-bottom: 4px;
+        width: 100%;
+    }
+}
+
+/* =============================================
+   Formulários — layout vertical em mobile
+   ============================================= */
+@media (max-width: 991.98px) {
+    /* Garantir que labels fiquem acima dos campos */
+    .form-label,
+    label.col-form-label {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.25rem;
+    }
+
+    /* Colunas de formulário viram linha única */
+    .row.g-3 > [class*="col-"],
+    .row.g-2 > [class*="col-"] {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Botões de submit/cancel full-width em formulários */
+    .form-actions .btn,
+    .form-footer .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Espaçamento maior entre grupos de campos */
+    .mb-3 { margin-bottom: 1rem !important; }
+}
+
+/* =============================================
+   Campo: estado de sincronização offline
+   ============================================= */
+.offline-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.offline-indicator.online {
+    background: rgba(25,135,84,0.1);
+    color: var(--organic-green);
+}
+
+.offline-indicator.offline {
+    background: rgba(220,53,69,0.1);
+    color: #dc3545;
+}
+
+/* =============================================
+   Pull-to-refresh hint (visual only)
+   ============================================= */
+@media (max-width: 768px) {
+    .page-content-inner {
+        position: relative;
+    }
+}
+
+/* =============================================
+   FAB Global — Botão de Ação Flutuante
+   (usado pelo footer.php em páginas de listagem)
+   ============================================= */
+#fab-global-trigger {
+    display: none; /* escondido em desktop */
+    position: fixed;
+    bottom: calc(var(--bottom-nav-height) + var(--sab) + 1rem);
+    right: 1.5rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--organic-green), var(--organic-green-light));
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 20px rgba(25, 135, 84, 0.45);
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#fab-global-trigger:hover {
+    transform: scale(1.08);
+    box-shadow: 0 8px 28px rgba(25, 135, 84, 0.55);
+}
+
+#fab-global-trigger:active {
+    transform: scale(0.95);
+}
+
+/* Mostrar FAB apenas em mobile */
+@media (max-width: 991.98px) {
+    #fab-global-trigger {
+        display: flex;
+    }
+}
+
+/* =============================================
+   Bottom Navigation — APENAS mobile (< 992px)
+   (display: none em desktop)
+   ============================================= */
+#bottom-nav,
+.bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 1040 !important;
+    height: calc(var(--bottom-nav-height, 64px) + var(--sab, 0px)) !important;
+    padding-bottom: var(--sab, 0px) !important;
+    background: #ffffff !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.08) !important;
+    align-items: stretch !important;
+    justify-content: space-around !important;
+    margin: 0 !important;
+}
+
+.bottom-nav-item {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    color: #6c757d !important;
+    text-decoration: none !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    line-height: 1.1 !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+}
+
+.bottom-nav-item i {
+    font-size: 1.4rem !important;
+    line-height: 1 !important;
+}
+
+.bottom-nav-item.active {
+    color: var(--organic-green, #198754) !important;
+}
+
+/* Item central (FAB elevado) */
+.bottom-nav-item.fab {
+    position: relative !important;
+}
+
+.bottom-nav-item.fab .fab-circle {
+    width: 56px !important;
+    height: 56px !important;
+    margin-top: -24px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.6rem !important;
+    color: #fff !important;
+    background: linear-gradient(135deg, var(--organic-green), var(--organic-green-light)) !important;
+    box-shadow: 0 6px 18px rgba(25, 135, 84, 0.45) !important;
+    border: 4px solid #ffffff !important;
+}
+
+.bottom-nav-item.fab span {
+    margin-top: 2px !important;
+}
+
+.bottom-nav-item.fab.active {
+    color: var(--organic-green, #198754) !important;
+}
+
+/* Badge de sincronização pendente */
+.bottom-nav-badge {
+    display: none;
+    position: absolute !important;
+    top: 4px !important;
+    right: calc(50% - 24px) !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    padding: 0 4px !important;
+    border-radius: 999px !important;
+    background: #dc3545 !important;
+    color: #fff !important;
+    font-size: 0.62rem !important;
+    font-weight: 700 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 1 !important;
+}
+
+.bottom-nav-badge.visible {
+    display: inline-flex !important;
+}
+
+@media (max-width: 991.98px) {
+    body {
+        padding-bottom: calc(var(--bottom-nav-height, 64px) + var(--sab, 0px)) !important;
+    }
+}
+
+@media (min-width: 992px) {
+    #bottom-nav,
+    .bottom-nav {
+        display: none !important;
+    }
+}
+

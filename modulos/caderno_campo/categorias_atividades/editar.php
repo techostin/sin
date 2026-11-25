@@ -25,6 +25,17 @@ if (!$dados_categoria) {
     exit;
 }
 
+// Anti-IDOR: a categoria pertence a um associado (categorias_atividades.associado_id).
+// Admin/Gestor editam qualquer uma; nível 3 apenas as do próprio associado e
+// categorias globais (associado_id nulo) ficam restritas à equipe.
+$donoCategoria = (int) ($dados_categoria['associado_id'] ?? 0);
+if (!$user->isGestorOuAdmin()
+    && ($donoCategoria <= 0 || $donoCategoria !== (int) $user->getAssociadoIdResolvido())) {
+    echo '<div class="alert alert-danger mt-4">Acesso negado: esta categoria não pertence a você.</div>';
+    require_once __DIR__ . '/../../../includes/footer.php';
+    exit;
+}
+
 // Processar formulário
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $dados = $_POST;

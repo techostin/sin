@@ -1,14 +1,25 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    die('Acesso negado. Por favor, faça login para acessar este relatório.');
+}
+
 // Incluir autoload do Composer para mPDF
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
 // Incluir configuração do banco
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../classes/Database.php';
+require_once __DIR__ . '/../../../classes/User.php';
 
 use Mpdf\Mpdf;
 
 try {
+    $user = new User();
+
     // Criar instância do mPDF
     $mpdf = new Mpdf([
         'mode' => 'utf-8',
@@ -22,6 +33,18 @@ try {
     // Conectar ao banco
     $db = Database::getInstance()->getConnection();
 
+    // Filtro de escopo: não-gestores só veem as próprias propriedades
+    $params = [];
+    $where = [];
+    if (($_SESSION['user_nivel'] ?? NIVEL_USUARIO) > NIVEL_GESTOR) {
+        $assoc_id = $user->getAssociadoId();
+        if ($assoc_id) {
+            $where[] = "p.associado_id = :associado_id";
+            $params[':associado_id'] = $assoc_id;
+        }
+    }
+    $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
     // Buscar propriedades
     $sql = "SELECT 
         p.*,
@@ -31,10 +54,12 @@ try {
         FROM propriedades p
         LEFT JOIN lavouras l ON p.id = l.propriedade_id
         LEFT JOIN atividades_diarias ad ON p.id = ad.propriedade_id
+        $where_clause
         GROUP BY p.id, p.propriedade, p.area_total, p.endereco, p.cep, p.bairro, p.cidade, p.estado, p.latitude, p.longitude, p.observacoes, p.created_at
         ORDER BY p.propriedade ASC";
     
-    $stmt = $db->query($sql);
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $propriedades = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Estatísticas
@@ -71,6 +96,7 @@ try {
     </style>
 
     <div class="header">
+        <img src="' . SINPORG_LOGO_PATH . '" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="height:58px; margin-bottom:6px;" />
         <div class="title">Relatório por Propriedades</div>
         <div class="subtitle">Caderno de Campo - Sistema Integrado da Produção Orgânica</div>
         <div class="subtitle">Gerado em: ' . date('d/m/Y H:i:s') . '</div>
@@ -109,7 +135,7 @@ try {
             FROM atividades_diarias ad
             LEFT JOIN lavouras l ON ad.lavoura_id = l.id
             LEFT JOIN categorias_atividades ca ON ad.categoria_id = ca.id
-            WHERE ad.propriedade_id = ?
+                    WHERE ad.propriedade_id = ? AND ad.excluido = 0
             ORDER BY ad.data_atividade DESC
             LIMIT 10");
         $stmt->execute([$propriedade['id']]);
@@ -140,7 +166,7 @@ try {
                 $html .= '
                 <tr>
                     <td>' . htmlspecialchars($lavoura['nome']) . '</td>
-                    <td>' . htmlspecialchars($lavoura['cultura']) . '</td>
+                    <td>' . htmlspecialchars($lavoura['tipo_cultura'] ?? $lavoura['cultura'] ?? '-') . '</td>
                     <td>' . number_format($lavoura['area'], 2) . '</td>
                     <td>' . ($lavoura['data_plantio'] ? date('d/m/Y', strtotime($lavoura['data_plantio'])) : '-') . '</td>
                 </tr>';

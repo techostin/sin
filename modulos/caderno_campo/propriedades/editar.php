@@ -134,8 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="col-md-6">
         <label for="cidade" class="form-label">Cidade</label>
-        <input type="text" class="form-control" id="cidade" name="cidade" value="<?php echo htmlspecialchars($dados_propriedade['cidade'] ?? ''); ?>">
-    </div>
+        <input type="text" class="form-control" id="cidade" name="cidade" value="<?php echo htmlspecialchars($dados_propriedade['cidade_nome'] ?? $dados_propriedade['cidade'] ?? ''); ?>">
 
     <div class="col-md-6">
         <label for="estado" class="form-label">Estado</label>
@@ -235,6 +234,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="col-12">
         <label for="observacoes" class="form-label">Observações</label>
         <textarea class="form-control" id="observacoes" name="observacoes" rows="3"><?php echo htmlspecialchars($dados_propriedade['observacoes'] ?? ''); ?></textarea>
+    </div>
+
+    <!-- RF02: Zona de Amortecimento -->
+    <div class="col-12">
+        <label for="zona_amortecimento" class="form-label">
+            <i class="bi bi-shield-check text-success me-1"></i> Zona de Amortecimento (RF02)
+        </label>
+        <textarea class="form-control" id="zona_amortecimento" name="zona_amortecimento" rows="3"
+            placeholder="Descreva as barreiras físicas que protegem a área orgânica contra contaminação de vizinhos convencionais (ex.: cerca viva de 8m no limite leste, mata ciliar ao longo do rio, renque de eucalipto no fundo)."><?php echo htmlspecialchars($dados_propriedade['zona_amortecimento'] ?? ''); ?></textarea>
+        <div class="form-text"><small>Obrigatório para áreas de risco de deriva química (Portaria MAPA nº 52/2021).</small></div>
     </div>
 
     <div class="col-12 mt-4">

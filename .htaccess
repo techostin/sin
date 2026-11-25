@@ -1,8 +1,34 @@
 Options +FollowSymLinks -MultiViews -Indexes
+# A raiz /app/ continua sendo o SISTEMA ATUAL (index.php), garantindo o acesso
+# do admin/criador. A landing page nova fica no caminho explícito /app/inicio.php.
+DirectoryIndex index.php inicio.php index.html
+
+# WAF: limita o corpo da requisicao a 32 MB (compensa abuso de OOM/CVE-2026-109618)
+LimitRequestBody 33554432
+
 RewriteEngine On
 
 # Define a base do diretório
 RewriteBase /app/
+
+# ---------------------------------------------------------------------------
+# WAF LOCAL (item 5 do P0, 2026-10-27) - compensacoes sem ModSecurity.
+# Bloqueia metodos de diagnostico, travessia de caminho, scanners conhecidos
+# e acesso direto a diretorios internos. Nao substitui WAF de borda.
+# ---------------------------------------------------------------------------
+RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)$ [NC]
+RewriteRule ^ - [F,L]
+
+RewriteCond %{THE_REQUEST} \s/+\S*(\.\.|%2e%2e|%00)\S*\s [NC]
+RewriteRule ^ - [F,L]
+
+RewriteCond %{HTTP_USER_AGENT} (sqlmap|nikto|nmap|masscan|zgrab|acunetix|nessus|dirbuster|gobuster|wpscan) [NC]
+RewriteRule ^ - [F,L]
+
+RewriteRule ^(vendor|dev-utils|sql|tmp|storage|logs|config|node_modules|api/legacy|src|tests|\.certificados|\.pdf-tmp|\.evidencias)(/|$) - [F,L,NC]
+
+# API v1 (fundacao modular): front controller proprio em api/v1/index.php
+RewriteRule ^api/v1(/.*)?$ api/v1/index.php [QSA,L]
 
 # Regras para relatórios - permitir acesso direto a arquivos .php na pasta relatorios
 RewriteCond %{REQUEST_URI} ^/app/relatorios/([a-z-]+)\.php$
@@ -11,6 +37,16 @@ RewriteRule ^ - [L]
 # Regras para URLs amigáveis de relatórios
 # Exemplo: /app/relatorios/associados/pdf -> /app/relatorios/associados.php?tipo=pdf
 RewriteRule ^relatorios/([a-z-]+)/(pdf|excel)$ relatorios/$1.php?tipo=$2 [NC,L,QSA]
+
+# ---------------------------------------------------------------------------
+# Landing page com URL amigável: /app/site (sem alterar /app/, que é o sistema atual)
+# - /app/site        -> serve inicio.php (URL permanece /app/site)
+# - /app/site/       -> redireciona para /app/site (evita caminho relativo quebrado)
+# - /app/site/<algo> -> remove o prefixo para assets/links relativos
+# ---------------------------------------------------------------------------
+RewriteRule ^site$ inicio.php [L]
+RewriteRule ^site/$ /app/site [R=301,L]
+RewriteRule ^site/(.*)$ $1 [L]
 
 # Se a requisição não for para um arquivo que existe
 RewriteCond %{REQUEST_FILENAME} !-f
@@ -36,3 +72,62 @@ Options -Indexes
     Order Allow,Deny
     Allow from all
 </FilesMatch>
+
+# ---------------------------------------------------------------------------
+# SEGURANCA: bloqueio de ferramentas de desenvolvimento e arquivos sensiveis.
+# Scripts de diagnostico/seed/DDL/testes ficavam acessiveis pela web dentro do
+# docroot (ex.: check_cpf.php, run_sql.php, dev-utils/*). Nada disso faz parte
+# da aplicacao e agora responde 403.
+# ---------------------------------------------------------------------------
+<FilesMatch "\.(sql|log|env|bak|old|orig|ini|yml|yaml|cjs|mjs|ps1|sh|sqlite|db|dump|md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "^(check_.*|run_.*|debug_.*|fix_.*|test_.*|seed_.*|schema|comparar_backup|_tmp_.*|add_sigla|map_cidades_micro|municipio_micro_map|update_associados_regiao|composer\.(json|lock)|package(-lock)?\.json)\.?.*$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# ---------------------------------------------------------------------------
+# HARDENING PHP (item 4 do P0, 2026-10-27) - camada imediata via mod_php.
+# O php.ini global tambem foi endurecido; este bloco garante a aplicacao por
+# diretorio sem depender de reinicio do servico Apache. Em PHP-FPM (sem
+# php_module) o bloco e ignorado. Diretivas PHP_INI_SYSTEM (expose_php,
+# disable_functions) ficam no php.ini e exigem restart do servico.
+# ---------------------------------------------------------------------------
+<IfModule php_module>
+    php_value display_errors Off
+    php_value display_startup_errors Off
+    php_value log_errors On
+    php_value zend.exception_ignore_args 1
+    php_value post_max_size 32M
+    php_value upload_max_filesize 30M
+    php_value session.upload_progress.enabled 0
+    php_value session.use_strict_mode 1
+    php_value session.use_only_cookies 1
+    php_value session.use_trans_sid 0
+    php_value session.cookie_httponly 1
+    php_value session.cookie_samesite Lax
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# Cabecalhos de seguranca (item 5) - sem CSP para nao quebrar scripts inline.
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(self), camera=(self), microphone=()"
+</IfModule>

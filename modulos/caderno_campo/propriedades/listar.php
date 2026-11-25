@@ -128,6 +128,12 @@ if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) 
                                                 <i class="bi bi-images"></i>
                                             </a>
                                         <?php endif; ?>
+
+                                        <a href="<?php echo SITE_URL; ?>/propriedade/<?php echo $prop['id']; ?>/historico-conversao"
+                                           class="btn btn-outline-warning btn-sm"
+                                           title="Histórico de Conversão (RF03)">
+                                            <i class="bi bi-clock-history"></i>
+                                        </a>
                                         
                                         <button type="button" 
                                                 class="btn btn-outline-secondary btn-sm" 

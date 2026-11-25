@@ -56,8 +56,45 @@ class Sanitizer {
         return filter_var($input, FILTER_VALIDATE_EMAIL);
     }
 
+/**
+     * Converte um valor monetário digitado (com máscara de moeda ou texto livre)
+     * para float em Reais.
+     *
+     * Regras:
+     * - Somente dígitos (ex.: "5850") vem da máscara applyMoneyMask do masks.js,
+     *   que envia centavos no submit — divide por 100.
+     * - Formato brasileiro com vírgula (ex.: "58,50" ou "1.234,56") é convertido
+     *   removendo os pontos de milhar e trocando a vírgula por ponto.
+     * - Ponto decimal sem vírgula (ex.: "58.50") é interpretado como já decimal.
+     *
+     * @param mixed $input
+     * @return float
+     */
+    public static function sanitizeMoney($input)
+    {
+        $v = trim((string) $input);
+        if ($v === '' || !preg_match('/[0-9]/', $v)) {
+            return 0.0;
+        }
+
+        if (strpos($v, ',') !== false) {
+            // Formato brasileiro: "1.234,56" ou "58,50"
+            $v = str_replace('.', '', $v);
+            $v = str_replace(',', '.', $v);
+            return round((float) $v, 2);
+        }
+
+        if (strpos($v, '.') === false && ctype_digit($v)) {
+            // Valor vindo da máscara de moeda: centavos inteiros (ex.: "5850" = R$ 58,50)
+            return round((float) $v / 100, 2);
+        }
+
+        // Já decimal com ponto (ex.: "58.50")
+        return round((float) $v, 2);
+    }
+
     /**
-     * Limpa um URL.
+     * Sanitiza um URL.
      * @param string $input O URL a ser limpo.
      * @return string O URL limpo.
      */

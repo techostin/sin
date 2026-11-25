@@ -3,6 +3,10 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../classes/Database.php';
 require_once __DIR__ . '/../classes/Propriedade.php';
+require_once __DIR__ . '/../classes/ApiAuth.php';
+
+// Exige sessao autenticada (antes um anonimo conseguia ler qualquer propriedade)
+ApiAuth::exigirLogin();
 
 // Verificar se o ID foi fornecido
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -49,16 +53,10 @@ try {
         exit;
     }
     
-    // Check IDOR for API
-    require_once __DIR__ . '/../classes/User.php';
-    $userAPI = new User();
-    if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
-        if ($propriedade['associado_id'] != $userAPI->getAssociadoId()) {
-            http_response_code(403);
-            echo json_encode(['error' => 'Acesso negado: propriedade de outro produtor']);
-            exit;
-        }
-    }
+    // Anti-IDOR: Admin/Gestor veem qualquer propriedade; usuario comum
+    // somente as propriedades do proprio associado. A checagem anterior so
+    // rodava quando existia user_nivel na sessao, deixando o anonimo passar.
+    ApiAuth::exigirProprioAssociado($propriedade['associado_id']);
     
     // Buscar lavouras da propriedade
     $sql_lavouras = "
@@ -95,7 +93,7 @@ try {
             DATE_FORMAT(ad.data_atividade, '%d/%m/%Y') as data_formatada
         FROM atividades_diarias ad
         LEFT JOIN categorias_atividades ca ON ad.categoria_id = ca.id
-        WHERE ad.propriedade_id = :propriedade_id
+        WHERE ad.propriedade_id = :propriedade_id AND ad.excluido = 0
         ORDER BY ad.data_atividade DESC, ad.hora_inicio DESC
         LIMIT 10
     ";

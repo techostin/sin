@@ -56,33 +56,38 @@ $statusColors = ['Aberta' => 'danger', 'Em Correção' => 'warning', 'Resolvida'
 $cor = $statusColors[$nc['status']] ?? 'secondary';
 ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <div>
-            <h1 class="h3 mb-1">Não Conformidade #<?php echo $nc['id']; ?></h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/nao-conformidades">Não Conformidades</a></li>
-                    <li class="breadcrumb-item active">#<?php echo $nc['id']; ?></li>
-                </ol>
-            </nav>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="<?php echo SITE_URL; ?>/visita-tecnica/<?php echo $nc['visita_tecnica_id']; ?>/relatorio" class="btn btn-outline-secondary">
-                <i class="bi bi-eye me-1"></i> Ver Visita
-            </a>
-            <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Voltar
-            </a>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1">Não Conformidade #<?php echo $nc['id']; ?></h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/nao-conformidades">Não Conformidades</a></li>
+                        <li class="breadcrumb-item active">#<?php echo $nc['id']; ?></li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="<?php echo SITE_URL; ?>/visita-tecnica/<?php echo $nc['visita_tecnica_id']; ?>/relatorio" class="btn btn-assoc-ghost btn-sm">
+                    <i class="bi bi-eye me-1"></i> Ver Visita
+                </a>
+                <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="btn btn-assoc-ghost btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar
+                </a>
+            </div>
         </div>
     </div>
 
     <div class="row g-4">
         <!-- Info principal -->
         <div class="col-lg-4">
-            <div class="card shadow-sm mb-3">
-                <div class="card-header bg-white fw-bold">Informações Gerais</div>
-                <div class="card-body">
+            <div class="gm-card mb-3">
+                <div class="card-head">Informações Gerais</div>
+                <div class="p-4">
                     <p class="mb-1 text-muted small">STATUS</p>
                     <span class="badge bg-<?php echo $cor; ?> fs-6 mb-3"><?php echo htmlspecialchars($nc['status']); ?></span>
 
@@ -116,9 +121,9 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
 
         <!-- Formulário de atualização -->
         <div class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white fw-bold">Detalhes e Ação Corretiva</div>
-                <div class="card-body">
+            <div class="gm-card">
+                <div class="card-head">Detalhes e Ação Corretiva</div>
+                <div class="p-4">
                     <div class="alert alert-light border mb-4">
                         <div class="text-muted small mb-1">REQUISITO / NÃO CONFORMIDADE:</div>
                         <div class="fw-bold fs-5">
@@ -175,8 +180,8 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
 
                         <?php if ($nc['status'] !== 'Resolvida'): ?>
                         <div class="d-flex justify-content-end gap-2 mt-4">
-                            <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="btn btn-outline-secondary">Cancelar</a>
-                            <button type="submit" class="btn btn-primary">
+                            <a href="<?php echo SITE_URL; ?>/nao-conformidades" class="btn btn-assoc-ghost">Cancelar</a>
+                            <button type="submit" class="btn btn-assoc-success">
                                 <i class="bi bi-save me-1"></i> Salvar Alterações
                             </button>
                         </div>
@@ -193,7 +198,9 @@ $cor = $statusColors[$nc['status']] ?? 'secondary';
             </div>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 

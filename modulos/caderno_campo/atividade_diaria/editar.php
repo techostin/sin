@@ -2,6 +2,9 @@
 $page_title = "Editar Atividade Diária";
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/menu.php';
+require_once __DIR__ . '/../../../classes/InsumoValidador.php';
+require_once __DIR__ . '/../../../classes/AuditLog.php';
+require_once __DIR__ . '/../../../classes/ImageUploader.php';
 
 if (!$user->isLoggedIn()) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
@@ -26,13 +29,26 @@ $atividade = null;
 try {
     $db = Database::getInstance()->getConnection();
     // Buscar atividade
-    $stmt = $db->prepare("SELECT * FROM atividades_diarias WHERE id = ?");
+    $stmt = $db->prepare("SELECT * FROM atividades_diarias WHERE id = ? AND excluido = 0");
     $stmt->execute([$id]);
     $atividade = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$atividade) {
         echo "<div class='alert alert-danger'>Atividade não encontrada.</div>";
         require_once __DIR__ . '/../../../includes/footer.php';
         exit;
+    }
+    // Backfill de UUID (evita links /atividade-diaria//editar em registros antigos)
+    if (empty($atividade['uuid'])) {
+        $novo_uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+        $stmt = $db->prepare('UPDATE atividades_diarias SET uuid = ? WHERE id = ?');
+        $stmt->execute([$novo_uuid, $atividade['id']]);
+        $atividade['uuid'] = $novo_uuid;
     }
     // Verificação IDOR
     if (isset($_SESSION['user_nivel']) && $_SESSION['user_nivel'] == NIVEL_USUARIO) {
@@ -82,7 +98,7 @@ try {
     $stmt->execute();
     $categorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
     // Buscar insumos
-    $stmt = $db->prepare("SELECT id, nome FROM insumos ORDER BY nome ASC");
+    $stmt = $db->prepare("SELECT id, nome FROM insumos WHERE excluido = 0 ORDER BY nome ASC");
     $stmt->execute();
     $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -93,6 +109,9 @@ try {
 
 $mensagem = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!CSRFProtection::validatePostRequest()) {
+        $mensagem = '<div class="alert alert-danger">Requisição inválida (token de segurança ausente ou expirado). Por favor, tente novamente.</div>';
+    } else {
     $nome = $_POST['nome'] ?? '';
     $descricao = $_POST['descricao'] ?? '';
     $data_atividade = $_POST['data_atividade'] ?? '';
@@ -112,6 +131,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($status === 'Em andamento' && empty($hora_fim)) {
         $hora_fim = null;
     }
+
+    // IDOR: não-gestores só podem editar registros do próprio associado e suas propriedades
+    if (!$user->hasPermission(NIVEL_GESTOR)) {
+        $meuAssociado = $user->getAssociadoId();
+        if (!$meuAssociado) $meuAssociado = -1;
+        $associado_id = (int)$meuAssociado;
+        if ($propriedade_id) {
+            $stmt = $db->prepare('SELECT id FROM propriedades WHERE id = ? AND associado_id = ?');
+            $stmt->execute([$propriedade_id, $meuAssociado]);
+            if (!$stmt->fetch()) $propriedade_id = null;
+        }
+        if ($lavoura_id && $propriedade_id) {
+            $stmt = $db->prepare('SELECT l.id FROM lavouras l INNER JOIN propriedades p ON l.propriedade_id = p.id WHERE l.id = ? AND l.propriedade_id = ? AND p.associado_id = ?');
+            $stmt->execute([$lavoura_id, $propriedade_id, $meuAssociado]);
+            if (!$stmt->fetch()) $lavoura_id = null;
+        }
+    }
     
     try {
         // Iniciar transação
@@ -130,13 +166,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $imagem_path = '';
         }
         
-        // Verificar se foi enviada uma nova imagem
+        // Verificar se foi enviada uma nova imagem (apenas imagens válidas, re-encodadas via GD)
         if (isset($_FILES['imagem_diaria']) && $_FILES['imagem_diaria']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = __DIR__ . '/../../../../uploads/atividades/';
-            if (!file_exists($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-            
             // Se já existir uma imagem antiga, removê-la
             if (!empty($imagem_path)) {
                 $caminho_antigo = __DIR__ . '/../../..' . '/' . $imagem_path;
@@ -146,17 +177,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             // Processar o upload da nova imagem
-            $file_extension = pathinfo($_FILES['imagem_diaria']['name'], PATHINFO_EXTENSION);
-            $file_name = uniqid('atividade_') . '.' . $file_extension;
-            $target_path = $upload_dir . $file_name;
-            
-            if (move_uploaded_file($_FILES['imagem_diaria']['tmp_name'], $target_path)) {
-                $imagem_path = 'uploads/atividades/' . $file_name;
+            $uploader = new ImageUploader(__DIR__ . '/../../../uploads/atividades/');
+            $uploader->setConfig(['maxWidth' => 1600, 'maxHeight' => 1200]);
+            $uploadResult = $uploader->uploadImage($_FILES['imagem_diaria'], 'atividade');
+            if ($uploadResult['success']) {
+                $imagem_path = 'uploads/atividades/' . $uploadResult['filename'];
             } else {
-                throw new Exception('Não foi possível fazer o upload da imagem.');
+                throw new Exception('Upload de imagem recusado: ' . $uploadResult['message']);
             }
         }
         
+        // RF06: bloqueio impeditivo de insumos não permitidos
+        if (!empty($insumo_utilisado)) {
+            $validador = new InsumoValidador();
+            if (!$validador->permitido($insumo_utilisado)) {
+                throw new Exception('Insumo "' . htmlspecialchars($insumo_utilisado) . '" NÃO está na lista de permitidos (Portaria 52/2021). A edição foi bloqueada por conformidade.');
+            }
+        }
+
         // Atualizar os dados da atividade, incluindo o caminho da imagem
         $sql = "UPDATE atividades_diarias SET 
                    nome=?, descricao=?, data_atividade=?, hora_inicio=?, hora_fim=?, 
@@ -175,11 +213,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Confirmar a transação
         $db->commit();
+
+        AuditLog::registrar('ATIVIDADE_EDITADA', 'atividades_diarias', (int)$id, 'Atividade: ' . $nome);
         
         $mensagem = '<div class="alert alert-success">Atividade atualizada com sucesso!</div>';
         
         // Recarregar dados do banco após update
-        $stmt = $db->prepare("SELECT * FROM atividades_diarias WHERE id = ?");
+        $stmt = $db->prepare("SELECT * FROM atividades_diarias WHERE id = ? AND excluido = 0");
         $stmt->execute([$id]);
         $atividade = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -193,6 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mensagem = '<div class="alert alert-danger">O arquivo enviado excede o tamanho máximo permitido.</div>';
         }
     }
+    }
 }
 ?>
 <h1 class="mt-4">Editar Atividade Diária</h1>
@@ -200,6 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card">
     <div class="card-body">
         <form method="post" enctype="multipart/form-data">
+            <?php echo CSRFProtection::getTokenField(); ?>
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
@@ -299,6 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="<?php echo htmlspecialchars($insumo['nome']); ?>" <?php if($atividade['insumo_utilisado']==$insumo['nome']) echo 'selected'; ?>><?php echo htmlspecialchars($insumo['nome']); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <div id="insumo-atividade-feedback" class="mt-1"></div>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -353,4 +396,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 </div>
-<?php require_once __DIR__ . '/../../../includes/footer.php'; ?> 
+<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[method="post"]');
+    const insumoSelect = document.getElementById('insumo_utilisado');
+    const feedbackDiv = document.getElementById('insumo-atividade-feedback');
+    let estadoInsumo = { nome: '', valido: false };
+
+    if (insumoSelect && feedbackDiv && insumoSelect.value.trim()) {
+        fetch('<?php echo SITE_URL; ?>/modulos/caderno_campo/validar_insumo.php?nome=' + encodeURIComponent(insumoSelect.value.trim()))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                estadoInsumo = { nome: insumoSelect.value.trim(), valido: data.status === 'success' };
+                if (!estadoInsumo.valido) {
+                    feedbackDiv.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> ' + data.message + '</span>';
+                }
+            })
+            .catch(function() {});
+    }
+
+    function validarInsumo(nome) {
+        if (!nome || nome.length < 2) {
+            estadoInsumo = { nome: '', valido: false };
+            feedbackDiv.innerHTML = '';
+            return;
+        }
+        feedbackDiv.innerHTML = '<span class="text-muted small"><i class="bi bi-hourglass-split"></i> Validando insumo...</span>';
+        fetch('<?php echo SITE_URL; ?>/modulos/caderno_campo/validar_insumo.php?nome=' + encodeURIComponent(nome))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                estadoInsumo = { nome: nome, valido: data.status === 'success' };
+                feedbackDiv.innerHTML = data.status === 'success'
+                    ? '<span class="text-success small"><i class="bi bi-check-circle-fill"></i> ' + data.message + '</span>'
+                    : '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> BLOQUEADO: ' + data.message + '</span>';
+            })
+            .catch(function() {
+                estadoInsumo = { nome: '', valido: false };
+            });
+    }
+
+    if (insumoSelect && feedbackDiv) {
+        insumoSelect.addEventListener('change', function() { validarInsumo(this.value); });
+    }
+
+    if (form && insumoSelect) {
+        form.addEventListener('submit', function(e) {
+            const nomeInsumo = insumoSelect.value.trim();
+            if (!nomeInsumo) return;
+            if (estadoInsumo.nome !== nomeInsumo) {
+                e.preventDefault();
+                validarInsumo(nomeInsumo);
+                setTimeout(function() {
+                    if (estadoInsumo.valido && estadoInsumo.nome === nomeInsumo) {
+                        form.submit();
+                    } else {
+                        feedbackDiv.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> Insumo não permitido. Edição bloqueada por conformidade (Portaria 52/2021).</span>';
+                    }
+                }, 300);
+            } else if (!estadoInsumo.valido) {
+                e.preventDefault();
+                feedbackDiv.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> Insumo não permitido. Edição bloqueada por conformidade (Portaria 52/2021).</span>';
+            }
+        });
+    }
+});
+</script> 

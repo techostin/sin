@@ -1,0 +1,16 @@
+deptrac:
+  paths:
+    - ./src
+  layers:
+    - name: Kernel
+      collectors:
+        - type: directory
+          value: src/Kernel/.*
+    - name: Modules
+      collectors:
+        - type: directory
+          value: src/Modules/.*
+  ruleset:
+    Kernel: []
+    Modules:
+      - Kernel

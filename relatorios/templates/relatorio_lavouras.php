@@ -192,6 +192,7 @@
 </head>
 <body>
     <div class="header">
+        <img src="<?php echo htmlspecialchars(($logoPath ?? '') ?: ((defined('SITE_URL') ? SITE_URL : '/app') . '/img/logo_Sinporg-2.png')); ?>" alt="SINPORG - Sistema Integrado da Produção Orgânica" class="logo" style="max-width:210px; height:auto;" />
         <div class="text-center mb-3">
             <h1>RELATÓRIO DE LAVOURAS</h1>
             <p class="mb-0">Sistema de Gestão de Associações</p>

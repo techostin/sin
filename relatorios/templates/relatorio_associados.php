@@ -31,6 +31,7 @@ if (function_exists('date_default_timezone_set')) {
 </head>
 <body>
     <div class="header">
+        <img src="<?php echo htmlspecialchars(($logoPath ?? '') ?: ((defined('SITE_URL') ? SITE_URL : '/app') . '/img/logo_Sinporg-2.png')); ?>" alt="SINPORG - Sistema Integrado da Produção Orgânica" style="max-width:210px; height:auto; margin-bottom:6px;" />
         <h1><?php echo htmlspecialchars($titulo ?? 'Relatório de Associados', ENT_QUOTES, 'UTF-8'); ?></h1>
         <p class="subtitle"><?php echo htmlspecialchars($associacao_razao_social ?? 'Associação', ENT_QUOTES, 'UTF-8'); ?></p>
         <p class="meta">Gerado em: <?php echo htmlspecialchars($data_geracao ?? date('d/m/Y H:i:s'), ENT_QUOTES, 'UTF-8'); ?> | Total: <?php echo (int)($total_registros ?? 0); ?></p>
@@ -55,13 +56,11 @@ if (function_exists('date_default_timezone_set')) {
             <tr>
                 <th>#</th>
                 <th>Nome Completo</th>
-                <th>CPF</th>
                 <th>RG</th>
-                <th>CNPJ</th>
-                <th>Contatos</th>
-                <th>Endereço</th>
-                <th>Cidade/UF</th>
-                <th>Associação</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th>Cidade</th>
+                <th>UF</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -70,32 +69,15 @@ if (function_exists('date_default_timezone_set')) {
             <?php foreach (($associados ?? []) as $associado): ?>
                 <tr>
                     <td><?php echo $contador++; ?></td>
-                    <td><?php echo htmlspecialchars($associado['nome_completo'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td><?php echo htmlspecialchars($associado['cpf'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td><?php echo htmlspecialchars($associado['rg'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td><?php echo htmlspecialchars($associado['cnpj'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td>
-                        <?php
-                        $contatos = [];
-                        if (!empty($associado['telefone'])) $contatos[] = 'T: ' . $associado['telefone'];
-                        if (!empty($associado['celular'])) $contatos[] = 'C: ' . $associado['celular'];
-                        if (!empty($associado['email'])) $contatos[] = 'E: ' . $associado['email'];
-                        echo htmlspecialchars($contatos ? implode(' | ', $contatos) : '-', ENT_QUOTES, 'UTF-8');
-                        ?>
-                    </td>
-                    <td><?php echo htmlspecialchars($associado['endereco_completo'] ?: 'Endereço não informado', ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td>
-                        <?php
-                        $cidadeUf = [];
-                        if (!empty($associado['cidade'])) $cidadeUf[] = $associado['cidade'];
-                        if (!empty($associado['estado'])) $cidadeUf[] = $associado['estado'];
-                        echo htmlspecialchars($cidadeUf ? implode('/', $cidadeUf) : '-', ENT_QUOTES, 'UTF-8');
-                        ?>
-                    </td>
-                    <td><?php echo htmlspecialchars($associado['associacao_nome'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars(($associado['nome'] ?? '') . ' ' . ($associado['sobrenome'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($associado['rg'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($associado['telefone'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($associado['email'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($associado['cidade_nome'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                    <td><?php echo htmlspecialchars($associado['estado_uf'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
                     <td style="text-align:center;">
                         <?php
-                        $status = strtolower((string)($associado['status_descricao'] ?? 'pendente'));
+                        $status = strtolower((string)($associado['status'] ?? 'pendente'));
                         $statusClass = $status === 'ativo' ? 'status-ativo' : ($status === 'inativo' ? 'status-inativo' : 'status-pendente');
                         ?>
                         <span class="status <?php echo $statusClass; ?>"><?php echo htmlspecialchars(ucfirst($status), ENT_QUOTES, 'UTF-8'); ?></span>

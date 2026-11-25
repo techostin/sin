@@ -5,10 +5,8 @@
  * Consulta lista de insumos permitidos conforme Portaria MAPA 52/2021
  */
 
-// Habilitar exibição de erros para desenvolvimento
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../config/error_config.php';
 
 // Incluir configuração do banco
 require_once __DIR__ . '/../config/config.php';

@@ -1,0 +1,33 @@
+# Implementação: Geração Automática de Certificados em PDF
+
+Nesta etapa, implementamos um sistema robusto para geração de PDFs direto no servidor, substituindo as impressões de navegador.
+
+## O que foi desenvolvido:
+
+### 1. Novo Motor de PDF (`dompdf`)
+- A biblioteca `dompdf` foi instalada via Composer. Ela permite ler nosso template HTML e convertê-lo em um PDF diretamente pelo PHP no back-end.
+
+### 2. Novo Template: Declaração de Compromisso
+- Criamos o arquivo `declaracao_compromisso.php`.
+- O documento traz um formato estrito, legal e com campos para assinatura, onde o produtor atesta cumprir a *Lei nº 10.831/2003*. O nome do produtor e número do certificado são preenchidos dinamicamente.
+- O arquivo pode ser visto aqui: [declaracao_compromisso.php](file:///c:/xampp/htdocs/app/modulos/roteiros_inspecao/templates/declaracao_compromisso.php)
+
+### 3. Ajustes no Template do Certificado
+- Alteramos a folha de estilo de `certificado.php` para utilizar lógicas de `display: table` e `display: table-cell`. O Dompdf tem suporte limitado ao `flexbox` (que usamos antes), então essas alterações garantem que o PDF renderize de forma perfeita!
+
+### 4. Criação do Endpoint (`gerar_pdf.php`)
+- Criamos a API [gerar_pdf.php](file:///c:/xampp/htdocs/app/api/certificacao/gerar_pdf.php).
+- Esse script recebe as informações que estão preenchidas no formulário, captura os buffers do HTML das *templates* e chama a classe `Dompdf` para renderizar dois PDFs separados.
+- Os arquivos são salvos nos novos diretórios: `uploads/certificados/` e `uploads/declaracoes/`.
+
+### 5. Frontend Atualizado (Formulário)
+- Inserimos o novo botão: **Gerar Certificado e Declaração**.
+- Adicionamos o script Ajax que envia os dados para a API, aguarda a geração sem atualizar a página e devolve as URLs.
+- Os campos **URL do Certificado** (`documento_url`) e **URL da Declaração de Compromisso** (`declaracao_compromisso_url`) são preenchidos de forma automática assim que os PDFs são salvos no servidor!
+
+> [!TIP]
+> **Fluxo recomendado para o usuário:**
+> 1. O Gestor preenche os dados do agricultor no painel (`/certificacao/novo`).
+> 2. O Gestor clica no botão "Gerar Certificado e Declaração".
+> 3. O sistema roda uma barra de "loading". Quando os PDFs são gerados, as duas caixas de URL de anexos são preenchidas.
+> 4. O Gestor clica em **Cadastrar**. Agora, as URLs estão atreladas para sempre ao banco de dados e os arquivos ficam protegidos no servidor!

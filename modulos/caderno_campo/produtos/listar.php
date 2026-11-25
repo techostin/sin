@@ -18,7 +18,7 @@ if ($user->hasPermission(NIVEL_GESTOR)) {
 } else {
     $associado_id = $user->getAssociadoId();
     if (!$associado_id) $associado_id = -1;
-    $produtos = $produto->getByAssociadoId($associado_id);
+    $produtos = $produto->getProdutosDoAssociado($associado_id);
 }
 
 ?>

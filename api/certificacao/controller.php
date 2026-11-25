@@ -6,10 +6,8 @@
  * Base: Portaria MAPA 52/2021
  */
 
-// Habilitar exibição de erros para desenvolvimento
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../../config/error_config.php';
 
 // Incluir configuração do banco
 require_once __DIR__ . '/../../config/config.php';
@@ -32,6 +30,16 @@ if (!$user->isLoggedIn()) {
 // Obter método HTTP
 $method = $_SERVER['REQUEST_METHOD'];
 $db = Database::getInstance()->getConnection();
+
+// Proteção CSRF para métodos de escrita
+if (in_array($method, ['POST', 'PUT', 'DELETE', 'PATCH'], true)) {
+    require_once __DIR__ . '/../../classes/CSRFProtection.php';
+    if (!CSRFProtection::validateToken(CSRFProtection::tokenFromRequest())) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Token CSRF inválido ou ausente.']);
+        exit();
+    }
+}
 
 // Roteador de métodos
 switch ($method) {
@@ -81,6 +89,16 @@ switch ($method) {
  * GET - Listar certificações ou obter uma específica
  */
 function handleGet($db, $user) {
+    // Produtos do associado (para formulário de certificação)
+    if (isset($_GET['action']) && $_GET['action'] === 'produtos' && isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
+        // Anti-IDOR: usuário comum só consulta os próprios produtos
+        // (Admin/Gestor/Diretoria Executiva podem consultar qualquer produtor).
+        require_once __DIR__ . '/../../classes/ApiAuth.php';
+        ApiAuth::exigirProprioAssociado((int) $_GET['associado_id']);
+        getProdutosAssociado($db, (int) $_GET['associado_id']);
+        return;
+    }
+
     // Se tem ID, busca uma certificação específica
     if (isset($_GET['id']) && is_numeric($_GET['id'])) {
         getCertificacaoById($db, $user, $_GET['id']);
@@ -89,6 +107,18 @@ function handleGet($db, $user) {
     
     // Caso contrário, lista todas (com filtros opcionais)
     listCertificacoes($db, $user);
+}
+
+/**
+ * Lista produtos do associado para seleção no certificado
+ */
+function getProdutosAssociado($db, $associadoId) {
+    require_once __DIR__ . '/../../classes/Produto.php';
+    $produto = new Produto();
+    $produtos = $produto->getByAssociadoId($associadoId);
+
+    http_response_code(200);
+    echo json_encode(['data' => $produtos]);
 }
 
 /**
@@ -260,11 +290,9 @@ function handlePost($db) {
     $declaracao_compromisso_url = $input['declaracao_compromisso_url'] ?? null;
     $observacoes = $input['observacoes'] ?? null;
     
-    // Dados adicionais (JSON)
-    $dados_adicionais = null;
-    if (isset($input['dados_adicionais']) && is_array($input['dados_adicionais'])) {
-        $dados_adicionais = json_encode($input['dados_adicionais']);
-    }
+    // Dados adicionais (JSON) — escopo e produtos do certificado
+    $dadosAdicionaisArr = montarDadosAdicionais($db, $input);
+    $dados_adicionais = json_encode($dadosAdicionaisArr);
     
     // Inserir no banco
     $sql = "INSERT INTO certificacao_participativa 
@@ -321,14 +349,19 @@ function handlePut($db) {
     }
     
     // Verificar se a certificação existe
-    $checkSql = "SELECT id FROM certificacao_participativa WHERE id = ?";
+    $checkSql = "SELECT id, associado_id FROM certificacao_participativa WHERE id = ?";
     $checkStmt = $db->prepare($checkSql);
     $checkStmt->execute([$input['id']]);
+    $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
     
-    if (!$checkStmt->fetch()) {
+    if (!$existing) {
         http_response_code(404);
         echo json_encode(['error' => 'Certificação não encontrada']);
         return;
+    }
+
+    if (empty($input['associado_id'])) {
+        $input['associado_id'] = $existing['associado_id'];
     }
     
     // Construir SQL dinâmico apenas para campos fornecidos
@@ -349,9 +382,9 @@ function handlePut($db) {
     }
     
     // Dados adicionais (JSON)
-    if (isset($input['dados_adicionais']) && is_array($input['dados_adicionais'])) {
+    if (isset($input['dados_adicionais']) || isset($input['escopo']) || isset($input['produtos'])) {
         $fields[] = "dados_adicionais = ?";
-        $values[] = json_encode($input['dados_adicionais']);
+        $values[] = json_encode(montarDadosAdicionais($db, $input));
     }
     
     if (empty($fields)) {
@@ -530,6 +563,42 @@ function handleUploadAssinatura($db) {
             'message' => $e->getMessage()
         ]);
     }
+}
+
+/**
+ * Monta JSON de dados adicionais com escopo e produtos resolvidos
+ */
+function montarDadosAdicionais($db, array $input): array {
+    require_once __DIR__ . '/../../classes/Produto.php';
+
+    $adicionais = $input['dados_adicionais'] ?? [];
+    if (!is_array($adicionais)) {
+        $adicionais = [];
+    }
+
+    $escopo = $input['escopo'] ?? ($adicionais['escopo'] ?? '');
+    $produtoIds = $input['produtos'] ?? ($adicionais['produtos'] ?? []);
+    $associadoId = (int) ($input['associado_id'] ?? 0);
+
+    // Se produtos já vieram como objetos completos, manter
+    if (!empty($produtoIds) && is_array($produtoIds[0] ?? null) && isset($produtoIds[0]['nome'])) {
+        return ['escopo' => $escopo, 'produtos' => $produtoIds];
+    }
+
+    $produtos = [];
+    if ($associadoId > 0) {
+        $produtoModel = new Produto();
+        $todos = $produtoModel->getByAssociadoId($associadoId);
+        $ids = array_map('intval', (array) $produtoIds);
+
+        if (!empty($ids)) {
+            $produtos = array_values(array_filter($todos, fn($p) => in_array((int) $p['id'], $ids, true)));
+        } else {
+            $produtos = $todos;
+        }
+    }
+
+    return ['escopo' => $escopo, 'produtos' => $produtos];
 }
 
 /**

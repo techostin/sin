@@ -32,13 +32,20 @@ if (!$plano) {
 }
 ?>
 
-<div class="container mt-4">
-    <h1 class="h3 mb-3">Avaliação Técnica de Plano de Manejo</h1>
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <i class="bi bi-shield-check"></i> Decisão Técnica - Safra <?php echo $plano['ano_safra']; ?>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <h1 class="mb-1"><i class="bi bi-shield-check me-2" style="color:var(--gm-primary);"></i>Avaliação Técnica de Plano de Manejo</h1>
+        <p class="mb-0">Decisão Técnica — Safra <?php echo $plano['ano_safra']; ?></p>
+    </div>
+
+    <div class="gm-card">
+        <div class="card-head">
+            <i class="bi bi-shield-check me-2" style="color:var(--gm-primary);"></i> Decisão Técnica - Safra <?php echo $plano['ano_safra']; ?>
         </div>
-        <div class="card-body">
+        <div class="p-4">
             <p><strong>Agricultor:</strong> <?php echo $plano['nome'] . ' ' . $plano['sobrenome']; ?></p>
             <p><strong>Título:</strong> <?php echo $plano['titulo']; ?></p>
             <hr>
@@ -62,13 +69,15 @@ if (!$plano) {
                 </div>
 
                 <div class="d-flex justify-content-between pt-3">
-                    <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo $id; ?>/visualizar" class="btn btn-secondary">Voltar aos Detalhes</a>
-                    <button type="submit" class="btn btn-primary">Registrar Decisão</button>
+                    <a href="<?php echo SITE_URL; ?>/plano-manejo/<?php echo $id; ?>/visualizar" class="btn btn-assoc-ghost">Voltar aos Detalhes</a>
+                    <button type="submit" class="btn btn-assoc-success">Registrar Decisão</button>
                 </div>
             </form>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
 

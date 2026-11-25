@@ -43,42 +43,26 @@ if ($associado_id_para_buscar) {
     }
 }
 
-// Usuário do tipo "usuario" pode cadastrar apenas SUA propriedade.
-// Bloqueia somente quando tenta cadastrar para outro associado (associado_id via GET/POST != associado do usuário logado).
+// Regra de vínculo: Admin/Gestor podem cadastrar para qualquer associado;
+// usuário nível 3 só cadastra propriedade para o PRÓPRIO associado.
+// (A checagem anterior usava $_SESSION['user_tipo'] === 'usuario' e, como o
+// banco grava 'Usuario', o bloqueio era ignorado; pior, quando o associado do
+// usuário não era resolvido o associado_id do request era aceito — IDOR.)
+$isStaff = $user->isGestorOuAdmin();
+$meu_associado_id = $isStaff ? 0 : (int) $user->getAssociadoIdResolvido();
 $isRestrictedUser = false;
-$meu_associado_id = null; // Associado_id do usuário logado
 
-if (isset($_SESSION['user_tipo']) && $_SESSION['user_tipo'] === 'usuario') {
-    // Determinar o associado_id do usuário logado
-    if (isset($_SESSION['user_table']) && $_SESSION['user_table'] === 'usuarios') {
-        // Usuário logou pela tabela 'usuarios', buscar o associado_id vinculado
-        try {
-            $db = Database::getInstance()->getConnection();
-            $stmt = $db->prepare("SELECT associado_id FROM usuarios WHERE id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($resultado && !empty($resultado['associado_id'])) {
-                $meu_associado_id = intval($resultado['associado_id']);
-            }
-        } catch (PDOException $e) {
-            error_log("Erro ao buscar associado_id do usuário: " . $e->getMessage());
-        }
-    } else {
-        // Usuário logou pela tabela 'associados', o user_id já é o associado_id
-        $meu_associado_id = $_SESSION['user_id'];
-    }
-    
-    // Verificar se está tentando cadastrar para outro associado
-    $id_vinculo = null;
-    if (isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
-        $id_vinculo = (int) $_GET['associado_id'];
-    } elseif (isset($_POST['associado_id']) && is_numeric($_POST['associado_id'])) {
-        $id_vinculo = (int) $_POST['associado_id'];
-    }
-    
-    if ($id_vinculo !== null && $meu_associado_id !== null && $id_vinculo != $meu_associado_id) {
-        $isRestrictedUser = true;
-    }
+// Associado solicitado via GET/POST (vinculação direta)
+$id_vinculo = null;
+if (isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
+    $id_vinculo = (int) $_GET['associado_id'];
+} elseif (isset($_POST['associado_id']) && is_numeric($_POST['associado_id'])) {
+    $id_vinculo = (int) $_POST['associado_id'];
+}
+
+if (!$isStaff && $id_vinculo !== null && $id_vinculo !== $meu_associado_id) {
+    // Usuário comum tentando vincular a propriedade a outro produtor.
+    $isRestrictedUser = true;
 }
 
 // --- PROCESSAMENTO DO FORMULÁRIO (POST) ---
@@ -97,42 +81,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $dados_propriedade[$key] = htmlspecialchars(strip_tags(trim($value)));
     }
 
-    // Associado_id: se veio via GET ou POST, usa esse ID; senão, busca o associado_id do usuário logado
-    if (isset($_POST['associado_id']) && is_numeric($_POST['associado_id'])) {
-        $dados_propriedade['associado_id'] = intval($_POST['associado_id']);
-    } elseif (isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
-        $dados_propriedade['associado_id'] = intval($_GET['associado_id']);
-    } else {
-        // Determinar o associado_id correto baseado na tabela de login
-        // Reutilizar $meu_associado_id se já foi calculado, senão calcular agora
-        $associado_id_final = $meu_associado_id;
-        
-        if ($associado_id_final === null) {
-            if (isset($_SESSION['user_table']) && $_SESSION['user_table'] === 'usuarios') {
-                // Usuário logou pela tabela 'usuarios', buscar o associado_id vinculado
-                try {
-                    $db = Database::getInstance()->getConnection();
-                    $stmt = $db->prepare("SELECT associado_id FROM usuarios WHERE id = ?");
-                    $stmt->execute([$_SESSION['user_id']]);
-                    $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
-                    if ($resultado && !empty($resultado['associado_id'])) {
-                        $associado_id_final = intval($resultado['associado_id']);
-                    }
-                } catch (PDOException $e) {
-                    error_log("Erro ao buscar associado_id do usuário: " . $e->getMessage());
-                }
-            } else {
-                // Usuário logou pela tabela 'associados', o user_id já é o associado_id
-                $associado_id_final = $_SESSION['user_id'];
-            }
-        }
-        
-        if (!$associado_id_final) {
-            $message = "Erro: Não foi possível identificar o associado vinculado à sua conta. Entre em contato com o administrador.";
-            $message_type = "danger";
+    // Dono da propriedade: a equipe pode informar qualquer associado; usuário
+    // comum fica travado no próprio associado (nunca aceita id de terceiros).
+    if ($isStaff) {
+        if (isset($_POST['associado_id']) && is_numeric($_POST['associado_id'])) {
+            $dados_propriedade['associado_id'] = intval($_POST['associado_id']);
+        } elseif (isset($_GET['associado_id']) && is_numeric($_GET['associado_id'])) {
+            $dados_propriedade['associado_id'] = intval($_GET['associado_id']);
         } else {
-            $dados_propriedade['associado_id'] = $associado_id_final;
+            $dados_propriedade['associado_id'] = (int) $user->getAssociadoIdResolvido();
         }
+    } else {
+        $dados_propriedade['associado_id'] = $meu_associado_id;
+    }
+
+    if (empty($dados_propriedade['associado_id'])) {
+        $message = "Erro: Não foi possível identificar o associado vinculado à sua conta. Entre em contato com o administrador.";
+        $message_type = "danger";
     }
 
     // Processar upload de imagens
@@ -173,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Redirecionar de volta
             $redirect_url = SITE_URL . '/caderno-campo/propriedades';
             if ($associado_id_via_get) {
-                $redirect_url = SITE_URL . '/associado/' . $associado_id_via_get . '/editar';
+                $redirect_url = SITE_URL . '/associado/' . encodeId($associado_id_via_get) . '/editar';
             }
             header('Location: ' . $redirect_url);
             exit();
@@ -215,6 +180,18 @@ $estados = $associado_helper->getEstados();
 ?>
 
 <h1 class="mt-4">Cadastrar Nova Propriedade</h1>
+
+<?php if (!empty($_SESSION['success_message'])): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-1"></i>
+        <?php
+        echo htmlspecialchars($_SESSION['success_message']);
+        unset($_SESSION['success_message']);
+        ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+<?php endif; ?>
+
 <?php if ($associado_nome): ?>
     <div class="alert alert-info">
         <i class="bi bi-info-circle me-2"></i>

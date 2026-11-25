@@ -11,19 +11,26 @@ if (!$user->hasPermission(NIVEL_GESTOR)) {
 }
 ?>
 
-<div class="container-fluid px-4">
-    <h1 class="mt-4">Insumos Orgânicos Aprovados</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/">Dashboard</a></li>
-        <li class="breadcrumb-item active">Insumos Aprovados</li>
-    </ol>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
 
-    <div class="card mb-4">
-        <div class="card-header">
+    <div class="gestor-hero">
+        <h1 class="mb-1"><i class="bi bi-shield-check me-2" style="color:var(--gm-primary);"></i>Insumos Orgânicos Aprovados</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="<?php echo SITE_URL; ?>/">Dashboard</a></li>
+                <li class="breadcrumb-item active">Insumos Aprovados</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="gm-card mb-4">
+        <div class="card-head">
             <i class="bi bi-shield-check me-1"></i>
             Lista de Insumos Permitidos para Uso na Produção Orgânica
         </div>
-        <div class="card-body">
+        <div class="p-4">
             <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
                 Esta lista contém insumos avaliados e aprovados conforme as normas da Portaria MAPA 52/2021.
@@ -45,7 +52,9 @@ if (!$user->hasPermission(NIVEL_GESTOR)) {
             </table>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
 

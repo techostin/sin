@@ -32,26 +32,26 @@ try {
         'usuarios' => [
             'titulo' => 'Relatório de Usuários',
             'dados' => $reportManager->getUsuariosReport($filtros),
-            'colunas' => ['ID', 'Nome', 'E-mail', 'Tipo', 'Status', 'Último Acesso'],
-            'campos' => ['id', 'nome', 'email', 'tipo', 'status', 'ultimo_acesso']
+            'colunas' => ['ID', 'Nome', 'CPF', 'RG', 'E-mail', 'Tipo', 'Status', 'Último Acesso'],
+            'campos' => ['id', 'nome', 'cpf', 'rg', 'email', 'tipo', 'status', 'ultimo_acesso']
         ],
         'associados' => [
             'titulo' => 'Relatório de Associados',
             'dados' => $reportManager->getAssociadosReport($filtros),
-            'colunas' => ['ID', 'Nome', 'CPF', 'E-mail', 'Cidade', 'Status', 'Associação'],
-            'campos' => ['id', 'nome', 'cpf', 'email', 'cidade', 'status', 'associacao_nome']
+            'colunas' => ['ID', 'Nome', 'RG', 'E-mail', 'Telefone', 'Cidade', 'UF', 'Status'],
+            'campos' => ['id', 'nome', 'rg', 'email', 'telefone', 'cidade_nome', 'estado_uf', 'status']
         ],
         'associacoes' => [
             'titulo' => 'Relatório de Associações',
             'dados' => $reportManager->getAssociacoesReport(),
-            'colunas' => ['ID', 'Nome', 'CNPJ', 'Cidade', 'Total Associados', 'Total Propriedades'],
-            'campos' => ['id', 'nome', 'cnpj', 'cidade', 'total_associados', 'total_propriedades']
+            'colunas' => ['ID', 'Nome', 'CNPJ', 'Cidade', 'UF', 'Total Associados', 'Total Propriedades'],
+            'campos' => ['id', 'nome', 'cnpj', 'cidade_nome', 'estado_uf', 'total_associados', 'total_propriedades']
         ],
         'fornecedores' => [
             'titulo' => 'Relatório de Fornecedores',
             'dados' => $reportManager->getFornecedoresReport($filtros),
-            'colunas' => ['ID', 'Razão Social', 'Nome Fantasia', 'CNPJ/CPF', 'Cidade', 'Telefone', 'E-mail'],
-            'campos' => ['id', 'razao_social', 'nome_fantasia', 'cnpj_cpf', 'cidade', 'telefone', 'email']
+            'colunas' => ['ID', 'Razão Social', 'Nome Fantasia', 'CNPJ/CPF', 'Cidade', 'UF', 'Telefone', 'E-mail'],
+            'campos' => ['id', 'razao_social', 'nome_fantasia', 'cnpj_cpf', 'cidade_nome', 'estado_uf', 'telefone', 'email']
         ],
         'contas' => [
             'titulo' => 'Relatório de Contas',
@@ -158,17 +158,20 @@ try {
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><?php echo $relatorio['titulo']; ?></h5>
                         <div>
-                            <button class="btn btn-sm btn-outline-primary me-2" onclick="exportToExcel('<?php echo $chave; ?>')">
-                                <i class="bi bi-file-earmark-excel-fill me-1"></i> Exportar Excel
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="exportToPDF('<?php echo $chave; ?>')">
-                                <i class="bi bi-file-earmark-pdf-fill me-1"></i> Exportar PDF
-                            </button>
+                            <a href="<?php echo SITE_URL; ?>/api/relatorios/admin_export.php?tipo=html&relatorio=<?php echo $chave; ?>" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Abrir
+                            </a>
+                            <a href="<?php echo SITE_URL; ?>/api/relatorios/admin_export.php?tipo=excel&relatorio=<?php echo $chave; ?>" target="_blank" class="btn btn-sm btn-outline-success me-2">
+                                <i class="bi bi-file-earmark-excel-fill me-1"></i> Excel
+                            </a>
+                            <a href="<?php echo SITE_URL; ?>/api/relatorios/admin_export.php?tipo=pdf&relatorio=<?php echo $chave; ?>" target="_blank" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
+                            </a>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body pb-1">
                         <?php if (empty($relatorio['dados'])): ?>
-                            <div class="alert alert-info mb-0">Nenhum registro encontrado.</div>
+                            <div class="alert alert-info mb-3">Nenhum registro encontrado.</div>
                         <?php else: ?>
                             <div class="table-responsive">
                                 <table id="tabela-<?php echo $chave; ?>" class="table table-striped table-hover">
@@ -191,6 +194,11 @@ try {
                                 </table>
                             </div>
                         <?php endif; ?>
+                        <div class="text-center py-3 border-top">
+                            <a href="<?php echo SITE_URL; ?>/api/relatorios/admin_export.php?tipo=html&relatorio=<?php echo $chave; ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Abrir em nova aba
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -198,102 +206,34 @@ try {
     </div>
 </div>
 
-<!-- Modal de Exportação -->
-<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exportModalLabel">Exportar Relatório</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="exportFormat" class="form-label">Formato de Exportação</label>
-                    <select class="form-select" id="exportFormat">
-                        <option value="excel">Excel (XLSX)</option>
-                        <option value="pdf">PDF</option>
-                        <option value="csv">CSV</option>
-                    </select>
-                </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="exportFiltros" checked>
-                    <label class="form-check-label" for="exportFiltros">
-                        Incluir filtros aplicados
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="confirmExport">Exportar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- DataTables JS -->
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
 <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
 
-<!-- Scripts para exportação -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/pdfmake.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.68/vfs_fonts.js"></script>
 
 <script>
-// Inicializar DataTables para todas as tabelas
 $(document).ready(function() {
     $('table[id^="tabela-"]').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json'
-        },
+        language: { url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json' },
         responsive: true,
         dom: 'Bfrtip',
         buttons: [
-            'copy', 'csv', 'excel', 
-            {
-                extend: 'pdfHtml5',
-                orientation: 'landscape',
-                pageSize: 'A4',
-                customize: function(doc) {
-                    doc.content[1].table.widths = Array(doc.content[1].table.body[0].length + 1).join('*').split('');
-                    doc.defaultStyle.fontSize = 10;
-                    doc.styles.tableHeader.fontSize = 11;
-                }
-            },
-            {
-                extend: 'print',
-                customize: function (win) {
-                    var css = '@page { size: landscape; }',
-                        head = win.document.head || win.document.getElementsByTagName('head')[0],
-                        style = win.document.createElement('style');
-                    style.type = 'text/css';
-                    style.media = 'print';
-                    style.appendChild(win.document.createTextNode(css));
-                    head.appendChild(style);
-                }
-            }
+            'copy', 'csv', 'excel',
+            { extend: 'pdfHtml5', orientation: 'landscape', pageSize: 'A4' },
+            { extend: 'print', customize: function (win) {
+                var css = '@page { size: landscape; }',
+                    head = win.document.head || win.document.getElementsByTagName('head')[0],
+                    style = win.document.createElement('style');
+                style.type = 'text/css'; style.media = 'print';
+                style.appendChild(win.document.createTextNode(css));
+                head.appendChild(style);
+            }}
         ]
     });
-    
-    // Ativar tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
 });
-
-// Função para exportar para Excel
-function exportToExcel(tabelaId) {
-    const relatorioId = tabelaId.replace('tabela-', '');
-    window.location.href = `<?php echo SITE_URL; ?>/caderno-campo/relatorios/exportar?tipo=excel&relatorio=${relatorioId}&${$('form').serialize()}`;
-}
-
-// Função para exportar para PDF
-function exportToPDF(tabelaId) {
-    const relatorioId = tabelaId.replace('tabela-', '');
-    window.location.href = `<?php echo SITE_URL; ?>/caderno-campo/relatorios/exportar?tipo=pdf&relatorio=${relatorioId}&${$('form').serialize()}`;
-}
 </script>
 
 <?php 

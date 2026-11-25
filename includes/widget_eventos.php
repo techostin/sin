@@ -7,9 +7,8 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../classes/Lembrete.php';
 require_once __DIR__ . '/../config/config.php';
 
-// Ativar exibição de erros para depuração
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../config/error_config.php';
 
 // Verificar se o usuário está logado
 if (!isset($_SESSION['user_id'])) {

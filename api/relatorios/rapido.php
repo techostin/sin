@@ -1,8 +1,6 @@
 <?php
-// Habilitar exibição de erros para desenvolvimento
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// B-03: exibição de erros centralizada em APP_DEBUG (produção: só log).
+require_once __DIR__ . '/../../config/error_config.php';
 
 // Configurações de cabeçalho para API
 header('Content-Type: application/json; charset=utf-8');
@@ -11,9 +9,9 @@ header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
 // Incluir arquivos necessários
-require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../classes/Database.php';
-require_once __DIR__ . '/../../../classes/User.php';
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../classes/Database.php';
+require_once __DIR__ . '/../../classes/User.php';
 
 // Verificar autenticação
 $user = new User();
@@ -49,7 +47,7 @@ try {
                     FROM atividades_diarias a
                     LEFT JOIN propriedades p ON a.propriedade_id = p.id
                     LEFT JOIN categorias_atividades c ON a.categoria_id = c.id
-                    WHERE DATE(a.data_atividade) = CURDATE()
+                    WHERE DATE(a.data_atividade) = CURDATE() AND a.excluido = 0
                     ORDER BY a.data_atividade DESC";
             
             $stmt = $db->prepare($sql);
@@ -79,7 +77,7 @@ try {
                     FROM atividades_diarias a
                     LEFT JOIN propriedades p ON a.propriedade_id = p.id
                     LEFT JOIN categorias_atividades c ON a.categoria_id = c.id
-                    WHERE a.status = 'Pendente'
+                    WHERE a.status = 'Pendente' AND a.excluido = 0
                     ORDER BY a.data_atividade ASC";
             
             $stmt = $db->prepare($sql);
@@ -103,13 +101,12 @@ try {
                         i.id,
                         i.nome as produto,
                         i.quantidade_estoque as quantidade_atual,
-                        i.estoque_minimo as estoque_minimo,
                         f.nome as fornecedor,
                         f.telefone as contato_fornecedor
                     FROM insumos i
                     LEFT JOIN fornecedores f ON i.fornecedor_id = f.id
-                    WHERE i.quantidade_estoque <= i.estoque_minimo
-                    ORDER BY (i.quantidade_estoque / i.estoque_minimo) ASC";
+                    WHERE i.excluido = 0 AND i.quantidade_estoque < 10
+                    ORDER BY i.quantidade_estoque ASC";
             
             $stmt = $db->prepare($sql);
             $stmt->execute();
@@ -117,12 +114,12 @@ try {
             
             if (count($estoque) > 0) {
                 $response['dados'] = [
-                    'titulo' => 'Itens Abaixo do Estoque Mínimo',
-                    'colunas' => ['Produto', 'Quantidade Atual', 'Estoque Mínimo', 'Fornecedor', 'Contato'],
+                    'titulo' => 'Itens com Estoque Baixo',
+                    'colunas' => ['Produto', 'Quantidade Atual', 'Fornecedor', 'Contato'],
                     'dados' => $estoque
                 ];
             } else {
-                $response['mensagem'] = 'Nenhum item abaixo do estoque mínimo encontrado.';
+                $response['mensagem'] = 'Nenhum item com estoque baixo encontrado.';
             }
             break;
             

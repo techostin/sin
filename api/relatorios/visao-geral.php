@@ -6,6 +6,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Seguranca: exige nivel 1 (fonte de verdade: relatorios.php -> reportCategories['dashboard']['level']).
+// Nivel 1 = Admin, 2 = Admin/Gestor, 3 = qualquer usuario logado (semantica de User::hasPermission).
+require_once __DIR__ . '/../../classes/ApiAuth.php';
+ApiAuth::exigirNivel(1, false); // false = resposta em texto, pois o endpoint devolve HTML
+
 try {
     $db = Database::getInstance()->getConnection();
 
@@ -18,15 +23,15 @@ try {
     $lavourasStats = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // 3. Atividades Pendentes/Em Andamento
-    $stmt = $db->query("SELECT COUNT(*) as total FROM atividades_diarias WHERE status IN ('Pendente', 'Em andamento')");
+    $stmt = $db->query("SELECT COUNT(*) as total FROM atividades_diarias WHERE status IN ('Pendente', 'Em andamento') AND excluido = 0");
     $atividadesStats = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // 4. Lotes em Produção
-    $stmt = $db->query("SELECT COUNT(*) as total FROM lotes_producao WHERE status_lote='Em Produção'");
+    $stmt = $db->query("SELECT COUNT(*) as total FROM lotes_producao WHERE status_lote='Em Produção' AND excluido = 0");
     $lotesStats = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // 5. Insumos em Alerta (Estoque Mínimo)
-    $stmt = $db->query("SELECT COUNT(*) as total FROM insumos WHERE quantidade_estoque <= estoque_minimo");
+    // 5. Insumos em Alerta (Estoque Baixo)
+    $stmt = $db->query("SELECT COUNT(*) as total FROM insumos WHERE quantidade_estoque < 10 AND excluido = 0");
     $insumosStats = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // 6. Inadimplência

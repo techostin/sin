@@ -54,7 +54,7 @@ if ($user->hasPermission(NIVEL_GESTOR)) {
                         <?php foreach ($lotes as $lote): ?>
                             <tr class="text-center align-middle">
                                 <td style="display:none;"><?php echo isset($lote['id']) ? htmlspecialchars($lote['id']) : '-'; ?></td>
-                                <td>
+                                <td data-rastreio-url="<?php echo SITE_URL; ?>/rastreabilidade?uuid=<?php echo isset($lote['uuid']) ? urlencode($lote['uuid']) : ''; ?>">
                                     <div class="qrcode-container">
                                         <div class="qrcode" id="qrcode-<?php echo isset($lote['id']) ? $lote['id'] : '0'; ?>"></div>
                                         <div class="qrcode-number"><?php echo isset($lote['id']) ? 'LOTE-' . str_pad($lote['id'], 6, '0', STR_PAD_LEFT) : '-'; ?></div>
@@ -213,7 +213,7 @@ require_once __DIR__ . '/../../../includes/footer.php';
             <?php foreach ($lotes as $lote): ?>
                 <?php if (isset($lote['id']) && $lote['id']): ?>
                     new QRCode(document.getElementById('qrcode-<?php echo $lote['id']; ?>'), {
-                        text: '<?php echo SITE_URL; ?>/lote/<?php echo $lote['uuid']; ?>',
+                        text: '<?php echo SITE_URL; ?>/rastreabilidade?uuid=<?php echo $lote['uuid']; ?>',
                         width: 100,
                         height: 100,
                         colorDark: "#000000",
@@ -225,33 +225,69 @@ require_once __DIR__ . '/../../../includes/footer.php';
         <?php endif; ?>
     });
     
-    // Função para imprimir QR Code individual
+    // Função para imprimir QR Code individual (etiqueta de embalagem em tamanho físico adequado)
     function imprimirQRCode(loteId) {
         var qrcodeDiv = document.getElementById('qrcode-' + loteId);
         if (!qrcodeDiv) return;
-        
-        // Obter a imagem do canvas gerado pelo QRCode.js
-        var canvas = qrcodeDiv.querySelector('canvas');
-        var imgSrc = canvas ? canvas.toDataURL("image/png") : qrcodeDiv.querySelector('img').src;
-        
+
         var loteTr = qrcodeDiv.closest('tr');
         var loteNome = loteTr ? loteTr.querySelector('td:nth-child(3)').innerText : 'Lote ' + loteId;
-        
-        var printWin = window.open('', '', 'width=600,height=600');
-        printWin.document.write('<html><head><title>Imprimir QR Code</title>');
-        printWin.document.write('<style>body { font-family: Arial, sans-serif; text-align: center; padding: 40px; } </style>');
+        var produtoNome = loteTr ? loteTr.querySelector('td:nth-child(4)').innerText : '';
+        var dataProducao = loteTr ? loteTr.querySelector('td:nth-child(5)').innerText : '';
+        var quantidade = loteTr ? loteTr.querySelector('td:nth-child(6)').innerText : '';
+
+        // URL pública de rastreabilidade (regenerada em alta resolução para impressão)
+        var urlRastreabilidade = decodeURIComponent(qrcodeDiv.closest('tr').querySelector('td:nth-child(2)').getAttribute('data-rastreio-url')) || '';
+
+        var printWin = window.open('', '', 'width=700,height=700');
+        printWin.document.write('<html><head><title>Etiqueta de Embalagem - SINPORG</title>');
+        printWin.document.write('<style>');
+        printWin.document.write('@page { size: 60mm 90mm; margin: 4mm; }');
+        printWin.document.write('* { box-sizing: border-box; margin: 0; padding: 0; }');
+        printWin.document.write('body { font-family: Arial, Helvetica, sans-serif; width: 52mm; color: #111; }');
+        printWin.document.write('.brand { font-size: 13px; font-weight: bold; color: #2f9e44; text-align: center; letter-spacing: 1px; }');
+        printWin.document.write('.sub { font-size: 8px; color: #555; text-align: center; margin-bottom: 3mm; }');
+        printWin.document.write('.produto { font-size: 11px; font-weight: bold; text-align: center; margin: 1mm 0 3mm 0; line-height: 1.2; }');
+        printWin.document.write('.lote { font-size: 14px; font-weight: bold; font-family: Consolas, monospace; text-align: center; margin-bottom: 2mm; }');
+        printWin.document.write('.qr { text-align: center; margin: 2mm 0; }');
+        printWin.document.write('.qr img { width: 34mm; height: 34mm; image-rendering: pixelated; }');
+        printWin.document.write('.info { font-size: 8px; color: #333; line-height: 1.5; }');
+        printWin.document.write('.info b { display: inline-block; min-width: 24mm; }');
+        printWin.document.write('.footer { font-size: 7px; color: #666; text-align: center; margin-top: 2mm; }');
+        printWin.document.write('.selo { font-size: 7px; font-weight: bold; color: #fff; background: #2f9e44; display: inline-block; padding: 1px 6px; border-radius: 8px; margin-top: 1mm; }');
+        printWin.document.write('</style>');
         printWin.document.write('</head><body>');
-        printWin.document.write('<h2>SINPORG - Etiqueta de Lote</h2>');
-        printWin.document.write('<h3>' + loteNome + '</h3>');
-        printWin.document.write('<h4>LOTE-' + String(loteId).padStart(6, '0') + '</h4>');
-        printWin.document.write('<img src="' + imgSrc + '" style="margin-top:20px; width:250px; height:250px;" />');
-        printWin.document.write('<p style="margin-top: 20px; color:#555;">Escaneie o QR Code para rastrear os detalhes da produção.</p>');
+        printWin.document.write('<div class="brand">SINPORG</div>');
+        printWin.document.write('<div class="sub">Rastreabilidade da Agricultura Familiar Orgânica</div>');
+        printWin.document.write('<div class="produto">' + produtoNome + '</div>');
+        printWin.document.write('<div class="lote">' + loteNome.replace(/^LOTE-/i, 'LOTE-') + '</div>');
+        printWin.document.write('<div class="qr"><img id="qr-img" src="" alt="QR Code"></div>');
+        printWin.document.write('<div class="info">');
+        printWin.document.write('<div><b>Produção:</b> ' + dataProducao + '</div>');
+        printWin.document.write('<div><b>Quantidade:</b> ' + quantidade + '</div>');
+        printWin.document.write('</div>');
+        printWin.document.write('<div style="text-align:center;"><span class="selo">&#10004; ORGÂNICO</span></div>');
+        printWin.document.write('<div class="footer">Escaneie o QR Code para consultar a origem completa do produto (Portaria MAPA 52/2021).</div>');
         printWin.document.write('</body></html>');
         printWin.document.close();
-        printWin.focus();
+
+        // Regenerar QR em alta resolução (400px) para impressão nítida
+        var qrEl = printWin.document.getElementById('qr-img');
+        var qrCanvas = document.createElement('div');
+        new QRCode(qrCanvas, {
+            text: urlRastreabilidade || window.location.origin + '/rastreabilidade?uuid=' + loteId,
+            width: 400,
+            height: 400,
+            colorDark: "#000000",
+            colorLight: "#FFFFFF",
+            correctLevel: QRCode.CorrectLevel.H
+        });
         setTimeout(function() {
-            printWin.print();
-            printWin.close();
-        }, 500);
+            var canvas = qrCanvas.querySelector('canvas') || qrCanvas.querySelector('img');
+            qrEl.src = canvas ? canvas.toDataURL('image/png') : '';
+        }, 300);
+
+        printWin.focus();
+        setTimeout(function() { printWin.print(); }, 900);
     }
 </script>

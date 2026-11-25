@@ -14,28 +14,38 @@ $userNivel = $_SESSION['user_nivel'] ?? NIVEL_USUARIO;
 $isAdmin = $userNivel <= NIVEL_GESTOR;
 ?>
 
-<h1 class="mt-4">Certificações Participativas</h1>
-<p>Gestão de certificações orgânicas SPG/OCS conforme Portaria MAPA 52/2021</p>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Lista de Certificações</span>
+<div class="gestor-hero">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
         <div>
+            <h1 class="mb-1"><i class="bi bi-award me-2" style="color:var(--gm-primary);"></i>Certificações Participativas</h1>
+            <p class="mb-0">Gestão de certificações orgânicas SPG/OCS conforme Portaria MAPA 52/2021</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
             <?php if ($isAdmin): ?>
-            <a href="<?php echo SITE_URL; ?>/certificacao/novo" class="btn btn-success btn-sm">
-                <i class="bi bi-plus-circle"></i> Nova Certificação
+            <a href="<?php echo SITE_URL; ?>/certificacao/novo" class="btn btn-assoc-success btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> Nova Certificação
             </a>
             <?php endif; ?>
-            <a href="<?php echo SITE_URL; ?>/" class="btn btn-secondary btn-sm ms-2">
-                <i class="bi bi-arrow-left"></i> Voltar
+            <a href="<?php echo SITE_URL; ?>/" class="btn btn-assoc-ghost btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
         </div>
     </div>
-    <div class="card-body">
+</div>
+
+<div class="gm-card">
+    <div class="card-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-list-check me-1" style="color:var(--gm-primary);"></i> Lista de Certificações</span>
+    </div>
+    <div class="p-3">
         <!-- Filtros -->
-        <div class="row mb-3">
+        <div class="row g-3 mb-3 align-items-end">
             <div class="col-md-3">
-                <label>Tipo</label>
+                <label class="form-label small mb-1">Tipo</label>
                 <select id="filtroTipo" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     <option value="SPG">SPG</option>
@@ -45,7 +55,7 @@ $isAdmin = $userNivel <= NIVEL_GESTOR;
                 </select>
             </div>
             <div class="col-md-3">
-                <label>Status</label>
+                <label class="form-label small mb-1">Status</label>
                 <select id="filtroStatus" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     <option value="Ativa">Ativa</option>
@@ -56,7 +66,7 @@ $isAdmin = $userNivel <= NIVEL_GESTOR;
                 </select>
             </div>
             <div class="col-md-3">
-                <label>Validade</label>
+                <label class="form-label small mb-1">Validade</label>
                 <select id="filtroValidade" class="form-select form-select-sm">
                     <option value="">Todas</option>
                     <option value="proximas">Vence em 30 dias</option>
@@ -64,7 +74,6 @@ $isAdmin = $userNivel <= NIVEL_GESTOR;
                 </select>
             </div>
             <div class="col-md-3">
-                <label>&nbsp;</label>
                 <button id="btnAplicarFiltros" class="btn btn-primary btn-sm d-block">
                     <i class="bi bi-filter"></i> Aplicar Filtros
                 </button>
@@ -72,6 +81,7 @@ $isAdmin = $userNivel <= NIVEL_GESTOR;
         </div>
 
         <!-- Tabela -->
+        <div class="table-responsive">
         <table id="certificacoesTable" class="table table-striped table-bordered" style="width:100%">
             <thead>
                 <tr>
@@ -90,10 +100,10 @@ $isAdmin = $userNivel <= NIVEL_GESTOR;
                 <!-- Carregado via AJAX -->
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
-<!-- Modal de Visualização -->
 <div class="modal fade" id="modalVisualizarCertificacao" tabindex="-1"
     aria-labelledby="modalVisualizarCertificacaoLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -111,6 +121,10 @@ $isAdmin = $userNivel <= NIVEL_GESTOR;
         </div>
     </div>
 </div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
+
 
 <?php
 require_once __DIR__ . '/../../includes/footer.php';
@@ -267,6 +281,16 @@ require_once __DIR__ . '/../../includes/footer.php';
                             </button>
                         `;
 
+                        // Certificado gerado (preview/PDF)
+                        html += `
+                            <a href="<?php echo SITE_URL; ?>/certificacao/${row.id}/certificado?format=html"
+                               class="btn btn-outline-success btn-sm"
+                               target="_blank"
+                               title="Visualizar Certificado">
+                                <i class="bi bi-award"></i>
+                            </a>
+                        `;
+
                         // Download (Somente se assinado)
                         if (row.is_signed && row.documento_url) {
                             html += `
@@ -395,9 +419,10 @@ require_once __DIR__ . '/../../includes/footer.php';
                             <i class="bi bi-file-earmark-pdf"></i> Baixar Certificado Assinado
                         </a>
                     ` : `
-                        <span class="badge bg-secondary">
-                            <i class="bi bi-info-circle"></i> Disponível após assinatura
-                        </span>
+                        <a href="<?php echo SITE_URL; ?>/certificacao/${data.id}/certificado?format=html"
+                           class="btn btn-success btn-sm" target="_blank">
+                            <i class="bi bi-award"></i> Ver Certificado
+                        </a>
                     `}
                 </div>
                 ${data.nome_grupo ? `<p class="mt-2 text-muted small"><strong>Grupo:</strong> ${data.nome_grupo}</p>` : ''}

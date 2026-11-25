@@ -1,0 +1,10 @@
+parameters:
+    level: 6
+    paths:
+        - src
+    # A plataforma reaproveita a classe legada de ficha de adesão; o scanFiles
+    # dá a ela apenas visibilidade de símbolo (não a analisa).
+    scanFiles:
+        - classes/FichaAdesao.php
+    tmpDir: .phpstan-cache
+    treatPhpDocTypesAsCertain: false

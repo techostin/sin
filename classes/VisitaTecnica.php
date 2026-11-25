@@ -37,34 +37,80 @@ class VisitaTecnica {
 
     /**
      * Salva o resultado da visita e calcula pontuação
+     *
+     * @param int   $id
+     * @param array $resultado
+     * @param string|null $observacoes
+     * @param array $assinaturas ['produtor' => ..., 'tecnico' => ...]
+     * @param array $fotos Lista de URLs
+     * @param array $opts  Chaves opcionais: hora_inicio, hora_fim, condicoes_clima,
+     *                     pontuacao_minima, checklist (mapa id => ['obrigatorio'=>bool,'categoria'=>string])
      */
-    public function saveResult($id, $resultado, $observacoes, $assinaturas = [], $fotos = []) {
-        // Get roteiro to retrieve critical items
-        $stmt = $this->db->prepare("SELECT r.itens_criticos FROM visitas_tecnicas v 
-                                  JOIN roteiros_inspecao r ON v.roteiro_id = r.id WHERE v.id = ?");
-        $stmt->execute([$id]);
-        $roteiro = $stmt->fetch(PDO::FETCH_ASSOC);
-        $itensCriticos = $roteiro['itens_criticos'] ? json_decode($roteiro['itens_criticos'], true) : [];
-        
-        // Check for any critical items marked non-conform
+    public function saveResult($id, $resultado, $observacoes, $assinaturas = [], $fotos = [], $opts = []) {
+        if (!is_array($resultado)) {
+            $resultado = [];
+        }
+
+        // ----- Regra de itens críticos: reprovam automaticamente -----
+        $itensCriticos = [];
+        if (!empty($opts['checklist']) && is_array($opts['checklist'])) {
+            foreach ($opts['checklist'] as $itemId => $info) {
+                if (!empty($info['obrigatorio'])) {
+                    $itensCriticos[] = strval($itemId);
+                }
+            }
+        }
+
+        // Fallback: ler do roteiro se o mapa não foi informado
+        if (!$itensCriticos) {
+            $stmt = $this->db->prepare("SELECT r.itens_criticos FROM visitas_tecnicas v
+                                      JOIN roteiros_inspecao r ON v.roteiro_id = r.id WHERE v.id = ?");
+            $stmt->execute([$id]);
+            $roteiro = $stmt->fetch(PDO::FETCH_ASSOC);
+            $itensCriticos = array_map('strval', json_decode($roteiro['itens_criticos'] ?: '[]', true) ?: []);
+        }
+        $itensCriticos = array_map('strval', $itensCriticos);
+
         $hasCriticalNonConformity = false;
+        $semResposta = [];
         foreach ($resultado as $itemId => $res) {
+            $itemId = strval($itemId);
             $isNa = isset($res['na']) && ($res['na'] === true || $res['na'] === "true" || $res['na'] === "1");
-            if (!$isNa && in_array($itemId, $itensCriticos) && (isset($res['conforme']) && !$res['conforme'])) {
+            if ($isNa) continue;
+            if (!isset($res['conforme'])) {
+                // Item respondido mas sem campo validação → ignorar com ressalva
+                continue;
+            }
+            $conforme = ($res['conforme'] === true || $res['conforme'] === "true" || $res['conforme'] === "1");
+            if ($conforme) continue;
+
+            if (in_array($itemId, $itensCriticos, true)) {
                 $hasCriticalNonConformity = true;
-                break;
             }
         }
         
         // Calcular pontuação
         $score = $this->calculateScore($resultado);
-        
-        // Determinar conformidade (following rules from Avaliação_de_conformidade.md)
+        $maxScore = count(array_filter($resultado, function ($res) {
+            return !(isset($res['na']) && ($res['na'] === true || $res['na'] === "true" || $res['na'] === "1"));
+        }));
+
+        // Determinar conformidade:
+        //  - Crítico NC jamais aprova
+        //  - Score 100 → Conforme
+        //  - Abaixo de 100 → Parcialmente Conforme (salvo NC crítica)
+        //  - Abaixo da pontuação mínima do roteiro → Não Conforme
+        $pontuacaoMinima = isset($opts['pontuacao_minima']) ? (int)$opts['pontuacao_minima'] : 70;
         $conformidade = 'Conforme';
+        if ($score >= 100) {
+            $conformidade = 'Conforme';
+        } elseif ($score >= $pontuacaoMinima) {
+            $conformidade = 'Parcialmente Conforme';
+        } else {
+            $conformidade = 'Não Conforme';
+        }
         if ($hasCriticalNonConformity) {
             $conformidade = 'Não Conforme';
-        } elseif ($score < 100) {
-            $conformidade = 'Parcialmente Conforme';
         }
 
         try {
@@ -73,8 +119,12 @@ class VisitaTecnica {
             $sql = "UPDATE visitas_tecnicas SET 
                     resultado = ?, 
                     pontuacao = ?, 
+                    pontuacao_maxima = ?, 
                     conformidade = ?, 
                     observacoes = ?, 
+                    hora_inicio = ?,
+                    hora_fim = ?,
+                    condicoes_clima = ?,
                     assinatura_produtor_url = ?, 
                     assinatura_tecnico_url = ?, 
                     evidencias_fotos = ?,
@@ -86,8 +136,12 @@ class VisitaTecnica {
             $stmt->execute([
                 json_encode($resultado),
                 $score,
+                max(0, (int)$maxScore),
                 $conformidade,
                 $observacoes,
+                $opts['hora_inicio'] ?? null,
+                $opts['hora_fim'] ?? null,
+                $opts['condicoes_clima'] ?? null,
                 $assinaturas['produtor'] ?? null,
                 $assinaturas['tecnico'] ?? null,
                 is_array($fotos) ? implode(',', $fotos) : $fotos,
@@ -95,7 +149,7 @@ class VisitaTecnica {
             ]);
 
             // Gerar Não-Conformidades
-            $this->processNaoConformidades($id, $resultado);
+            $this->processNaoConformidades($id, $resultado, $opts['checklist'] ?? []);
 
             $this->db->commit();
             return true;
@@ -118,8 +172,10 @@ class VisitaTecnica {
             $isNa = isset($res['na']) && ($res['na'] === true || $res['na'] === "true" || $res['na'] === "1");
             if (!$isNa) {
                 $total++;
-                if (isset($res['conforme']) && ($res['conforme'] === true || $res['conforme'] === "true")) {
+                if (isset($res['conforme']) && ($res['conforme'] === true || $res['conforme'] === "true" || $res['conforme'] === "1")) {
                     $conformes++;
+                } else {
+                    // Item respondido explicitamente como NC também conta como avaliado
                 }
             }
         }
@@ -130,28 +186,38 @@ class VisitaTecnica {
     /**
      * Processa itens não conformes e cria registros na tabela nao_conformidades
      */
-    private function processNaoConformidades($visitaId, $resultado) {
-        // Primeiro limpar NCs antigas desta visita (opcional)
-        //$this->db->prepare("DELETE FROM nao_conformidades WHERE visita_tecnica_id = ?")->execute([$visitaId]);
-
+    private function processNaoConformidades($visitaId, $resultado, $checklistMap = []) {
         foreach ($resultado as $itemId => $res) {
-            if (isset($res['conforme']) && ($res['conforme'] === false || $res['conforme'] === "false")) {
-                // Verificar se já existe NC idêntica para evitar duplicidade num re-save
-                $stmtCheck = $this->db->prepare("SELECT id FROM nao_conformidades WHERE visita_tecnica_id = ? AND item_checklist_id = ?");
-                $stmtCheck->execute([$visitaId, $itemId]);
-                
-                if (!$stmtCheck->fetch()) {
-                    $sql = "INSERT INTO nao_conformidades (visita_tecnica_id, item_checklist_id, descricao, gravidade, status) 
-                            VALUES (?, ?, ?, ?, ?)";
-                    $stmt = $this->db->prepare($sql);
-                    $stmt->execute([
-                        $visitaId,
-                        $itemId,
-                        $res['observacao'] ?: 'Identificado na inspeção técnica.',
-                        'Alta',
-                        'Aberta'
-                    ]);
+            $itemId = strval($itemId);
+            $isNa = isset($res['na']) && ($res['na'] === true || $res['na'] === "true" || $res['na'] === "1");
+            if ($isNa) continue;
+            if (isset($res['conforme']) && ($res['conforme'] === true || $res['conforme'] === "true" || $res['conforme'] === "1")) continue;
+
+            // Categoria e gravidade conforme o mapa do checklist
+            $info = $checklistMap[$itemId] ?? [];
+            $categoria = $info['categoria'] ?? 'Geral';
+            $gravidade = !empty($info['obrigatorio']) ? 'Crítica' : 'Alta';
+
+            // Verificar se já existe NC idêntica para evitar duplicidade num re-save
+            $stmtCheck = $this->db->prepare("SELECT id FROM nao_conformidades WHERE visita_tecnica_id = ? AND item_checklist_id = ?");
+            $stmtCheck->execute([$visitaId, $itemId]);
+
+            if (!$stmtCheck->fetch()) {
+                $descricao = trim(strip_tags($res['observacao'] ?? ''));
+                if ($descricao === '') {
+                    $descricao = 'Identificado na inspeção técnica.';
                 }
+                $sql = "INSERT INTO nao_conformidades (visita_tecnica_id, item_checklist_id, descricao, gravidade, categoria, status) 
+                        VALUES (?, ?, ?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([
+                    $visitaId,
+                    $itemId,
+                    $descricao,
+                    $gravidade,
+                    $categoria,
+                    'Aberta'
+                ]);
             }
         }
     }

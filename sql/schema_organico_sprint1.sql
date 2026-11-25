@@ -232,6 +232,19 @@ CREATE TABLE IF NOT EXISTS visitas_tecnicas (
   -- Status
   status ENUM('Agendada', 'Realizada', 'Cancelada', 'Reagendada') DEFAULT 'Agendada',
   motivo_cancelamento TEXT,
+
+  -- Confirmação de ciência do agricultor (SPG)
+  ciente TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Agricultor confirmou que está ciente do agendamento',
+  ciente_em DATETIME NULL COMMENT 'Quando o agricultor confirmou ciência',
+  ciente_recusada TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Agricultor não pode na data agendada (pede reagendamento)',
+  ciente_recusada_motivo TEXT NULL COMMENT 'Motivo informado pelo agricultor ao recusar a data',
+  ciente_recusada_em DATETIME NULL COMMENT 'Quando o agricultor recusou a data',
+
+  -- Ciência do gestor sobre o status do agendamento (SPG)
+  gestor_ciente TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Gestor registrou ciência do status do agendamento',
+  gestor_ciente_em DATETIME NULL COMMENT 'Quando o gestor registrou ciência',
+  gestor_ciente_user_id INT NULL COMMENT 'ID do usuário que registrou ciência',
+  gestor_ciente_user_table VARCHAR(20) NULL COMMENT 'Tabela do usuário (usuarios/associados)',
   
   -- Timestamps
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -337,6 +350,51 @@ CREATE TABLE IF NOT EXISTS insumos_organicos_aprovados (
   INDEX idx_permitido (permitido),
   INDEX idx_tipo (tipo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Lista de insumos aprovados para produção orgânica (Portaria 52/2021 e atualizações)';
+
+-- =====================================================
+-- 8. AGROINDÚSTRIAS (Módulo dedicado — Fase 2)
+-- =====================================================
+-- Uma pessoa pode ser somente agroindústria, somente agricultor, ou
+-- agricultor E ter uma ou mais agroindústrias (associados.tem_agroindustria).
+
+CREATE TABLE IF NOT EXISTS agroindustrias (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  associado_id INT NOT NULL COMMENT 'Associado dono da agroindústria',
+
+  -- Identificação
+  razao_social VARCHAR(200) NULL,
+  nome_fantasia VARCHAR(200) NULL,
+  cnpj VARCHAR(18) NULL,
+  inscricao_estadual VARCHAR(30) NULL,
+  telefone VARCHAR(15) NULL,
+  email VARCHAR(100) NULL,
+  responsavel_tecnico VARCHAR(150) NULL COMMENT 'Responsável técnico/RT',
+
+  -- Endereço
+  endereco VARCHAR(200) NULL,
+  numero VARCHAR(10) NULL,
+  bairro VARCHAR(100) NULL,
+  cidade VARCHAR(100) NULL,
+  estado CHAR(2) NULL,
+  cep VARCHAR(9) NULL,
+
+  -- Situação
+  status ENUM('Ativa','Inativa') NOT NULL DEFAULT 'Ativa',
+  observacoes TEXT NULL,
+  excluido TINYINT(1) NOT NULL DEFAULT 0,
+
+  -- Auditoria
+  criado_por INT NULL,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (associado_id) REFERENCES associados(id) ON DELETE CASCADE,
+  INDEX idx_agro_associado (associado_id),
+  INDEX idx_agro_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Agroindústrias vinculadas a associados';
+
+-- Coluna de apoio: associados que possuem agroindústria (pode ser também
+-- agricultor). Adicionada via migração dev-utils/migrate_agroindustrias.php.
 
 -- =====================================================
 -- FIM DO SCRIPT DE CRIAÇÃO DE SCHEMAS

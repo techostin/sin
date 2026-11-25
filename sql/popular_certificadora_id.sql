@@ -1,0 +1,79 @@
+-- ============================================================================
+-- Popular usuarios.certificadora_id  (Fase 2 — isolamento multi-tenant)
+-- ============================================================================
+--
+-- POR QUE ESTE SCRIPT NAO FOI EXECUTADO AUTOMATICAMENTE:
+-- O vinculo usuario -> certificadora NAO esta registrado em nenhuma tabela do
+-- banco. Verificado em 11/09/2026:
+--   certificadoras.gestor_id ................ 100% NULL
+--   associados.certificadora_id ............. 100% NULL
+--   certificacao_participativa.certificadora . 100% NULL
+--   eventos ................................. nao possui coluna de certificadora
+--   audit_log ............................... 0 mencoes a certificadora
+--   notificacoes.dados_adicional ............ contem apenas ficha_id/associado_id
+--
+-- Portanto e uma decisao de negocio, nao um dado derivavel. Atribuir a
+-- certificadora ERRADA faria o usuario ver dados de outra organizacao assim que
+-- AUTH_CERTIFICADORA_OBRIGATORIA for ligada.
+--
+-- ---------------------------------------------------------------------------
+-- CERTIFICADORAS DISPONIVEIS
+-- ---------------------------------------------------------------------------
+--   13  OPAC Rede Ecovida          (SPG)
+--   14  OPAC Litoral Norte         (SPG)
+--   15  OPAC COCEARGS              (SPG)
+--   16  OPAC RAMA                  (SPG)
+--   17  OCS Arroio do Meio         (OCS)
+--   18  OCS Sapiranga              (OCS)
+--   19  OCS Porto Alegre/Viamao    (OCS)
+--
+-- ---------------------------------------------------------------------------
+-- USUARIOS QUE PRECISAM DE VINCULO
+-- ---------------------------------------------------------------------------
+-- Nivel 1 (admin) NAO precisa: o guard sempre libera acesso total.
+--   id  8  Joao da Silva              (nivel 1)  -> dispensa
+--   id 16  Gabriel Cibulski           (nivel 1)  -> dispensa
+--
+-- Nivel 2 e 3 PRECISAM (sao bloqueados quando a flag estiver ligada):
+--   id 11  Roselei                      (nivel 3)
+--   id 12  Getulio Dos Santos Machado   (nivel 3)
+--   id 14  Alderi da Silva Porto        (nivel 3)
+--   id 15  Getulio                      (nivel 3)
+--   id 20  vanessa                      (nivel 2, gestor)
+--   id 58  Joselaine Salete Cibulski    (nivel 3)
+--
+-- ---------------------------------------------------------------------------
+-- STATUS: DECIDIDO E APLICADO em 12/09/2026
+-- Decisao do SINPORG: todos os 6 usuarios pertencem a OPAC RAMA (id 16).
+-- Justificativa: o grupo de Eldorado do Sul (Roselei, Getulio, Alderi) esta na
+-- regiao metropolitana de Porto Alegre e forma o grupo Jose Lutzenberger, o que
+-- casa com a Rede Agroecologica Metropolitana (RAMA).
+--
+--   UPDATE usuarios SET certificadora_id = 16 WHERE id IN (11,12,14,15,20,58);
+-- Verificado: 0 usuarios de nivel <> 1 permanecem sem vinculo.
+--
+-- Os UPDATEs comentados abaixo ficam como referencia para reatribuicao futura.
+-- ============================================================================
+
+-- >>> PREENCHER: substituir CERT_ID pelos codigos reais (13..19)
+
+-- UPDATE usuarios SET certificadora_id = CERT_ID WHERE id = 11;  -- Roselei
+-- UPDATE usuarios SET certificadora_id = CERT_ID WHERE id = 12;  -- Getulio Dos Santos Machado
+-- UPDATE usuarios SET certificadora_id = CERT_ID WHERE id = 14;  -- Alderi da Silva Porto
+-- UPDATE usuarios SET certificadora_id = CERT_ID WHERE id = 15;  -- Getulio
+-- UPDATE usuarios SET certificadora_id = CERT_ID WHERE id = 20;  -- vanessa (gestor)
+-- UPDATE usuarios SET certificadora_id = CERT_ID WHERE id = 58;  -- Joselaine Salete Cibulski
+
+-- ---------------------------------------------------------------------------
+-- VERIFICACAO: deve retornar 0 linhas para niveis 2 e 3 antes de ligar a flag
+-- ---------------------------------------------------------------------------
+-- SELECT id, nome, email, nivel FROM usuarios
+--  WHERE certificadora_id IS NULL AND nivel <> 1;
+
+-- ---------------------------------------------------------------------------
+-- ALTERNATIVA PROVISORIA (nao recomendada sem confirmacao do SINPORG)
+-- Atribuir todos a certificadora 13 mantem o acesso funcionando, mas pode
+-- conceder escopo incorreto. Use apenas como paliativo consciente.
+-- ---------------------------------------------------------------------------
+-- UPDATE usuarios SET certificadora_id = 13
+--  WHERE certificadora_id IS NULL AND nivel <> 1;

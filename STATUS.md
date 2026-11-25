@@ -1,0 +1,156 @@
+# STATUS — SINPORG / Modularização
+
+> **Atualizado em:** 30/10/2026 · **Fonte de verdade do andamento** · **Não é página pública** (`.md` bloqueado pelo Apache)
+
+## ⛔ Congelamento de features ATIVO
+
+| Item | Valor |
+|---|---|
+| Início | **30/10/2026** |
+| Revisão | **11/12/2026** |
+| Término mínimo | **18/12/2026** |
+| Escopo | novas features no PHP legado (telas, campos, regras, relatórios, integrações) |
+| Exceções | segurança, LGPD, bug bloqueante, integridade de dados — com registro e aprovação |
+| Regras completas | [docs/v5/CONGELAMENTO-FEATURES.md](docs/v5/CONGELAMENTO-FEATURES.md) |
+| Comunicado | [docs/v5/COMUNICADO-CONGELAMENTO.txt](docs/v5/COMUNICADO-CONGELAMENTO.txt) |
+
+## Fase atual
+
+**Fase 0 quase concluída + F1 iniciada em 30/10/2026** (autorização explícita, com itens 4 e 6 pendentes).
+
+| # | Item da Fase 0 | Status |
+|---|---|---|
+| 1 | Congelar features e comunicar | ✅ **concluído em 30/10/2026** |
+| 2 | Commit/tag do estado atual + branch `feat/f1-kernel` | ✅ **30/10/2026** — commit `796d11d`, tag `pre-modularizacao`, branch `feat/f1-kernel` ([relatório](docs/v5/EXECUCAO-FASE0-ITEM2-GIT.md)) |
+| 3 | Staging com banco anonimizado + feature flags | ✅ **30/10/2026** — `http://localhost/app-staging` + `sisagro_staging`; flags em `feature_flags` ([relatório](docs/v5/FASE0-ITEM3-STAGING.md)) |
+| 4 | P0 residual: Resend, logs de produção, decisão LGPD | ⛔ **bloqueado externo** — chave Resend ainda ativa; logs de produção e assinatura LGPD pendentes ([relatório](docs/v5/FASE0-ITEM4-P0-RESIDUAL.md)) |
+| 5 | Paridade de K2 e D1 (`arquivo:linha`) | ✅ **30/10/2026** — inventário concluído ([relatório](docs/v5/FASE0-ITEM5-PARIDADE-K2-D1.md)) |
+| 6 | Fiscais e especialista de domínio designados | ⚠️ **proposta pronta; faltam nomes/aceite** ([documento](docs/v5/FASE0-ITEM6-FISCAIS-ESPECIALISTA.md)) |
+
+> **Exceção de gate:** a F1 foi iniciada por autorização do responsável com os itens 4 e 6 pendentes;
+> nenhum módulo de negócio foi iniciado. Ver [relatório da fundação](docs/v5/EXECUCAO-F1-FUNDACAO.md).
+
+## F1 — Fundação (em andamento)
+
+| # | Entrega | Status |
+|---|---|---|
+| 1.1 | PSR-4 `App\` → `src/`, autoload e scripts | ✅ |
+| 1.2 | Bootstrap único + API sem sessão | ✅ |
+| 1.3 | Kernel de contratos (6 interfaces) | ✅ |
+| 1.4 | HTTP, router, pipeline, middleware e `/api/v1/health` | ✅ |
+| 1.5 | Connection, UnitOfWork, Repository base | ✅ |
+| 1.6 | Authz/CSRF/tenant/upload no Kernel | ✅ fundação + testes ([relatório](docs/v5/EXECUCAO-F1-K2-D1.md)) |
+| 1.7 | PHPUnit, PHPStan, Deptrac, PHPCS | ✅ 74 testes, 0 erros |
+| 1.8 | CI, staging, feature flags; deploy/rollback | ✅ staging sincronizado + runbook; deploy produção manual |
+| 1.9 | Health, `X-Request-Id`, log, envelope JSON | ✅ |
+
+- Tags **`f1-fundacao`** (`2979360`), **`f1-k2-d1`** (`9564ca9`), **`onda1-k1-k3-l2`** (`089f246`), **`onda2-d1-t1-d2`** (`4097523`), **`onda3-d3`** (`0c67a84`), **`onda3-documentos`** (`b357201`), **`onda3-evidencias`** (`e49c7f9`), **`onda3-e2e`** (`91a8a0e`), **`onda4-d5-d6`** (`20d6abb`), **`onda4-animais`** (`bd7b4c6`), **`onda4-d6-completo`** (`7699553`), **`onda4-d7-d8-d4`** (`7bf19d1`) e **`onda5-l1-l2`** (`349383c`); branch `feat/f1-kernel`.
+- Health: **`GET /app/api/v1/health` → 200**; legacy `login.php` → 200.
+- Piloto **K2**: estados, cidades, microrregiões e CNPO em `/api/v1/territorios/*`.
+- **D1**: camada de leitura pronta e mascarada; exposição com auth entra na Onda 2.
+
+## Onda 1 — Acesso e experiência (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **K1** | 8 papéis, 19 permissões, escopos, `/me` e `/me/capabilities` | ✅ |
+| **K3** | auditoria em `audit_log` + numeração de documentos | ✅ (arquivos/notificações depois) |
+| **L2** | manifesto de 9 áreas por capability e superfície web/PWA | ✅ contrato; UI integrada por módulo |
+
+- Relatório: [EXECUCAO-ONDA1-K1-K3-L2.md](docs/v5/EXECUCAO-ONDA1-K1-K3-L2.md).
+- Plano de ondas: [PLANO-ONDAS-APROVADO.md](docs/v5/PLANO-ONDAS-APROVADO.md).
+- Staging sincronizado em `089f246`; `/me` sem sessão → **401**.
+
+## Onda 2 — Núcleo do agricultor + rastreabilidade (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **D1** | leitura autenticada, criação e aprovação core | ✅ |
+| **T1** | lotes/eventos/elos + QR público | ✅ vegetal/insumo |
+| **D2** | lote vegetal no legado + registro/evento T1 | ✅ primeira fatia |
+| **D7** | lote de insumo no T1 | ✅ primeira fatia |
+
+- Relatório: [EXECUCAO-ONDA2-D1-T1-D2-D7.md](docs/v5/EXECUCAO-ONDA2-D1-T1-D2-D7.md).
+- Staging sincronizado em `4097523`; D1/T1 sem sessão → **401**.
+- **Pendência para D3:** aplicar `TenantScope` row-level em D1/T1 e testes de IDOR.
+
+## Onda 3 — Fiscalização e certificação (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **Segurança** | `AccessScope` row-level em D1/T1/D3 + testes IDOR | ✅ |
+| **D3** | visitas, status, NC, revisão e certificado | ✅ core |
+| **Documentos** | numeração `CERT-AAAA-000000`, auditoria e verificação pública | ✅ |
+| **Templates/PDF/assinatura** | PDF + hash + HMAC; ICP-Brasil não | ✅ core |
+| **Evidências/fotos** | upload/lista/download protegidos | ✅ core |
+| **E2E autenticado** | admin login, fluxo completo, evidência e PDF | ✅ |
+| **Escopo certificadora × associação** | tabela + carregamento no contexto | ✅ (mapeamentos a cadastrar) |
+
+- Relatório: [EXECUCAO-ONDA3-D3.md](docs/v5/EXECUCAO-ONDA3-D3.md).
+- Certificado real de teste: `CERT-2026-000009` (fluxo/arquivos limpos em seguida).
+- Staging sincronizado em `20d6abb` (inclui Onda 4); D3/evidências sem sessão → **401**.
+
+## P0 — segurança (resumo)
+
+| Item | Status |
+|---|---|
+| PHP 8.4.27 / hardening / `TRACE=405` | ✅ ativo |
+| WAF local (Apache + aplicação + cabeçalhos) | ✅ ativo |
+| Segredos do banco/ID/sessões rotacionados | ✅ executado |
+| `RESEND_API_KEY` | ⏳ rotação manual pendente |
+| Logs de produção | ⏳ aguardando provedor |
+| Decisão LGPD | ⚠️ incidente potencial em avaliação; falta assinatura/DO |
+
+Relatórios: [A4](docs/v5/EXECUCAO-A4-HARDENING-PHP.md) · [A5](docs/v5/EXECUCAO-A5-WAF.md) ·
+[A6](docs/v5/EXECUCAO-A6-SEGREDOS-SESSOES.md) · [A7](docs/v5/EXECUCAO-A7-LOGS-INCIDENTE.md) ·
+[A8](docs/v5/EXECUCAO-A8-AVALIACAO-LGPD.md)
+
+## Onda 4 — Cadeia animal e agroindústria (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **D5** | lote animal + T1 + evento de entrada | ✅ |
+| **D5** | animal individual + sanidade + reprodução + movimentação | ✅ |
+| **D6** | transformação + receita/ordem + higienização | ✅ core |
+| **D7** | insumo legado + lote T1 | ✅ core |
+| **D8** | eventos e assembleias | ✅ core |
+| **D4** | mensalidades e baixa de pagamento | ✅ core |
+
+- Relatório: [EXECUCAO-ONDA4-D5-D6.md](docs/v5/EXECUCAO-ONDA4-D5-D6.md) e
+  [EXECUCAO-ONDA4-FINAL.md](docs/v5/EXECUCAO-ONDA4-FINAL.md).
+- E2E real de D5/D6/D7/D8/D4; dados limpos.
+- Staging sincronizado em `7bf19d1`.
+
+## Onda 5 — Relatórios, Portal e UI por persona (em andamento)
+
+| Módulo | Entrega | Status |
+|---|---|---|
+| **L1** | `GET /relatorios/resumo` com contagens reais | ✅ core |
+| **L2** | `GET /portal/dashboard` com cards por capability | ✅ core |
+| **UI** | menu legado filtra links pelo manifesto `/me/capabilities` | ✅ inicial |
+| Exportação PDF/Excel | próxima fatia | ⏳ |
+| Telas redesenhadas por persona | próxima fatia | ⏳ |
+
+- Relatório: [EXECUCAO-ONDA5-L1-L2.md](docs/v5/EXECUCAO-ONDA5-L1-L2.md).
+- Fechamento de pendências: [PENDENCIAS-FECHAMENTO.md](docs/v5/PENDENCIAS-FECHAMENTO.md).
+- Staging sincronizado em `349383c`.
+
+## Próximo passo
+
+As pendências técnicas executáveis foram fechadas até a Onda 5. Restam **itens externos/humanos**:
+
+1. Resend: criar nova chave e revogar a antiga.
+2. Logs de produção do período 20–27/10.
+3. Decisão LGPD assinada.
+4. Fiscais e especialista nomeados.
+5. Push/deploy de produção conforme sua decisão.
+6. Backlog de evolução (exportações, votos/presença, caixa, telas por persona).
+
+Checklist completo: [PENDENCIAS-FECHAMENTO.md](docs/v5/PENDENCIAS-FECHAMENTO.md).
+
+## Regras de ouro durante o congelamento
+
+- Nenhuma feature nova sem exceção registrada.
+- Segurança/LGPD têm prioridade e não esperam o fim do congelamento.
+- Toda exceção: branch `hotfix/*`, teste, rollback e registro.
+- Atualizar este arquivo a cada mudança de fase/gate.

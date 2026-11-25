@@ -1,0 +1,37 @@
+# ============================================================================
+# CRON_PROD — Linhas de cron prontas p/ PRODUÇÃO
+# ============================================================================
+# Antes de colar:
+#   1. Troque CAMINHO_APP pelo caminho real do app no servidor
+#      (ex.: /home/edmilson/htdocs/sinporg.com.br/app)
+#   2. Troque PHP pela localização do binário PHP CLI se necessário
+#
+# Instalação:
+#   crontab -e     (ou cPanel > Cron Jobs, ou Plesk > Schedule Tasks)
+#
+# ============================================================================
+
+# --- Opção A: cron direto nos scripts (recomendado) -------------------------
+# CNPO (MAPA): dias 05, 15 e 25 de cada mês às 08:00
+0 8 5,15,25 * *  cd CAMINHO_APP && PHP dev-utils/atualizar_cnpo.php >> logs/cron_externos.log 2>&1
+
+# PEAF (SDR-RS): dia 1 de cada mês às 08:30
+30 8 1 * *  cd CAMINHO_APP && PHP dev-utils/atualizar_peaf.php >> logs/cron_externos.log 2>&1
+
+# --- Opção B: rodar tudo diariamente (idempotente, só processa versão nova)
+# 0 6 * * *  cd CAMINHO_APP && PHP dev-utils/atualizar_cnpo.php >> logs/cron_externos.log 2>&1 && PHP dev-utils/atualizar_peaf.php >> logs/cron_externos.log 2>&1
+
+# --- Opção C: usar o runner (se a hospedagem permite executar .sh) ----------
+# chmod +x CAMINHO_APP/scripts/sincronizar_externos.sh
+# 0 8 5,15,25 * *  CAMINHO_APP/scripts/sincronizar_externos.sh cnpo
+# 30 8 1 * *       CAMINHO_APP/scripts/sincronizar_externos.sh peaf
+
+# ============================================================================
+# Notas importantes:
+# - Os scripts são idempotentes: se a versão da planilha já foi processada,
+#   saem imediatamente sem reprocessar. Por isso rodar diariamente é seguro.
+# - Log de execução: logs/cron_externos.log
+# - Antes de instalar o cron, rode manualmente uma vez:
+#     cd CAMINHO_APP && PHP dev-utils/migrate_peaf_cnpo.php
+#   para criar as tabelas e fazer a primeira carga.
+# ============================================================================

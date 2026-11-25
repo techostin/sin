@@ -6,6 +6,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Autorizacao (relatorio nivel 2 - Admin/Gestor). Antes respondia a anonimos.
+require_once __DIR__ . '/../../classes/ApiAuth.php';
+ApiAuth::exigirStaff(false);
+
 try {
     $db = Database::getInstance()->getConnection();
 

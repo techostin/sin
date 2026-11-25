@@ -1,0 +1,284 @@
+/* =====================================================================
+   SINPORG — Associados | Layout Moderno & Suave
+   Escopado ao módulo de Associados via .assoc-modern.
+   Apenas estilo visual; NÃO altera funcionalidade/lógica.
+   ===================================================================== */
+
+:root {
+    --am-bg:         #eef5f2;
+    --am-bg-soft:    #f7fbf9;
+    --am-surface:    #ffffff;
+    --am-primary:    #2f9e6f;
+    --am-primary-d:  #237a55;
+    --am-teal:       #2b9d8f;
+    --am-gold:       #f2b63c;
+    --am-coral:      #ef7767;
+    --am-ink:        #23443a;
+    --am-muted:      #7c918b;
+    --am-border:     #e3efec;
+    --am-shadow:     0 10px 30px -12px rgba(31, 94, 74, 0.28);
+    --am-shadow-sm:  0 6px 18px -10px rgba(31, 94, 74, 0.22);
+    --am-radius:     20px;
+    --am-radius-sm:  14px;
+}
+
+.assoc-modern {
+    color: var(--am-ink);
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+}
+.assoc-modern .page-bg {
+    background:
+        radial-gradient(1200px 500px at 100% -10%, rgba(242, 182, 60, 0.10), transparent 60%),
+        radial-gradient(1000px 500px at -10% 0%, rgba(43, 157, 143, 0.12), transparent 55%),
+        linear-gradient(180deg, var(--am-bg) 0%, var(--am-bg-soft) 42%, var(--am-surface) 100%);
+}
+
+/* ── Hero header ─────────────────────────────────────────────── */
+.assoc-modern .assoc-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 2rem 2rem 1.6rem;
+    border-radius: var(--am-radius);
+    background:
+        radial-gradient(600px 200px at 100% 0%, rgba(47,158,111,.18), transparent 60%),
+        radial-gradient(400px 200px at 0% 100%, rgba(43,157,143,.16), transparent 55%),
+        linear-gradient(135deg, #ffffff 0%, #f2faf6 55%, #e8f6f1 100%);
+    border: 1px solid rgba(43,157,143,0.18);
+    box-shadow: var(--am-shadow);
+    margin-bottom: 1.5rem;
+}
+.assoc-modern .assoc-hero::after {
+    content: '';
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(47,158,107,0.14), transparent 70%);
+    pointer-events: none;
+}
+.assoc-modern .assoc-hero h1 {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--am-ink);
+    letter-spacing: -0.02em;
+}
+.assoc-modern .assoc-hero p {
+    color: var(--am-muted);
+    font-size: 0.98rem;
+}
+.assoc-modern .assoc-hero .btn {
+    border-radius: 999px;
+    font-weight: 600;
+}
+.assoc-modern .assoc-hero .btn-assoc-primary {
+    background: linear-gradient(135deg, var(--am-primary), var(--am-teal));
+    border: none;
+    color: #fff;
+    box-shadow: var(--am-shadow-sm);
+}
+.assoc-modern .assoc-hero .btn-assoc-success {
+    background: linear-gradient(135deg, #3aa97c, #2b9d8f);
+    border: none;
+    color: #fff;
+    box-shadow: var(--am-shadow-sm);
+}
+.assoc-modern .assoc-hero .btn-assoc-ghost {
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(43,157,143,0.3);
+    color: var(--am-primary-dark);
+}
+
+/* ── Stat pills / chips ─────────────────────────────────────── */
+.assoc-modern .assoc-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-top: 1.2rem;
+}
+.assoc-modern .assoc-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(43,157,143,0.18);
+    box-shadow: var(--am-shadow-sm);
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--am-ink);
+}
+.assoc-modern .assoc-stat .icone {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.95rem;
+}
+.assoc-modern .assoc-stat .num {
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+/* ---------- Alertas suaves ─────────────────────────────────── */
+.assoc-modern .alert {
+    border-radius: var(--am-radius-sm);
+    border: 0;
+    box-shadow: var(--am-shadow-sm);
+}
+.assoc-modern .alert-success { background: #e2f5ec; color: #1d7a52; }
+.assoc-modern .alert-danger  { background: #fdeae7; color: #c14134; }
+.assoc-modern .alert-warning { background: #fdf3e0; color: #9a6d13; }
+.assoc-modern .alert-info    { background: #e3f3f6; color: #17697a; }
+
+/* ---------- Cards modernos ---------- */
+.assoc-modern .assoc-card {
+    border: 1px solid rgba(43,157,143,0.14);
+    border-radius: var(--am-radius);
+    background: var(--am-surface);
+    box-shadow: var(--am-shadow);
+    overflow: hidden;
+}
+.assoc-modern .assoc-card .card-head {
+    padding: 1rem 1.4rem;
+    background: linear-gradient(90deg, rgba(47,158,107,0.08), rgba(43,157,143,0.04));
+    border-bottom: 1px solid rgba(43,157,143,0.12);
+    font-weight: 700;
+}
+
+/* ---------- Formulários ---------- */
+.assoc-modern .form-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--am-ink);
+}
+.assoc-modern .form-control,
+.assoc-modern .form-select {
+    border-radius: 12px;
+    border: 1px solid var(--am-border);
+    padding: 0.62rem 0.9rem;
+    background: #fbfdfd;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.assoc-modern .form-control:focus,
+.assoc-modern .form-select:focus {
+    border-color: var(--am-primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(47,158,107,0.14);
+}
+.assoc-modern .btn {
+    border-radius: 999px;
+    font-weight: 600;
+}
+.assoc-modern .btn-primary {
+    background: linear-gradient(135deg, var(--am-primary), var(--am-teal));
+    border: none;
+    box-shadow: var(--am-shadow-sm);
+}
+.assoc-modern .btn-success {
+    background: linear-gradient(135deg, #3aac80, #2fae9e);
+    border: none;
+    box-shadow: var(--am-shadow-sm);
+}
+.assoc-modern .btn-info {
+    background: linear-gradient(135deg, #3fb6c9, #2f9db3);
+    border: none;
+    color: #fff;
+}
+.assoc-modern .btn-secondary,
+.assoc-modern .btn-outline-secondary {
+    background: #f2f6f5;
+    border: 1px solid var(--am-border);
+    color: var(--am-ink);
+}
+.assoc-modern .btn-outline-danger { border-color: #f2b9b0; color: #d05a48; }
+.assoc-modern .btn-danger {
+    background: linear-gradient(135deg, #ef7767, #dd5f4f);
+    border: none;
+    box-shadow: var(--am-shadow-sm);
+}
+.assoc-modern .btn-outline-light { border-radius: 999px; }
+
+/* ---------- Tabela (DataTables / listas) ---------- */
+.assoc-modern .table {
+    --bs-table-hover-bg: #eef7f3;
+    font-size: 0.92rem;
+}
+.assoc-modern .table thead th {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--am-muted);
+    border-bottom: 2px solid rgba(47,158,107,0.18);
+    padding: 0.9rem 0.75rem;
+    background: #fbfdfc;
+}
+.assoc-modern .table td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+}
+.assoc-modern .table tbody tr {
+    transition: background .18s ease, transform .18s ease;
+}
+.assoc-modern .table tbody tr:hover {
+    background: #f0f8f5;
+}
+.assoc-modern .dataTables_filter input,
+.assoc-modern .dataTables_length select {
+    border-radius: 999px;
+    border: 2px solid var(--am-border);
+    padding: 0.35rem 0.8rem;
+    background: #fff;
+}
+.assoc-modern .dt-buttons .btn {
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+.assoc-modern .associado-photo {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #fff;
+    box-shadow: var(--am-shadow-sm);
+    cursor: pointer;
+}
+.assoc-modern .associado-photo-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, var(--am-primary), var(--am-teal));
+    color: #fff;
+    border: 3px solid #fff;
+    box-shadow: var(--am-shadow-sm);
+    font-size: 1.2rem;
+}
+.assoc-modern .badge {
+    border-radius: 999px;
+    padding: 0.42em 0.75em;
+    font-weight: 600;
+}
+
+/* ---------- Modal ---------- */
+.assoc-modern .modal-content {
+    border: 0;
+    border-radius: var(--am-radius);
+    box-shadow: var(--am-shadow);
+}
+
+/* ---------- Empty state ---------- */
+.assoc-modern .empty-state i { color: var(--am-primary); filter: drop-shadow(0 4px 10px rgba(47,158,107,.35)); }
+.assoc-modern .empty-state h5 { font-weight: 700; color: var(--am-ink); }
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .assoc-modern .assoc-hero { padding: 1.4rem; }
+    .assoc-modern .assoc-hero h1 { font-size: 1.3rem; }
+    .assoc-modern .assoc-stat { font-size: 0.78rem; }
+}

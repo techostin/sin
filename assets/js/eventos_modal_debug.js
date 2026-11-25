@@ -84,7 +84,8 @@ function carregarEventosModal() {
                 return;
             }
             
-            const eventosModal = new bootstrap.Modal(modalEl);
+            // Inicializar o modal
+            const eventosModal = bootstrap.Modal.getOrCreateInstance(modalEl);
             
             if (data.success && data.eventos && data.eventos.length > 0) {
                 console.log('[Eventos Modal] Renderizando', data.eventos.length, 'eventos');
@@ -164,7 +165,8 @@ function carregarEventosModal() {
             
             const modalEl = document.getElementById('eventosModal');
             if (modalEl) {
-                const eventosModal = new bootstrap.Modal(modalEl);
+                // Inicializar o modal
+                const eventosModal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 eventosModal.show();
             }
         });
@@ -180,11 +182,11 @@ function confirmarPresencaModal(btn, eventoId) {
     
     fetch(window.SITE_URL + '/api/toggle_presenca.php', {
         method: 'POST',
-        headers: {
+        headers: Object.assign({
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: 'evento_id=' + encodeURIComponent(eventoId)
+        }, window.csrfHeaders()),
+        body: 'evento_id=' + encodeURIComponent(eventoId) + '&csrf_token=' + encodeURIComponent(window.CSRF_TOKEN)
     })
     .then(response => response.json())
     .then(data => {

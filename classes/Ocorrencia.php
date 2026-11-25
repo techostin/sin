@@ -18,12 +18,15 @@ class Ocorrencia {
                         om.*, 
                         p.propriedade, 
                         l.nome as lavoura_nome,
-                        i.nome as insumo_nome
+                        i.nome as insumo_nome,
+                        a.nome as associado_nome,
+                        a.sobrenome as associado_sobrenome
                     FROM ocorrencias_manejo om
                     LEFT JOIN propriedades p ON om.propriedade_id = p.id
                     LEFT JOIN lavouras l ON om.lavoura_id = l.id
                     LEFT JOIN insumos i ON om.insumo_utilizado_id = i.id
-                    WHERE om.associado_id = :associado_id
+                    LEFT JOIN associados a ON om.associado_id = a.id
+                    WHERE om.associado_id = :associado_id AND om.excluido = 0
                     ORDER BY om.data_deteccao DESC, om.created_at DESC";
             
             $stmt = $this->db->prepare($sql);
@@ -37,11 +40,40 @@ class Ocorrencia {
     }
 
     /**
+     * Retorna TODAS as ocorrências (para Gestor/Admin).
+     */
+    public function getAll() {
+        try {
+            $sql = "SELECT 
+                        om.*, 
+                        p.propriedade, 
+                        l.nome as lavoura_nome,
+                        i.nome as insumo_nome,
+                        a.nome as associado_nome,
+                        a.sobrenome as associado_sobrenome
+                    FROM ocorrencias_manejo om
+                    LEFT JOIN propriedades p ON om.propriedade_id = p.id
+                    LEFT JOIN lavouras l ON om.lavoura_id = l.id
+                    LEFT JOIN insumos i ON om.insumo_utilizado_id = i.id
+                    LEFT JOIN associados a ON om.associado_id = a.id
+                    WHERE om.excluido = 0
+                    ORDER BY om.created_at DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Erro ao buscar todas as ocorrências: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Busca uma ocorrência pelo ID.
      */
     public function getById($id) {
         try {
-            $stmt = $this->db->prepare("SELECT * FROM ocorrencias_manejo WHERE id = :id");
+            $stmt = $this->db->prepare("SELECT * FROM ocorrencias_manejo WHERE id = :id AND excluido = 0");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -142,11 +174,11 @@ class Ocorrencia {
     }
 
     /**
-     * Exclui uma ocorrência.
+     * Exclui (soft delete) uma ocorrência.
      */
     public function delete($id, $associado_id) {
         try {
-            $stmt = $this->db->prepare("DELETE FROM ocorrencias_manejo WHERE id = :id AND associado_id = :associado_id");
+            $stmt = $this->db->prepare("UPDATE ocorrencias_manejo SET excluido = 1 WHERE id = :id AND associado_id = :associado_id");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->bindParam(':associado_id', $associado_id, PDO::PARAM_INT);
             return $stmt->execute();

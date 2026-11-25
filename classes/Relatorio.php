@@ -80,7 +80,7 @@ class Relatorio {
             LEFT JOIN lavouras l ON a.lavoura_id = l.id
             LEFT JOIN associados ass ON a.associado_id = ass.id
             LEFT JOIN categorias_atividades ca ON a.categoria_id = ca.id
-            WHERE 1=1
+            WHERE a.excluido = 0
         ";
         
         $params = [];
@@ -119,7 +119,7 @@ class Relatorio {
                 p.*,
                 a.nome as responsavel_nome,
                 (SELECT COUNT(*) FROM lavouras l WHERE l.propriedade_id = p.id) as total_lavouras,
-                (SELECT COUNT(*) FROM atividades_diarias ad WHERE ad.propriedade_id = p.id) as total_atividades
+                (SELECT COUNT(*) FROM atividades_diarias ad WHERE ad.propriedade_id = p.id AND ad.excluido = 0) as total_atividades
             FROM propriedades p
             LEFT JOIN associados a ON p.associado_id = a.id
             WHERE 1=1
@@ -151,7 +151,7 @@ class Relatorio {
                 f.nome as fornecedor_nome
             FROM insumos i
             LEFT JOIN fornecedores f ON i.fornecedor_id = f.id
-            WHERE 1=1
+            WHERE i.excluido = 0
         ";
         
         $params = [];
@@ -175,9 +175,12 @@ class Relatorio {
      */
     protected function buscarDadosAssociados() {
         $sql = "
-            SELECT a.*, ass.nome as associacao_nome 
+            SELECT a.id, a.nome, a.sobrenome, a.email, a.telefone,
+                   a.cpf, a.rg, a.status,
+                   ci.nome as cidade_nome, es.uf as estado_uf
             FROM associados a
-            LEFT JOIN associacoes ass ON a.vinculo = ass.id
+            LEFT JOIN cidades ci ON a.cidade = ci.id
+            LEFT JOIN estados es ON ci.estado = es.id
             WHERE 1=1
         ";
         

@@ -28,7 +28,7 @@ try {
     $sheet->setTitle('Associados');
 
     // Cabeçalhos
-    $headers = ['ID', 'Nome', 'Sobrenome', 'E-mail', 'Telefone', 'CPF/CNPJ', 'Associação', 'Cidade', 'UF', 'Status'];
+    $headers = ['ID', 'Nome', 'Sobrenome', 'E-mail', 'Telefone', 'RG', 'Cidade', 'UF', 'Status'];
     $sheet->fromArray($headers, NULL, 'A1');
 
     // Estilo do cabeçalho
@@ -38,7 +38,7 @@ try {
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
     ];
-    $sheet->getStyle('A1:J1')->applyFromArray($headerStyle);
+    $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
 
     // Dados
     if (!empty($dados)) {
@@ -49,16 +49,15 @@ try {
             $sheet->setCellValue('C' . $rowNum, $item['sobrenome']);
             $sheet->setCellValue('D' . $rowNum, $item['email']);
             $sheet->setCellValue('E' . $rowNum, $item['telefone']);
-            $sheet->setCellValue('F' . $rowNum, $item['cpf_cnpj']);
-            $sheet->setCellValue('G' . $rowNum, $item['associacao_nome'] ?? 'Sem Vínculo');
-            $sheet->setCellValue('H' . $rowNum, $item['cidade']);
-            $sheet->setCellValue('I' . $rowNum, $item['uf']);
-            $sheet->setCellValue('J' . $rowNum, ucfirst($item['status']));
+            $sheet->setCellValue('F' . $rowNum, $item['rg'] ?? '-');
+            $sheet->setCellValue('G' . $rowNum, $item['cidade_nome'] ?? '-');
+            $sheet->setCellValue('H' . $rowNum, $item['estado_uf'] ?? '-');
+            $sheet->setCellValue('I' . $rowNum, ucfirst($item['status']));
             $rowNum++;
         }
         
         // Auto-ajuste de colunas
-        foreach (range('A', 'J') as $col) {
+        foreach (range('A', 'I') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
     }

@@ -1,0 +1,42 @@
+# DependÃªncias (gerenciadas pelo Composer/npm, nÃ£o versionar)
+/vendor/
+/node_modules/
+
+# ConteÃºdo enviado por usuÃ¡rios (logos, fotos, certificados, croquis)
+/uploads/
+
+# Backups de banco (conteem dados reais: e-mails, hashes de senha)
+/sql/_backup/
+
+# Segredos locais (chaves de API e de codificacao de IDs)
+/config/secrets.php
+
+# Rascunhos locais: caches, logs, testes temporarios, spikes
+/tmp/
+
+# Logs e ambiente
+*.log
+.env
+.env.local
+
+# SO / editor
+.DS_Store
+Thumbs.db
+*.swp
+# Pasta de rascunho/colaboracao local â€” NAO faz parte do projeto (sera excluida).
+/recicla/
+
+# Evidencias/fotos enviadas em runtime (nao versionar)
+/api/uploads/
+
+# Caches de teste e analise estatica
+.phpunit.cache/
+.phpstan-cache/
+
+# Certificados gerados e temporarios de PDF (nunca versionar)
+/.certificados/
+/.pdf-tmp/
+/.evidencias/
+
+# Cache do Deptrac
+.deptrac.cache

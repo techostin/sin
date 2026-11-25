@@ -1,8 +1,17 @@
 <?php
 // Exporta relatório de produção para Excel
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    die('Acesso negado. Por favor, faça login para acessar este relatório.');
+}
+
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../classes/Database.php';
+require_once __DIR__ . '/../../../classes/User.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -10,7 +19,20 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
 try {
+    $user = new User();
     $db = Database::getInstance()->getConnection();
+
+    // Filtro de escopo: não-gestores só veem produção das próprias propriedades
+    $params = [];
+    $where = [];
+    if (($_SESSION['user_nivel'] ?? NIVEL_USUARIO) > NIVEL_GESTOR) {
+        $assoc_id = $user->getAssociadoId();
+        if ($assoc_id) {
+            $where[] = "prop.associado_id = :associado_id";
+            $params[':associado_id'] = $assoc_id;
+        }
+    }
+    $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
     $sql = "SELECT 
         p.*,
@@ -31,9 +53,11 @@ try {
         LEFT JOIN propriedades prop ON l.propriedade_id = prop.id
         LEFT JOIN associados a ON prop.associado_id = a.id
         LEFT JOIN lotes_producao lp ON p.id = lp.produto_id
+        $where_clause
         ORDER BY p.data_colheita DESC, lp.data_producao DESC";
 
-    $stmt = $db->query($sql);
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $spreadsheet = new Spreadsheet();

@@ -6,6 +6,7 @@ class ReportManager {
     private $db;
     private $user;
     private $user_id;
+    private $user_associado_id;
     private $user_nivel;
     private $user_tipo;
     private $user_table;
@@ -30,6 +31,11 @@ class ReportManager {
             $this->user_tipo = $_SESSION['user_tipo'] ?? 'usuario';
             $this->user_table = $_SESSION['user_table'] ?? 'usuarios';
             $this->assetsUrl = SITE_URL . '/assets';
+            // Associado efetivo para filtros de relatório
+            // (usuário comum vê apenas dados do associado vinculado)
+            $this->user_associado_id = ($this->user_nivel > NIVEL_GESTOR)
+                ? ($this->user->getAssociadoId() ?? $this->user_id)
+                : $this->user_id;
         } else {
             throw new Exception("Usuário não autenticado");
         }
@@ -81,6 +87,7 @@ class ReportManager {
                 'dados' => $dados,
                 'filtros' => $filtros,
                 'assetsUrl' => $this->assetsUrl,
+                'logoPath' => __DIR__ . '/../img/logo_Sinporg-2.png',
                 'titulo' => ucfirst($tipo) . ' - ' . date('d/m/Y H:i:s')
             ]);
             
@@ -104,8 +111,8 @@ class ReportManager {
             
             // Configura o cabeçalho e rodapé
             $mpdf->SetHTMLHeader(''
-                . '<div style="text-align: right; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 20px;">'
-                . '    <img src="' . $this->assetsUrl . '/img/logo.png" style="height: 40px;" alt="Logo">'
+                . '<div style="text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 20px; background: #ffffff;">'
+                . '    <img src="' . (file_exists(__DIR__ . '/../img/logo_Sinporg-2.png') ? __DIR__ . '/../img/logo_Sinporg-2.png' : $this->assetsUrl . '/img/logo.png') . '" style="height: 34px;" alt="SINPORG - Sistema Integrado da Produção Orgânica">'
                 . '</div>');
                 
             $mpdf->SetHTMLFooter(''
@@ -152,13 +159,13 @@ class ReportManager {
      * Retorna os dados para o relatório de atividades
      */
     public function getAtividadesReport($filtros = []) {
-        $where = " WHERE 1=1 ";
+        $where = " WHERE a.excluido = 0 ";
         $params = [];
         
         // Filtro de segurança por associado
         if ($this->user_nivel > NIVEL_GESTOR) {
             $where .= " AND a.associado_id = :user_id ";
-            $params[':user_id'] = $this->user_id;
+            $params[':user_id'] = $this->user_associado_id;
         }
         
         // Adiciona filtros adicionais
@@ -173,7 +180,7 @@ class ReportManager {
         }
         
         $sql = "SELECT a.*, p.propriedade as propriedade_nome, l.nome as lavoura_nome, 
-                assoc.nome as associado_nome, c.nome as categoria_nome
+                CONCAT(assoc.nome, ' ', assoc.sobrenome) as associado_nome, c.nome as categoria_nome
                 FROM atividades_diarias a
                 LEFT JOIN propriedades p ON a.propriedade_id = p.id
                 LEFT JOIN lavouras l ON a.lavoura_id = l.id
@@ -192,13 +199,13 @@ class ReportManager {
      * Retorna os dados para o relatório de insumos
      */
     public function getInsumosReport($filtros = []) {
-        $where = " WHERE 1=1 ";
+        $where = " WHERE i.excluido = 0 ";
         $params = [];
         
         // Filtro de segurança por associado
         if ($this->user_nivel > NIVEL_GESTOR) {
             $where .= " AND i.associado_id = :user_id ";
-            $params[':user_id'] = $this->user_id;
+            $params[':user_id'] = $this->user_associado_id;
         }
         
         // Adiciona filtros adicionais
@@ -224,13 +231,13 @@ class ReportManager {
      * Retorna os dados para o relatório de lotes
      */
     public function getLotesReport($filtros = []) {
-        $where = " WHERE 1=1 ";
+        $where = " WHERE l.excluido = 0 ";
         $params = [];
         
         // Filtro de segurança por associado (Lotes -> Produtos -> Lavouras -> Propriedades -> Associado)
         if ($this->user_nivel > NIVEL_GESTOR) {
             $where .= " AND prop.associado_id = :user_id ";
-            $params[':user_id'] = $this->user_id;
+            $params[':user_id'] = $this->user_associado_id;
         }
         
         // Adiciona filtros adicionais
@@ -240,11 +247,12 @@ class ReportManager {
         }
         
         $sql = "SELECT l.*, p.nome as produto_nome,
-                (SELECT COUNT(*) FROM lotes_producao WHERE id = l.id) as total_producoes
+                CONCAT(a.nome, ' ', a.sobrenome) as responsavel_nome
                 FROM lotes_producao l
                 LEFT JOIN produtos p ON l.produto_id = p.id
                 LEFT JOIN lavouras lav ON p.lavoura_id = lav.id
                 LEFT JOIN propriedades prop ON lav.propriedade_id = prop.id
+                LEFT JOIN associados a ON prop.associado_id = a.id
                 $where
                 ORDER BY l.nome_lote";
         
@@ -258,13 +266,13 @@ class ReportManager {
      * Retorna os dados para o relatório de produção
      */
     public function getProducaoReport($filtros = []) {
-        $where = " WHERE 1=1 ";
+        $where = " WHERE l.excluido = 0 ";
         $params = [];
         
         // Filtro de segurança por associado (Lotes -> Produtos -> Lavouras -> Propriedades -> Associado)
         if ($this->user_nivel > NIVEL_GESTOR) {
             $where .= " AND prop.associado_id = :user_id ";
-            $params[':user_id'] = $this->user_id;
+            $params[':user_id'] = $this->user_associado_id;
         }
         
         // Adiciona filtros adicionais
@@ -278,11 +286,13 @@ class ReportManager {
             $params[':data_fim'] = $filtros['data_fim'];
         }
         
-        $sql = "SELECT l.*, p.nome as produto_nome, l.nome_lote as lote_codigo
+        $sql = "SELECT l.*, p.nome as produto_nome, l.nome_lote as lote_codigo,
+                CONCAT(a.nome, ' ', a.sobrenome) as responsavel_nome
                 FROM lotes_producao l
                 LEFT JOIN produtos p ON l.produto_id = p.id
                 LEFT JOIN lavouras lav ON p.lavoura_id = lav.id
                 LEFT JOIN propriedades prop ON lav.propriedade_id = prop.id
+                LEFT JOIN associados a ON prop.associado_id = a.id
                 $where
                 ORDER BY l.data_producao DESC";
         
@@ -302,7 +312,7 @@ class ReportManager {
         // Filtro de segurança por associado
         if ($this->user_nivel > NIVEL_GESTOR) {
             $where .= " AND p.associado_id = :user_id ";
-            $params[':user_id'] = $this->user_id;
+            $params[':user_id'] = $this->user_associado_id;
         }
         
         // Adiciona filtros adicionais
@@ -311,10 +321,12 @@ class ReportManager {
             $params[':cidade'] = $filtros['cidade'];
         }
         
-        $sql = "SELECT p.*, a.nome as responsavel_nome, 
+        $sql = "SELECT p.*, ci.nome as cidade_nome,
+                CONCAT(a.nome, ' ', a.sobrenome) as responsavel_nome, 
                 (SELECT COUNT(*) FROM lavouras WHERE propriedade_id = p.id) as total_lavouras
                 FROM propriedades p
                 LEFT JOIN associados a ON p.associado_id = a.id
+                LEFT JOIN cidades ci ON p.cidade = ci.id
                 $where
                 ORDER BY p.propriedade";
         
@@ -338,16 +350,22 @@ class ReportManager {
         
         // Adiciona filtros adicionais
         if (!empty($filtros['tipo'])) {
-            $where .= ' AND tipo = :tipo';
+            $where .= ' AND u.tipo = :tipo';
             $params[':tipo'] = $filtros['tipo'];
         }
         
         if (!empty($filtros['status'])) {
-            $where .= ' AND status = :status';
+            $where .= ' AND u.status = :status';
             $params[':status'] = $filtros['status'];
         }
         
-        $sql = "SELECT * FROM usuarios WHERE $where ORDER BY nome";
+        $sql = "SELECT u.id, u.nome, u.email, u.tipo, u.status, 
+                       u.ultimo_login as ultimo_acesso,
+                       a.cpf, a.rg
+                FROM usuarios u
+                LEFT JOIN associados a ON u.associado_id = a.id
+                WHERE $where 
+                ORDER BY u.nome";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         
@@ -364,7 +382,7 @@ class ReportManager {
         // Se for usuário comum, vê apenas seus próprios dados
         if ($this->user_nivel > NIVEL_GESTOR) {
             $where .= ' AND a.id = :user_id';
-            $params[':user_id'] = $this->user_id;
+            $params[':user_id'] = $this->user_associado_id;
         }
         
         // Adiciona filtros adicionais
@@ -378,9 +396,12 @@ class ReportManager {
             $params[':cidade'] = $filtros['cidade'];
         }
         
-        $sql = "SELECT a.*, ass.nome as associacao_nome 
+        $sql = "SELECT a.id, a.nome, a.sobrenome, a.email, a.telefone, 
+                a.cpf, a.rg, a.status,
+                ci.nome as cidade_nome, es.uf as estado_uf
                 FROM associados a
-                LEFT JOIN associacoes ass ON a.vinculo = ass.id
+                LEFT JOIN cidades ci ON a.cidade = ci.id
+                LEFT JOIN estados es ON ci.estado = es.id
                 WHERE $where 
                 ORDER BY a.nome";
         
@@ -401,8 +422,11 @@ class ReportManager {
         
         $sql = "SELECT a.*, 
                 (SELECT COUNT(*) FROM associados WHERE vinculo = a.id) as total_associados,
-                (SELECT COUNT(*) FROM propriedades p JOIN associados assoc ON p.associado_id = assoc.id WHERE assoc.vinculo = a.id) as total_propriedades
+                (SELECT COUNT(*) FROM propriedades p JOIN associados assoc ON p.associado_id = assoc.id WHERE assoc.vinculo = a.id) as total_propriedades,
+                ci.nome as cidade_nome, es.uf as estado_uf
                 FROM associacoes a
+                LEFT JOIN cidades ci ON a.cidade = ci.id
+                LEFT JOIN estados es ON ci.estado = es.id
                 ORDER BY a.nome";
         
         $stmt = $this->db->prepare($sql);
@@ -434,10 +458,18 @@ class ReportManager {
             $params[':tipo_fornecedor'] = $filtros['tipo_fornecedor'];
         }
         
-        $sql = "SELECT * FROM fornecedores WHERE $where ORDER BY razao_social";
+        // Buscar cidade por nome/ID usando join para retornar nome legível
+        $sql = "SELECT f.id, f.razao_social, f.nome as nome_fantasia, f.cnpj as cnpj_cpf, 
+               ci.nome as cidade_nome, es.uf as estado_uf, f.telefone, f.email
+            FROM fornecedores f
+            LEFT JOIN cidades ci ON f.cidade = ci.id
+            LEFT JOIN estados es ON ci.estado = es.id
+            WHERE $where
+            ORDER BY f.razao_social";
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -534,17 +566,76 @@ class ReportManager {
         // Filtro de segurança por associado
         if ($this->user_nivel > NIVEL_GESTOR) {
             $where .= " AND p.associado_id = :user_id ";
-            $params[':user_id'] = $this->user_id;
+            $params[':user_id'] = $this->user_associado_id;
         }
         
         $sql = "SELECT l.*, p.propriedade as propriedade_nome, 
-                assoc.nome as associado_nome, pr.nome as produto_nome
+                CONCAT(assoc.nome, ' ', assoc.sobrenome) as associado_nome, pr.nome as produto_nome
                 FROM lavouras l
                 LEFT JOIN propriedades p ON l.propriedade_id = p.id
                 LEFT JOIN associados assoc ON p.associado_id = assoc.id
                 LEFT JOIN produtos pr ON pr.lavoura_id = l.id
                 $where
                 ORDER BY l.nome";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Retorna os dados para o relatório de ocorrências de manejo
+     */
+    public function getOcorrenciasReport($filtros = []) {
+        $where = " WHERE om.excluido = 0 ";
+        $params = [];
+        
+        if ($this->user_nivel > NIVEL_GESTOR) {
+            $where .= " AND om.associado_id = :user_id ";
+            $params[':user_id'] = $this->user_associado_id;
+        }
+        
+        if (!empty($filtros['tipo'])) {
+            $where .= ' AND om.tipo = :tipo';
+            $params[':tipo'] = $filtros['tipo'];
+        }
+        
+        if (!empty($filtros['severidade'])) {
+            $where .= ' AND om.severidade = :severidade';
+            $params[':severidade'] = $filtros['severidade'];
+        }
+        
+        if (!empty($filtros['status'])) {
+            $where .= ' AND om.status = :status';
+            $params[':status'] = $filtros['status'];
+        }
+        
+        if (!empty($filtros['propriedade_id'])) {
+            $where .= ' AND om.propriedade_id = :propriedade_id';
+            $params[':propriedade_id'] = $filtros['propriedade_id'];
+        }
+        
+        if (!empty($filtros['data_inicio'])) {
+            $where .= ' AND om.data_deteccao >= :data_inicio';
+            $params[':data_inicio'] = $filtros['data_inicio'];
+        }
+        
+        if (!empty($filtros['data_fim'])) {
+            $where .= ' AND om.data_deteccao <= :data_fim';
+            $params[':data_fim'] = $filtros['data_fim'];
+        }
+        
+        $sql = "SELECT om.*, p.propriedade as propriedade_nome, 
+                l.nome as lavoura_nome, i.nome as insumo_nome,
+                CONCAT(a.nome, ' ', a.sobrenome) as associado_nome
+                FROM ocorrencias_manejo om
+                LEFT JOIN propriedades p ON om.propriedade_id = p.id
+                LEFT JOIN lavouras l ON om.lavoura_id = l.id
+                LEFT JOIN insumos i ON om.insumo_utilizado_id = i.id
+                LEFT JOIN associados a ON om.associado_id = a.id
+                $where
+                ORDER BY om.data_deteccao DESC, om.created_at DESC";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -582,11 +673,11 @@ class ReportManager {
                 $stats['total_propriedades'] = $stmt->fetchColumn();
 
                 // Atividades Hoje
-                $stmt = $this->db->query("SELECT COUNT(*) FROM atividades_diarias WHERE data_atividade = CURRENT_DATE");
+                $stmt = $this->db->query("SELECT COUNT(*) FROM atividades_diarias WHERE data_atividade = CURRENT_DATE AND excluido = 0");
                 $stats['atividades_hoje'] = $stmt->fetchColumn();
 
                 // Insumos Críticos
-                $stmt = $this->db->query("SELECT COUNT(*) FROM insumos WHERE quantidade < 5");
+                $stmt = $this->db->query("SELECT COUNT(*) FROM insumos WHERE quantidade_estoque < 5 AND excluido = 0");
                 $stats['insumos_criticos'] = $stmt->fetchColumn();
             } else {
                 // Se for Usuário Comum (Nivel 3), vê apenas seus dados
@@ -600,12 +691,12 @@ class ReportManager {
                 $stats['total_propriedades'] = $stmt->fetchColumn();
 
                 // Atividades Hoje do usuário
-                $stmt = $this->db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ? AND data_atividade = CURRENT_DATE");
+                $stmt = $this->db->prepare("SELECT COUNT(*) FROM atividades_diarias WHERE associado_id = ? AND excluido = 0 AND data_atividade = CURRENT_DATE");
                 $stmt->execute([$this->user_id]);
                 $stats['atividades_hoje'] = $stmt->fetchColumn();
 
                 // Insumos Críticos do usuário
-                $stmt = $this->db->prepare("SELECT COUNT(*) FROM insumos WHERE associado_id = ? AND quantidade < 5");
+                $stmt = $this->db->prepare("SELECT COUNT(*) FROM insumos WHERE associado_id = ? AND excluido = 0 AND quantidade_estoque < 5");
                 $stmt->execute([$this->user_id]);
                 $stats['insumos_criticos'] = $stmt->fetchColumn();
             }

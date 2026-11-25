@@ -3,11 +3,12 @@ $page_title = "Listar Contas";
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/menu.php';
 
-if (!$user->hasPermission(NIVEL_GESTOR)) {
+if (!$user->podeAcessarDiretoria()) {
     echo "<div class='alert alert-danger'>Você não tem permissão para acessar esta página.</div>";
     require_once __DIR__ . '/../../includes/footer.php';
     exit;
 }
+$podeGerenciarContas = $user->hasPermission(NIVEL_GESTOR);
 
 // Buscar contas do banco (exemplo genérico)
 $contas = [];
@@ -24,7 +25,9 @@ try {
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Lista de Contas</span>
+        <?php if ($podeGerenciarContas): ?>
         <a href="<?php echo SITE_URL; ?>/conta/novo" class="btn btn-primary btn-sm">Adicionar Nova Conta</a>
+        <?php endif; ?>
     </div>
     <div class="card-body">
         <table id="contasTable" class="table table-striped table-bordered" style="width:100%">
@@ -48,8 +51,12 @@ try {
                             <td><?php echo htmlspecialchars($conta['valor']); ?></td>
                             <td><?php echo htmlspecialchars($conta['data']); ?></td>
                             <td>
+                                <?php if ($podeGerenciarContas): ?>
                                 <a href="<?php echo SITE_URL; ?>/conta/<?php echo $conta['id']; ?>/editar" class="btn btn-info btn-sm" title="Editar"><i class="bi bi-pencil-fill"></i></a>
                                 <button class="btn btn-danger btn-sm" title="Exclusão desabilitada - Clique para mais informações" onclick="mostrarAdvertenciaExclusao()"><i class="bi bi-trash-fill"></i></button>
+                                <?php else: ?>
+                                <span class="text-muted small">—</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

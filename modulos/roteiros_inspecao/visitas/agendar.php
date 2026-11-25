@@ -21,25 +21,30 @@ if (!$isAdmin) {
 }
 ?>
 
-<div class="container-fluid px-4 pb-5">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
-        <div>
-            <h1 class="h3 mb-1"><i class="bi bi-calendar-plus text-primary me-2"></i>Agendar Nova Inspeção</h1>
-            <p class="text-muted mb-0">Agende visitas de fiscalização participativa (SPG/OCS) para os produtores.</p>
+<div class="gestor-modern">
+<link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/gestor-modern.css">
+<div class="page-bg px-2 px-md-0" style="min-height:100%; padding-bottom:1px;">
+
+    <div class="gestor-hero">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 flex-wrap">
+            <div>
+                <h1 class="mb-1"><i class="bi bi-calendar-plus me-2" style="color:var(--gm-primary);"></i>Agendar Nova Inspeção</h1>
+                <p class="mb-0">Agende visitas de fiscalização participativa (SPG/OCS) para os produtores.</p>
+            </div>
+            <a href="<?php echo SITE_URL; ?>/visitas-tecnicas" class="btn btn-assoc-ghost btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Voltar para Listagem
+            </a>
         </div>
-        <a href="<?php echo SITE_URL; ?>/visitas-tecnicas" class="btn btn-outline-secondary btn-sm shadow-sm">
-            <i class="bi bi-arrow-left"></i> Voltar para Listagem
-        </a>
     </div>
 
     <div class="row g-4">
         <!-- Coluna de Agendamento -->
         <div class="col-lg-7">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 pt-3 fw-bold">
-                    <i class="bi bi-file-earmark-ruled text-success me-2"></i>Formulário de Agendamento
+            <div class="gm-card">
+                <div class="card-head fw-bold">
+                    <i class="bi bi-file-earmark-ruled me-2" style="color:var(--gm-primary);"></i>Formulário de Agendamento
                 </div>
-                <div class="card-body">
+                <div class="p-4">
                     <form id="formAgendarVisita" class="needs-validation" novalidate>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Agricultor *</label>
@@ -92,26 +97,26 @@ if (!$isAdmin) {
                                 <i class="bi bi-calendar-check-fill me-1"></i> Confirmar Agendamento
                             </button>
                         </div>
-                    </form>
-                </div>
-            </div>
+</form>
+                </div> <!-- /p-4 -->
+            </div> <!-- /gm-card -->
         </div>
 
         <!-- Coluna Informativa e Resumo -->
         <div class="col-lg-5">
-            <div class="card border-0 shadow-sm bg-light mb-4">
-                <div class="card-body">
+            <div class="gm-card bg-light mb-4">
+                <div class="p-4">
                     <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary me-2"></i>Como Funciona o SPG</h5>
-                    <p class="small text-muted mb-2">No **Sistema Participativo de Garantia (SPG)**, as inspeções são realizadas por uma equipe de técnicos e agricultores (visitas de pares).</p>
-                    <p class="small text-muted mb-2">Ao agendar uma visita, você define o **modelo de roteiro** (templates de checklists como Visita Inicial, Regular, Renovação, etc.) e o agricultor receberá a notificação em seu painel.</p>
+                    <p class="small text-muted mb-2">No <strong>Sistema Participativo de Garantia (SPG)</strong>, as inspeções são realizadas por uma equipe de técnicos e agricultores (visitas de pares).</p>
+                    <p class="small text-muted mb-2">Ao agendar uma visita, você define o <strong>modelo de roteiro</strong> (templates de checklists como Visita Inicial, Regular, Renovação, etc.) e o agricultor receberá a notificação em seu painel.</p>
                     <p class="small text-muted mb-0">Durante a visita, a conformidade de cada item é avaliada e as irregularidades são registradas no banco de dados.</p>
                 </div>
             </div>
 
             <!-- Card de Resumo do Agricultor Selecionado (Dinamico) -->
-            <div class="card border-0 shadow-sm d-none" id="card-agricultor-resumo">
-                <div class="card-header bg-white fw-bold border-0 pt-3">
-                    <i class="bi bi-person-lines-fill text-success me-2"></i>Resumo do Agricultor
+            <div class="gm-card d-none" id="card-agricultor-resumo">
+                <div class="card-head fw-bold">
+                    <i class="bi bi-person-lines-fill me-2" style="color:var(--gm-primary);"></i>Resumo do Agricultor
                 </div>
                 <div class="card-body" id="resumo-conteudo">
                     <!-- Dinâmico por JS -->
@@ -119,7 +124,9 @@ if (!$isAdmin) {
             </div>
         </div>
     </div>
-</div>
+
+</div> <!-- /page-bg -->
+</div> <!-- /gestor-modern -->
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 
